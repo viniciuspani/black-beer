@@ -13,7 +13,11 @@
     "experimentalDecorators": true,
     "importHelpers": true,
     "target": "ES2022",
-    "module": "preserve"
+    "module": "preserve",
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/custom-typings"
+    ]
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,

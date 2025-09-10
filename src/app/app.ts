@@ -1,12 +1,27 @@
+import { CommonModule } from '@angular/common';
 import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { TabsModule } from 'primeng/tabs';
+import { BeerManagementComponent } from './features/beer-management/beer-management';
+// Importe os componentes que criaremos a seguir
+// import { SalesFormComponent } from './features/sales-form/sales-form.component';
+// import { ReportsSectionComponent } from './features/reports-section/reports-section.component';
+// import { SettingsSectionComponent } from './features/settings-section/settings-section.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  standalone: true,
+  imports: [
+     CommonModule,
+      TabsModule,
+      // SalesFormComponent,
+    // ReportsSectionComponent,
+    BeerManagementComponent,
+    // SettingsSectionComponent
+    ],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
 export class App {
   protected readonly title = signal('black-beer');
+
 }

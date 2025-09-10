@@ -1,0 +1,26 @@
+import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZoneChangeDetection, isDevMode } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { provideAnimations } from '@angular/platform-browser/animations';
+
+import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
+import { provideServiceWorker } from '@angular/service-worker';
+import Lara from '@primeuix/themes/lara';
+import { providePrimeNG } from 'primeng/config';
+import { routes } from './app/app.routes';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideBrowserGlobalErrorListeners(),
+    provideZoneChangeDetection({ eventCoalescing: true }),
+    provideRouter(routes), provideClientHydration(withEventReplay()), provideServiceWorker('ngsw-worker.js', {
+            enabled: !isDevMode(),
+            registrationStrategy: 'registerWhenStable:30000'
+          }),
+    providePrimeNG({
+      theme: {
+        preset: Lara
+      }
+    }),
+    provideAnimations()
+  ]
+};

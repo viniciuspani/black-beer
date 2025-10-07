@@ -7,7 +7,7 @@ export interface BeerType {
 }
 
 export interface Sale {
-  id: string;
+  id: number;
   beerId: string;
   beerName: string;
   cupSize: 300 | 500;

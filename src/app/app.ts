@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, signal } from '@angular/core';
 import { TabsModule } from 'primeng/tabs';
 import { BeerManagementComponent } from './features/beer-management/beer-management';
+import { SalesFormComponent } from './features/sales-form/sales-form';
 // Importe os componentes que criaremos a seguir
 // import { SalesFormComponent } from './features/sales-form/sales-form.component';
 // import { ReportsSectionComponent } from './features/reports-section/reports-section.component';
@@ -13,7 +14,7 @@ import { BeerManagementComponent } from './features/beer-management/beer-managem
   imports: [
      CommonModule,
       TabsModule,
-      // SalesFormComponent,
+      SalesFormComponent,
     // ReportsSectionComponent,
     BeerManagementComponent,
     // SettingsSectionComponent

@@ -1,0 +1,83 @@
+<p-toast></p-toast>
+<p-card>
+  <ng-template pTemplate="title">
+    <div class="flex items-center justify-center gap-2">
+      <i class="pi pi-shopping-cart text-2xl"></i>
+      <span>Nova Venda</span>
+    </div>
+  </ng-template>
+
+  <ng-template pTemplate="content">
+    <form [formGroup]="saleForm" (ngSubmit)="handleSale()" class="flex flex-col gap-8">
+
+      <div class="flex flex-col gap-3">
+        <h3 class="font-semibold text-lg">Selecione a Cerveja</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          @for (let beer of beerTypes(); let i = index) {
+            <button 
+              type="button"
+              (click)="selectBeer(beer.id)"
+              class="p-4 flex flex-col items-start gap-2 text-left rounded-lg border transition-all duration-300"
+              [ngClass]="beerId.value === beer.id 
+                ? 'bg-amber-600 text-white shadow-lg border-amber-700' 
+                : ' hover:shadow-md hover:border-amber-400'">
+              <div class="flex items-center gap-2 w-full">
+                <div class="w-4 h-4 rounded-full border-2 border-current" [style.backgroundColor]="beer.color"></div>
+                <span class="font-medium">{{ beer.name }}</span>
+              </div>
+              <span class="text-xs opacity-70">{{ beer.description }}</span>
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <h3 class="font-semibold text-lg">Tamanho do Copo</h3>
+        <div class="flex gap-3">
+          <button 
+            type="button" 
+            (click)="selectCupSize(300)"
+            class="flex-1 h-16 text-lg font-bold rounded-lg border transition-all duration-300"
+            [ngClass]="cupSize.value === 300 ? 'bg-amber-500 text-white shadow-md' : 'bg-white text-black hover:shadow-sm'">
+            300ml
+          </button>
+          <button 
+            type="button" 
+            (click)="selectCupSize(500)"
+            class="flex-1 h-16 text-lg font-bold rounded-lg border transition-all duration-300"
+            [ngClass]="cupSize.value === 500 ? 'bg-amber-500 text-white shadow-md' : 'bg-white text-black hover:shadow-sm'">
+            500ml
+          </button>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <h3 class="font-semibold text-lg text-center">Quantidade</h3>
+        <div class="flex items-center justify-center gap-4">
+          <p-button type="button" icon="pi pi-minus" class="p-button-outlined p-button-lg" (onClick)="changeQuantity(-1)" [disabled]="quantity.value <= 1"></p-button>
+          <p-tag class="px-6 py-3 text-2xl" severity="secondary" [value]="quantity.value"></p-tag>
+          <p-button type="button" icon="pi pi-plus" class="p-button-outlined p-button-lg" (onClick)="changeQuantity(1)"></p-button>
+        </div>
+      </div>
+
+      @if (saleSummary() as summary) {
+        <div class="bg-amber-50 p-4 rounded-lg border border-amber-200">
+          <h4 class="font-semibold mb-2">Resumo da Venda</h4>
+          <div class="space-y-1 text-sm text-gray-700">
+            <p><strong>Cerveja:</strong> {{ summary.beerName }}</p>
+            <p><strong>Tamanho:</strong> {{ summary.cupSize }}ml</p>
+            <p><strong>Quantidade:</strong> {{ summary.quantity }} copo(s)</p>
+            <p><strong>Volume Total:</strong> {{ summary.totalVolume }}L</p>
+          </div>
+        </div>
+      }
+
+      <p-button 
+        type="submit" 
+        label="Registrar Venda" 
+        class="p-button-lg w-full" 
+        [disabled]="saleForm.invalid">
+      </p-button>
+    </form>
+  </ng-template>
+</p-card>

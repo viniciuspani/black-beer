@@ -1,10 +1,5 @@
-
-
-// src/app/features/sales-form/sales-form.component.ts
-import { Component, OnInit, inject, signal, WritableSignal, computed, EffectRef, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, inject, signal, computed, effect } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
-// import { v4 as uuidv4 } from 'uuid'; // Para gerar IDs únicos
 
 // PrimeNG Modules
 import { CardModule } from 'primeng/card';
@@ -17,11 +12,19 @@ import { TagModule } from 'primeng/tag';
 import { BeerType, Sale } from '../../core/models/beer.model';
 import { DatabaseService } from '../../core/services/database';
 
+interface SaleSummary {
+  beerName: string;
+  cupSize: number;
+  quantity: number;
+  totalVolume: string;
+}
+
+type CupSize = 300 | 500;
+
 @Component({
   selector: 'app-sales-form',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     CardModule,
     ButtonModule,
@@ -33,26 +36,31 @@ import { DatabaseService } from '../../core/services/database';
   styleUrls: ['./sales-form.scss']
 })
 export class SalesFormComponent implements OnInit {
-  // Injeção de dependências
-  private dbService = inject(DatabaseService);
-  private fb = inject(FormBuilder);
-  private messageService = inject(MessageService);
+  // Injeção de dependências (moderna sintaxe)
+  private readonly dbService = inject(DatabaseService);
+  private readonly fb = inject(FormBuilder);
+  private readonly messageService = inject(MessageService);
+
+  // Constantes
+  readonly cupSizes: readonly CupSize[] = [300, 500] as const;
+  private readonly DEFAULT_CUP_SIZE: CupSize = 300;
+  private readonly DEFAULT_QUANTITY = 1;
+  private readonly ML_TO_LITERS = 1000;
 
   // Sinais para estado reativo
-  beerTypes: WritableSignal<BeerType[]> = signal([]);
-  saleForm: FormGroup;
+  readonly beerTypes = signal<BeerType[]>([]);
+  readonly saleForm: FormGroup;
   
   // Sinal computado para o resumo da venda
-  saleSummary = computed(() => {
-    if (!this.saleForm || !this.saleForm.valid) {
-      return null;
-    }
+  readonly saleSummary = computed<SaleSummary | null>(() => {
+    if (!this.saleForm?.valid) return null;
+
     const { beerId, cupSize, quantity } = this.saleForm.value;
     const selectedBeer = this.beerTypes().find(b => b.id === beerId);
-    if (!selectedBeer) {
-      return null;
-    }
-    const totalVolume = (cupSize * quantity) / 1000; // Em litros
+    
+    if (!selectedBeer) return null;
+
+    const totalVolume = (cupSize * quantity) / this.ML_TO_LITERS;
 
     return {
       beerName: selectedBeer.name,
@@ -62,19 +70,22 @@ export class SalesFormComponent implements OnInit {
     };
   });
 
-  constructor() {
-    this.saleForm = this.fb.group({
-      beerId: [null, Validators.required],
-      cupSize: [300, Validators.required],
-      quantity: [1, [Validators.required, Validators.min(1)]]
-    });
+  // FormControl getters tipados
+  get beerId(): FormControl<string | null> {
+    return this.saleForm.get('beerId') as FormControl<string | null>;
+  }
 
-    // Reage à prontidão do banco de dados para carregar as cervejas
-    effect(() => {
-      if (this.dbService.isDbReady()) {
-        this.loadBeerTypes();
-      }
-    });
+  get cupSize(): FormControl<CupSize> {
+    return this.saleForm.get('cupSize') as FormControl<CupSize>;
+  }
+
+  get quantity(): FormControl<number> {
+    return this.saleForm.get('quantity') as FormControl<number>;
+  }
+
+  constructor() {
+    this.saleForm = this.createSaleForm();
+    this.setupDatabaseEffect();
   }
 
   ngOnInit(): void {
@@ -83,95 +94,169 @@ export class SalesFormComponent implements OnInit {
     }
   }
 
-  loadBeerTypes(): void {
-    const beers = this.dbService.executeQuery('SELECT * FROM beer_types ORDER BY name');
+  // Métodos privados de inicialização
+  private createSaleForm(): FormGroup {
+    return this.fb.group({
+      beerId: [null as string | null, Validators.required],
+      cupSize: [this.DEFAULT_CUP_SIZE, Validators.required],
+      quantity: [this.DEFAULT_QUANTITY, [Validators.required, Validators.min(1)]]
+    });
+  }
+
+  private setupDatabaseEffect(): void {
+    effect(() => {
+      if (this.dbService.isDbReady()) {
+        this.loadBeerTypes();
+      }
+    });
+  }
+
+  // Carregamento de dados
+  private loadBeerTypes(): void {
+    const beers = this.dbService.executeQuery(
+      'SELECT * FROM beer_types ORDER BY name'
+    );
     this.beerTypes.set(beers);
   }
 
-  // Métodos para manipulação do formulário
+  // Métodos públicos para manipulação do formulário
   selectBeer(beerId: string): void {
     this.beerId.setValue(beerId);
   }
 
-  selectCupSize(size: 300 | 500): void {
+  selectCupSize(size: CupSize): void {
     this.cupSize.setValue(size);
   }
 
   changeQuantity(amount: number): void {
-    const currentQuantity = this.quantity.value;
-    const newQuantity = currentQuantity + amount;
+    const newQuantity = this.quantity.value + amount;
+    
     if (newQuantity >= 1) {
       this.quantity.setValue(newQuantity);
     }
   }
 
-  // Getters para fácil acesso aos FormControls no template
-  get beerId(): FormControl {
-    return this.saleForm.get('beerId') as FormControl;
-  }
-  get cupSize(): FormControl {
-    return this.saleForm.get('cupSize') as FormControl;
-  }
-  get quantity(): FormControl {
-    return this.saleForm.get('quantity') as FormControl;
-  }
-  
+  // Handler principal de venda
   handleSale(): void {
-    if (this.saleForm.invalid) {
-      this.messageService.add({ severity: 'warn', summary: 'Atenção', detail: 'Selecione uma cerveja para continuar.' });
-      return;
-    }
+    if (!this.validateForm()) return;
+
+    const selectedBeer = this.getSelectedBeer();
+    if (!selectedBeer) return;
+
+    const newSale = this.createSaleObject(selectedBeer);
     
-    const { beerId, cupSize, quantity } = this.saleForm.value;
+    this.saveSale(newSale);
+  }
+
+  // Métodos privados de validação e processamento
+  private validateForm(): boolean {
+    if (this.saleForm.invalid) {
+      this.showWarning('Selecione uma cerveja para continuar.');
+      return false;
+    }
+    return true;
+  }
+
+  private getSelectedBeer(): BeerType | undefined {
+    const { beerId } = this.saleForm.value;
     const selectedBeer = this.beerTypes().find(b => b.id === beerId);
 
     if (!selectedBeer) {
-        this.messageService.add({ severity: 'error', summary: 'Erro', detail: 'Cerveja selecionada não encontrada.' });
-        return;
+      this.showError('Cerveja selecionada não encontrada.');
     }
 
-    const newSale: Sale = {
-      id: this.generateSequentialId(), // Geração do ID sequencial,
-      beerId: selectedBeer.id,
-      beerName: selectedBeer.name,
+    return selectedBeer;
+  }
+
+  private createSaleObject(beer: BeerType): Sale {
+    const { cupSize, quantity } = this.saleForm.value;
+    const totalVolume = cupSize * quantity;
+
+    return {
+      id: this.generateSequentialId(),
+      beerId: beer.id,
+      beerName: beer.name,
       cupSize,
       quantity,
       timestamp: new Date().toISOString(),
-      totalVolume: cupSize * quantity,
+      totalVolume,
     };
+  }
 
+  private saveSale(sale: Sale): void {
     try {
-        this.dbService.executeRun(
-            'INSERT INTO sales (id, beerId, beerName, cupSize, quantity, timestamp, totalVolume) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [newSale.id, newSale.beerId, newSale.beerName, newSale.cupSize, newSale.quantity, newSale.timestamp, newSale.totalVolume]
-        );
-        
-        const totalLiters = (newSale.totalVolume / 1000).toFixed(1);
-        this.messageService.add({ 
-            severity: 'success', 
-            summary: 'Venda Registrada!', 
-            detail: `${quantity}x ${selectedBeer.name} (${cupSize}ml) - Total: ${totalLiters}L` 
-        });
-
-        this.saleForm.reset({
-            beerId: null,
-            cupSize: 300,
-            quantity: 1
-        });
-    } catch(error) {
-        this.messageService.add({ severity: 'error', summary: 'Erro', detail: 'Não foi possível registrar a venda.' });
-        console.error("Erro ao registrar venda:", error);
+      this.insertSaleIntoDatabase(sale);
+      this.showSuccessMessage(sale);
+      this.resetForm();
+    } catch (error) {
+      this.handleSaleError(error);
     }
   }
 
-  generateSequentialId(): number {
-    // Obter todos os IDs existentes no banco de dados
+  private insertSaleIntoDatabase(sale: Sale): void {
+    const query = `
+      INSERT INTO sales (id, beerId, beerName, cupSize, quantity, timestamp, totalVolume) 
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+    
+    this.dbService.executeRun(query, [
+      sale.id,
+      sale.beerId,
+      sale.beerName,
+      sale.cupSize,
+      sale.quantity,
+      sale.timestamp,
+      sale.totalVolume
+    ]);
+  }
+
+  private generateSequentialId(): number {
     const existingIds = this.dbService.executeQuery('SELECT id FROM sales');
-    const idNumbers = existingIds.map((sale: { id: number }) => sale.id);
-  
-    // Determinar o próximo ID sequencial
-    const nextId = idNumbers.length > 0 ? Math.max(...idNumbers) + 1 : 1;
-  
-    return nextId;
+    
+    if (existingIds.length === 0) return 1;
+    
+    const maxId = Math.max(...existingIds.map(sale => sale.id));
+    return maxId + 1;
+  }
+
+  private resetForm(): void {
+    this.saleForm.reset({
+      beerId: null,
+      cupSize: this.DEFAULT_CUP_SIZE,
+      quantity: this.DEFAULT_QUANTITY
+    });
+  }
+
+  // Métodos de mensagens
+  private showSuccessMessage(sale: Sale): void {
+    const totalLiters = (sale.totalVolume / this.ML_TO_LITERS).toFixed(1);
+    const detail = `${sale.quantity}x ${sale.beerName} (${sale.cupSize}ml) - Total: ${totalLiters}L`;
+    
+    this.messageService.add({ 
+      severity: 'success', 
+      summary: 'Venda Registrada!', 
+      detail 
+    });
+  }
+
+  private showWarning(message: string): void {
+    this.messageService.add({ 
+      severity: 'warn', 
+      summary: 'Atenção', 
+      detail: message 
+    });
+  }
+
+  private showError(message: string): void {
+    this.messageService.add({ 
+      severity: 'error', 
+      summary: 'Erro', 
+      detail: message 
+    });
+  }
+
+  private handleSaleError(error: unknown): void {
+    this.showError('Não foi possível registrar a venda.');
+    console.error('Erro ao registrar venda:', error);
   }
 }

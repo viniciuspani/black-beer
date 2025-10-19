@@ -2,6 +2,7 @@
 import { inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
 import initSqlJs, { type Database } from 'sql.js';
 import { BeerType, Sale } from '../models/beer.model';
+import { FullReport, SalesSummary, SalesByCupSize, SalesByBeerType } from '../models/report.model';
 import { isPlatformBrowser } from '@angular/common';
 
 const DB_STORAGE_KEY = 'black_beer_sqlite_db_v1';
@@ -123,4 +124,81 @@ export class DatabaseService {
   // Funções utilitárias
   private uint8ArrayToString = (arr: Uint8Array) => btoa(String.fromCharCode.apply(null, Array.from(arr)));
   private stringToUint8Array = (str: string) => new Uint8Array(atob(str).split('').map(c => c.charCodeAt(0)));
+
+  // NOVO MÉTODO PARA GERAR RELATÓRIO COMPLETO
+  public getFullReport(startDate?: Date, endDate?: Date): FullReport {
+    if (!this.db) {
+      // Retorna um relatório vazio se o DB não estiver pronto
+      return {
+        summary: { totalSales: 0, totalVolumeLiters: 0 },
+        salesByCupSize: [],
+        salesByBeerType: []
+      };
+    }
+  
+    // Cláusula WHERE para o filtro de data
+    let whereClause = '';
+    const params: string[] = [];
+    if (startDate) {
+      whereClause += ' WHERE timestamp >= ?';
+      params.push(startDate.toISOString());
+    }
+    if (endDate) {
+      whereClause += whereClause ? ' AND timestamp <= ?' : ' WHERE timestamp <= ?';
+      // Adiciona 1 dia e remove 1 segundo para incluir o dia inteiro
+      const endOfDay = new Date(endDate);
+      endOfDay.setDate(endOfDay.getDate() + 1);
+      endOfDay.setSeconds(endOfDay.getSeconds() - 1);
+      params.push(endOfDay.toISOString());
+    }
+  
+    // 1. Query para o resumo geral
+    const summaryQuery = `
+      SELECT
+        COUNT(id) as totalSales,
+        SUM(totalVolume) / 1000 as totalVolumeLiters
+      FROM sales
+      ${whereClause}
+    `;
+    const summaryResult = this.executeQuery(summaryQuery, params)[0] || { totalSales: 0, totalVolumeLiters: 0 };
+    
+    // 2. Query para vendas por tamanho de copo
+    const byCupSizeQuery = `
+      SELECT
+        cupSize,
+        SUM(quantity) as count
+      FROM sales
+      ${whereClause}
+      GROUP BY cupSize
+      ORDER BY cupSize
+    `;
+    const salesByCupSize = this.executeQuery(byCupSizeQuery, params);
+  
+    // 3. Query para vendas por tipo de cerveja
+    const byBeerTypeQuery = `
+      SELECT
+        bt.id as beerId,
+        bt.name,
+        bt.color,
+        bt.description,
+        SUM(s.quantity) as totalCups,
+        SUM(s.totalVolume) / 1000 as totalLiters
+      FROM sales s
+      JOIN beer_types bt ON s.beerId = bt.id
+      ${whereClause}
+      GROUP BY bt.id, bt.name, bt.color, bt.description
+      ORDER BY totalLiters DESC
+    `;
+    const salesByBeerType = this.executeQuery(byBeerTypeQuery, params);
+    
+    // Retorna o objeto do relatório completo
+    return {
+      summary: {
+        totalSales: summaryResult.totalSales || 0,
+        totalVolumeLiters: summaryResult.totalVolumeLiters || 0,
+      },
+      salesByCupSize,
+      salesByBeerType
+    };
+  }
 }

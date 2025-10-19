@@ -1,0 +1,226 @@
+<div class="flex flex-col gap-6">
+  
+  <!-- Card de Filtros por Data -->
+  <p-card>
+    <ng-template pTemplate="title">
+      <div class="flex items-center gap-2">
+        <i class="pi pi-calendar text-xl"></i>
+        <span>Filtros por Data</span>
+      </div>
+    </ng-template>
+    
+    <ng-template pTemplate="content">
+      <div class="flex flex-col gap-4">
+        
+        <!-- Grid de DatePickers -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          <!-- Data Inicial -->
+          <div class="flex flex-col gap-2">
+            <label for="start-date" class="font-medium">Data Inicial</label>
+            <p-datepicker 
+              [(ngModel)]="startDate" 
+              (onSelect)="onStartDateSelect($event)"
+              [showIcon]="true" 
+              inputId="start-date" 
+              dateFormat="dd/mm/yy"
+              [maxDate]="endDate() ?? undefined"
+              placeholder="Selecione a data inicial">
+            </p-datepicker>
+          </div>
+          
+          <!-- Data Final -->
+          <div class="flex flex-col gap-2">
+            <label for="end-date" class="font-medium">Data Final</label>
+            <p-datepicker 
+              [(ngModel)]="endDate"
+              (onSelect)="onEndDateSelect($event)"
+              [showIcon]="true" 
+              inputId="end-date" 
+              dateFormat="dd/mm/yy"
+              [minDate]="startDate() ?? undefined"
+              placeholder="Selecione a data final">
+            </p-datepicker>
+          </div>
+        </div>
+        
+        <!-- Botões de Atalho -->
+        <div class="flex flex-wrap gap-2" role="group" aria-label="Filtros rápidos">
+          <p-button 
+            label="Hoje" 
+            icon="pi pi-calendar-plus"
+            styleClass="p-button-outlined p-button-sm" 
+            (onClick)="setPresetRange(PresetPeriod.TODAY)"
+            ariaLabel="Filtrar vendas de hoje">
+          </p-button>
+          
+          <p-button 
+            label="Últimos 7 dias" 
+            icon="pi pi-calendar"
+            styleClass="p-button-outlined p-button-sm" 
+            (onClick)="setPresetRange(PresetPeriod.LAST_7_DAYS)"
+            ariaLabel="Filtrar vendas dos últimos 7 dias">
+          </p-button>
+          
+          <p-button 
+            label="Últimos 30 dias" 
+            icon="pi pi-calendar"
+            styleClass="p-button-outlined p-button-sm" 
+            (onClick)="setPresetRange(PresetPeriod.LAST_30_DAYS)"
+            ariaLabel="Filtrar vendas dos últimos 30 dias">
+          </p-button>
+          
+          <p-button 
+            label="Limpar" 
+            icon="pi pi-times" 
+            styleClass="p-button-outlined p-button-sm p-button-danger" 
+            (onClick)="clearFilters()"
+            ariaLabel="Limpar filtros de data">
+          </p-button>
+        </div>
+      </div>
+    </ng-template>
+  </p-card>
+
+  <!-- Área de Relatórios -->
+  @if (displayReport(); as rep) {
+    
+    <!-- Badge de Período Ativo -->
+    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
+      <div class="flex items-center gap-3">
+        <i class="pi pi-info-circle text-blue-600 text-xl"></i>
+        <div>
+          <p class="text-sm font-medium text-blue-900">Informação do Relatório</p>
+          <p class="text-sm text-blue-700">{{ periodDescription() }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card de Resumo Geral -->
+    <p-card>
+      <ng-template pTemplate="title">
+        <h2 class="text-lg font-semibold">Resumo Geral</h2>
+      </ng-template>
+      
+      <ng-template pTemplate="content">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center">
+          
+          <!-- Total de Vendas -->
+          <article class="bg-blue-50 p-6 rounded-lg">
+            <div class="text-4xl font-bold text-blue-700" aria-label="Total de vendas">
+              {{ rep.summary.totalSales }}
+            </div>
+            <p class="text-sm text-gray-600 mt-2">Total de Vendas</p>
+          </article>
+          
+          <!-- Volume Total -->
+          <article class="bg-green-50 p-6 rounded-lg">
+            <div class="text-4xl font-bold text-green-700" aria-label="Volume total em litros">
+              {{ rep.summary.totalVolumeLiters | number:'1.1-1' }}L
+            </div>
+            <p class="text-sm text-gray-600 mt-2">Volume Total</p>
+          </article>
+        </div>
+      </ng-template>
+    </p-card>
+
+    <!-- Card de Vendas por Tamanho -->
+    <p-card>
+      <ng-template pTemplate="title">
+        <h2 class="text-lg font-semibold">Vendas por Tamanho</h2>
+      </ng-template>
+      
+      <ng-template pTemplate="content">
+        <div class="flex flex-col gap-3">
+          
+          <!-- Lista de Tamanhos -->
+          @for (item of rep.salesByCupSize; track item.cupSize) {
+            <article class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+              <span class="font-medium text-gray-800">Copo {{ item.cupSize }}ml</span>
+              <p-tag 
+                [value]="item.count + ' copos'" 
+                severity="info"
+                [attr.aria-label]="item.count + ' copos vendidos'">
+              </p-tag>
+            </article>
+          } @empty {
+            <!-- Estado Vazio -->
+            <div class="text-center text-gray-500 py-8" role="status">
+              <i class="pi pi-info-circle text-2xl mb-2"></i>
+              <p>Nenhuma venda registrada neste período.</p>
+            </div>
+          }
+        </div>
+      </ng-template>
+    </p-card>
+
+    <!-- Card de Vendas por Tipo de Cerveja -->
+    <p-card>
+      <ng-template pTemplate="title">
+        <h2 class="text-lg font-semibold">Vendas por Tipo de Cerveja</h2>
+      </ng-template>
+      
+      <ng-template pTemplate="content">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          <!-- Lista de Cervejas -->
+          @for (beerSale of rep.salesByBeerType; track beerSale.beerId) {
+            <article class="p-5 rounded-lg border-2 border-gray-200 bg-gray-50 hover:shadow-md transition-shadow">
+              
+              <!-- Header da Cerveja -->
+              <header class="flex items-center gap-3 mb-4">
+                <div 
+                  class="w-8 h-8 rounded-full border-2 border-gray-300 flex-shrink-0" 
+                  [style.backgroundColor]="beerSale.color"
+                  [attr.aria-label]="'Cor da cerveja ' + beerSale.name">
+                </div>
+                <div class="flex-1 min-w-0">
+                  <h3 class="font-semibold text-gray-900 truncate">
+                    {{ beerSale.name }}
+                  </h3>
+                  <p class="text-xs text-gray-500 truncate">
+                    {{ beerSale.description }}
+                  </p>
+                </div>
+              </header>
+              
+              <!-- Estatísticas -->
+              <div class="grid grid-cols-2 gap-3 text-sm">
+                <div class="text-center p-3 bg-blue-50 rounded-lg">
+                  <div class="font-bold text-xl text-blue-700">
+                    {{ beerSale.totalCups }}
+                  </div>
+                  <div class="text-gray-600 text-xs mt-1">Copos</div>
+                </div>
+                <div class="text-center p-3 bg-green-50 rounded-lg">
+                  <div class="font-bold text-xl text-green-700">
+                    {{ beerSale.totalLiters | number:'1.1-1' }}L
+                  </div>
+                  <div class="text-gray-600 text-xs mt-1">Litros</div>
+                </div>
+              </div>
+            </article>
+          } @empty {
+            <!-- Estado Vazio -->
+            <div class="md:col-span-2 text-center text-gray-500 py-12" role="status">
+              <i class="pi pi-info-circle text-3xl mb-3"></i>
+              <p class="text-lg">Nenhuma venda deste tipo de cerveja no período.</p>
+            </div>
+          }
+        </div>
+      </ng-template>
+    </p-card>
+    
+  } @else {
+    <!-- Estado de Carregamento ou Limpeza -->
+    <p-card>
+      <ng-template pTemplate="content">
+        <div class="text-center py-12 text-gray-500">
+          <i class="pi pi-spin pi-spinner text-4xl mb-4"></i>
+          <p class="text-lg">Carregando relatório...</p>
+        </div>
+      </ng-template>
+    </p-card>
+  }
+  
+</div>

@@ -1,8 +1,11 @@
+<!-- src/app/features/settings-section/settings-section.html -->
 <p-toast></p-toast>
+
 <div class="flex flex-col gap-6">
   <p-card header="Configurações do Sistema">
     <div class="flex flex-col gap-6">
       
+      <!-- Seção de Configurações de Email -->
       <div class="border-2 border-gray-200 rounded-lg">
         <div class="p-4 border-b-2">
           <h3 class="font-semibold text-lg flex items-center gap-2">
@@ -10,57 +13,158 @@
             Configurações de Email
           </h3>
         </div>
+        
         <div class="p-4 flex flex-col gap-4">
           <form [formGroup]="settingsForm" (ngSubmit)="saveSettings()">
             <div class="flex flex-col gap-2">
-              <label for="email-address">Endereço de Email</label>
-              <input pInputText id="email-address" type="email" formControlName="email" placeholder="seu.email@exemplo.com" />
-              <small class="text-gray-500">Este email será usado para enviar os relatórios de vendas.</small>
+              <label for="email-address" class="font-medium">
+                Endereço de Email
+                <span class="text-red-500">*</span>
+              </label>
+              
+              <input 
+                pInputText 
+                id="email-address" 
+                type="email" 
+                formControlName="email" 
+                placeholder="seu.email@exemplo.com"
+                [class.ng-invalid]="hasFieldError('email')"
+                [class.ng-dirty]="hasFieldError('email')"
+                autocomplete="email"
+              />
+              
+              <!-- Mensagem de erro com nova sintaxe @if -->
+              @if (hasFieldError('email')) {
+                <small class="text-red-500 flex items-center gap-1">
+                  <i class="pi pi-exclamation-circle"></i>
+                  {{ getFieldError('email') }}
+                </small>
+              }
+              
+              <small class="text-gray-500">
+                Este email será usado para enviar os relatórios de vendas.
+              </small>
+            </div>
+
+            <!-- Botão de Salvar dentro do form -->
+            <div class="mt-4">
+              <p-button 
+                type="submit"
+                label="Salvar Configurações" 
+                icon="pi pi-save" 
+                [disabled]="settingsForm.invalid"
+                styleClass="w-full"
+                [loading]="false"
+              ></p-button>
             </div>
           </form>
 
-          <div class="bg-gray-100 p-4 rounded-lg flex items-center justify-between">
-            <div>
-              <p class="font-medium">Status da Configuração</p>
-              <p class="text-sm text-gray-600">
-                {{ isEmailConfigured() ? 'Email configurado e válido' : 'Email não configurado ou inválido' }}
+          <!-- Status da Configuração -->
+          <div class="bg-gray-100 p-4 rounded-lg flex items-center justify-between mt-4">
+            <div class="flex-1">
+              <p class="font-medium text-gray-800">Status da Configuração</p>
+              <p class="text-sm text-gray-600 mt-1">
+                @if (isEmailConfigured()) {
+                  <span class="flex items-center gap-2">
+                    <i class="pi pi-check-circle text-green-600"></i>
+                    Email configurado e válido
+                  </span>
+                } @else {
+                  <span class="flex items-center gap-2">
+                    <i class="pi pi-times-circle text-red-600"></i>
+                    Email não configurado ou inválido
+                  </span>
+                }
               </p>
             </div>
-            <div class="w-3 h-3 rounded-full" [ngClass]="isEmailConfigured() ? 'bg-green-500' : 'bg-red-500'"></div>
+            <div 
+              class="w-3 h-3 rounded-full flex-shrink-0"
+              [class.bg-green-500]="isEmailConfigured()"
+              [class.bg-red-500]="!isEmailConfigured()"
+              [attr.aria-label]="isEmailConfigured() ? 'Configurado' : 'Não configurado'"
+              role="status"
+            ></div>
           </div>
 
-          <p-button 
-            label="Salvar Configurações" 
-            icon="pi pi-save" 
-            (onClick)="saveSettings()"
-            [disabled]="settingsForm.invalid && settingsForm.get('email')?.value">
-          </p-button>
+          <!-- Email atual configurado -->
+          @if (currentEmail()) {
+            <div class="bg-blue-50 border border-blue-200 p-3 rounded-lg">
+              <p class="text-sm text-blue-800">
+                <strong>Email atual:</strong> {{ currentEmail() }}
+              </p>
+            </div>
+          }
         </div>
       </div>
 
+      <!-- Informações do Aplicativo -->
       <div class="border-2 border-gray-200 rounded-lg">
         <div class="p-4 border-b-2">
-          <h3 class="font-semibold text-lg">Informações do Aplicativo</h3>
+          <h3 class="font-semibold text-lg flex items-center gap-2">
+            <i class="pi pi-info-circle"></i>
+            Informações do Aplicativo
+          </h3>
         </div>
-        <div class="p-4 grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p class="font-medium">Versão</p>
-            <p class="text-gray-600">1.0.0 (Angular)</p>
+        
+        <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div class="flex flex-col gap-1">
+            <p class="font-medium text-gray-700 flex items-center gap-2">
+              <i class="pi pi-bookmark text-gray-500"></i>
+              Versão
+            </p>
+            <p class="text-gray-600 ml-6">1.0.0 (Angular 20)</p>
           </div>
-          <div>
-            <p class="font-medium">Tipo</p>
-            <p class="text-gray-600">PWA</p>
+          
+          <div class="flex flex-col gap-1">
+            <p class="font-medium text-gray-700 flex items-center gap-2">
+              <i class="pi pi-mobile text-gray-500"></i>
+              Tipo
+            </p>
+            <p class="text-gray-600 ml-6">PWA (Progressive Web App)</p>
           </div>
-          <div>
-            <p class="font-medium">Armazenamento</p>
-            <p class="text-gray-600">SQLite (via sql.js)</p>
+          
+          <div class="flex flex-col gap-1">
+            <p class="font-medium text-gray-700 flex items-center gap-2">
+              <i class="pi pi-database text-gray-500"></i>
+              Armazenamento
+            </p>
+            <p class="text-gray-600 ml-6">SQLite (via sql.js)</p>
           </div>
-          <div>
-            <p class="font-medium">Status</p>
-            <p class="text-gray-600">Online</p>
+          
+          <div class="flex flex-col gap-1">
+            <p class="font-medium text-gray-700 flex items-center gap-2">
+              <i class="pi pi-globe text-gray-500"></i>
+              Status
+            </p>
+            <div class="flex items-center gap-2 ml-6">
+              <span class="text-gray-600">Online</span>
+              <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Informações adicionais -->
+        <div class="p-4 border-t-2 border-gray-200 bg-gray-50">
+          <p class="text-xs text-gray-500 text-center">
+            © 2025 - Sistema de Gestão de Vendas | Desenvolvido com Angular
+          </p>
+        </div>
+      </div>
+
+      <!-- Dicas de uso (opcional) -->
+      <div class="border-2 border-blue-200 bg-blue-50 rounded-lg">
+        <div class="p-4 flex items-start gap-3">
+          <i class="pi pi-lightbulb text-blue-600 text-xl"></i>
+          <div class="flex-1">
+            <h4 class="font-semibold text-blue-900 mb-2">Dica</h4>
+            <p class="text-sm text-blue-800">
+              Configure seu email para receber relatórios automáticos de vendas. 
+              Certifique-se de usar um endereço válido e verificado.
+            </p>
           </div>
         </div>
       </div>
+
     </div>
   </p-card>
 </div>

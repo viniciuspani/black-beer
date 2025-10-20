@@ -6,7 +6,7 @@ import { FullReport, SalesSummary, SalesByCupSize, SalesByBeerType } from '../mo
 import { isPlatformBrowser } from '@angular/common';
 
 const DB_STORAGE_KEY = 'black_beer_sqlite_db_v1';
-const BEER_TYPES_KEY = 'black_beer_types'; // Usaremos uma tabela agora
+const BEER_TYPES_KEY = 'black_beer_types';
 
 declare global {
   interface Window {
@@ -21,6 +21,7 @@ export class DatabaseService {
   private db: Database | null = null;
   public isDbReady = signal<boolean>(false);
   private platformId = inject(PLATFORM_ID);
+  private SQL: any = null; // Armazena a instância do SQL.js para reutilização
 
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
@@ -32,8 +33,8 @@ export class DatabaseService {
     try {
       // Importação dinâmica do sql.js
       const initSqlJs = (await import('sql.js')).default;
-      const SQL = await initSqlJs({
-        locateFile: (file: string) => `assets/${file}` // Caminho relativo à pasta assets
+      this.SQL = await initSqlJs({
+        locateFile: (file: string) => `assets/${file}`
       });
 
       // Verifica se há um banco de dados salvo no localStorage
@@ -41,9 +42,9 @@ export class DatabaseService {
 
       if (savedDb) {
         const dbArray = this.stringToUint8Array(savedDb);
-        this.db = new SQL.Database(dbArray);
+        this.db = new this.SQL.Database(dbArray);
       } else {
-        this.db = new SQL.Database();
+        this.db = new this.SQL.Database();
         this.createSchema();
         this.seedInitialData();
       }
@@ -125,10 +126,70 @@ export class DatabaseService {
   private uint8ArrayToString = (arr: Uint8Array) => btoa(String.fromCharCode.apply(null, Array.from(arr)));
   private stringToUint8Array = (str: string) => new Uint8Array(atob(str).split('').map(c => c.charCodeAt(0)));
 
-  // NOVO MÉTODO PARA GERAR RELATÓRIO COMPLETO
+  /**
+   * Limpa completamente o banco de dados e reinicia ao estado inicial
+   * Remove todos os dados de vendas e configurações, mantendo apenas os tipos de cerveja padrão
+   * @returns Promise<void>
+   */
+  public async clearDatabase(): Promise<void> {
+    try {
+      if (!this.db || !this.SQL) {
+        throw new Error('Banco de dados não está inicializado');
+      }
+
+      // Fecha o banco de dados atual
+      this.db.close();
+      
+      // Remove o banco do localStorage
+      localStorage.removeItem(DB_STORAGE_KEY);
+      
+      // Cria um novo banco de dados limpo
+      this.db = new this.SQL.Database();
+      
+      // Recria o schema
+      this.createSchema();
+      
+      // Adiciona os dados iniciais
+      this.seedInitialData();
+      
+      // Persiste o novo banco
+      this.persist();
+      
+      console.log('✅ Banco de dados limpo com sucesso!');
+    } catch (error) {
+      console.error('❌ Erro ao limpar banco de dados:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtém estatísticas do banco de dados para exibição
+   * @returns Objeto com contadores de registros
+   */
+  public getDatabaseStats(): { totalSales: number; totalBeerTypes: number; hasSettings: boolean } {
+    if (!this.db) {
+      return { totalSales: 0, totalBeerTypes: 0, hasSettings: false };
+    }
+
+    try {
+      const salesCount = this.executeQuery('SELECT COUNT(*) as count FROM sales')[0]?.count || 0;
+      const beerTypesCount = this.executeQuery('SELECT COUNT(*) as count FROM beer_types')[0]?.count || 0;
+      const settingsCount = this.executeQuery('SELECT COUNT(*) as count FROM settings')[0]?.count || 0;
+
+      return {
+        totalSales: Number(salesCount),
+        totalBeerTypes: Number(beerTypesCount),
+        hasSettings: Number(settingsCount) > 0
+      };
+    } catch (error) {
+      console.error('Erro ao obter estatísticas do banco:', error);
+      return { totalSales: 0, totalBeerTypes: 0, hasSettings: false };
+    }
+  }
+
+  // MÉTODO PARA GERAR RELATÓRIO COMPLETO
   public getFullReport(startDate?: Date, endDate?: Date): FullReport {
     if (!this.db) {
-      // Retorna um relatório vazio se o DB não estiver pronto
       return {
         summary: { totalSales: 0, totalVolumeLiters: 0 },
         salesByCupSize: [],
@@ -136,7 +197,6 @@ export class DatabaseService {
       };
     }
   
-    // Cláusula WHERE para o filtro de data
     let whereClause = '';
     const params: string[] = [];
     if (startDate) {
@@ -145,14 +205,12 @@ export class DatabaseService {
     }
     if (endDate) {
       whereClause += whereClause ? ' AND timestamp <= ?' : ' WHERE timestamp <= ?';
-      // Adiciona 1 dia e remove 1 segundo para incluir o dia inteiro
       const endOfDay = new Date(endDate);
       endOfDay.setDate(endOfDay.getDate() + 1);
       endOfDay.setSeconds(endOfDay.getSeconds() - 1);
       params.push(endOfDay.toISOString());
     }
   
-    // 1. Query para o resumo geral
     const summaryQuery = `
       SELECT
         COUNT(id) as totalSales,
@@ -162,7 +220,6 @@ export class DatabaseService {
     `;
     const summaryResult = this.executeQuery(summaryQuery, params)[0] || { totalSales: 0, totalVolumeLiters: 0 };
     
-    // 2. Query para vendas por tamanho de copo
     const byCupSizeQuery = `
       SELECT
         cupSize,
@@ -174,7 +231,6 @@ export class DatabaseService {
     `;
     const salesByCupSize = this.executeQuery(byCupSizeQuery, params);
   
-    // 3. Query para vendas por tipo de cerveja
     const byBeerTypeQuery = `
       SELECT
         bt.id as beerId,
@@ -191,7 +247,6 @@ export class DatabaseService {
     `;
     const salesByBeerType = this.executeQuery(byBeerTypeQuery, params);
     
-    // Retorna o objeto do relatório completo
     return {
       summary: {
         totalSales: summaryResult.totalSales || 0,

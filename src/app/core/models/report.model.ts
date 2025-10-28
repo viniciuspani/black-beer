@@ -1,7 +1,10 @@
+// ========================================
 // src/app/core/models/report.model.ts
+// ========================================
 
 /**
  * Resumo geral das vendas
+ * SEM MUDANÇAS - estrutura mantida
  */
 export interface SalesSummary {
   totalSales: number;
@@ -10,6 +13,7 @@ export interface SalesSummary {
 
 /**
  * Vendas agrupadas por tamanho de copo
+ * SEM MUDANÇAS - estrutura mantida
  */
 export interface SalesByCupSize {
   cupSize: number;
@@ -18,9 +22,10 @@ export interface SalesByCupSize {
 
 /**
  * Vendas agrupadas por tipo de cerveja
+ * MUDANÇA: beerId agora é number (INTEGER)
  */
 export interface SalesByBeerType {
-  beerId: string;
+  beerId: number;          // ← MUDANÇA: number em vez de string
   name: string;
   color: string;
   description: string;
@@ -30,6 +35,7 @@ export interface SalesByBeerType {
 
 /**
  * Relatório completo com todos os dados agregados
+ * SEM MUDANÇAS - estrutura mantida
  */
 export interface FullReport {
   summary: SalesSummary;
@@ -40,6 +46,7 @@ export interface FullReport {
 /**
  * Intervalo de datas para filtros
  * Usando readonly para garantir imutabilidade
+ * SEM MUDANÇAS
  */
 export interface DateRange {
   readonly startDate: Date | null;
@@ -49,6 +56,7 @@ export interface DateRange {
 /**
  * Enum para períodos pré-definidos
  * Facilita manutenção e evita números mágicos
+ * SEM MUDANÇAS
  */
 export enum PresetPeriod {
   TODAY = 0,
@@ -58,6 +66,7 @@ export enum PresetPeriod {
 
 /**
  * Type guard para verificar se uma data é válida
+ * SEM MUDANÇAS
  */
 export function isValidDate(date: Date | null): date is Date {
   return date instanceof Date && !isNaN(date.getTime());
@@ -65,10 +74,11 @@ export function isValidDate(date: Date | null): date is Date {
 
 /**
  * Type guard para verificar se o intervalo de datas é válido
+ * SEM MUDANÇAS
  */
 export function isValidDateRange(range: DateRange): boolean {
   if (!range.startDate && !range.endDate) {
-    return true; // Range vazio é válido
+    return true;
   }
   
   if (range.startDate && !isValidDate(range.startDate)) {
@@ -89,6 +99,7 @@ export function isValidDateRange(range: DateRange): boolean {
 /**
  * Cria um intervalo de datas baseado em dias atrás
  * Função pura que facilita testes
+ * SEM MUDANÇAS
  * 
  * @param days Número de dias atrás (0 = hoje)
  * @returns DateRange com as datas normalizadas
@@ -108,6 +119,7 @@ export function createPresetDateRange(days: number): DateRange {
 /**
  * Constante para intervalo vazio
  * Evita criar novos objetos desnecessariamente
+ * SEM MUDANÇAS
  */
 export const EMPTY_DATE_RANGE: DateRange = {
   startDate: null,
@@ -116,6 +128,7 @@ export const EMPTY_DATE_RANGE: DateRange = {
 
 /**
  * Formata um intervalo de datas para exibição
+ * SEM MUDANÇAS
  * 
  * @param range Intervalo de datas a ser formatado
  * @returns String formatada em português brasileiro
@@ -142,4 +155,35 @@ export function formatDateRange(range: DateRange): string {
   }
   
   return 'Todos os períodos';
+}
+
+/**
+ * Type guard para SalesByBeerType
+ * NOVO: Validação com beerId como number
+ */
+export function isSalesByBeerType(obj: any): obj is SalesByBeerType {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    typeof obj.beerId === 'number' &&
+    typeof obj.name === 'string' &&
+    typeof obj.color === 'string' &&
+    typeof obj.description === 'string' &&
+    typeof obj.totalLiters === 'number' &&
+    typeof obj.totalCups === 'number'
+  );
+}
+
+/**
+ * Type guard para FullReport
+ * NOVO: Validação completa do relatório
+ */
+export function isFullReport(obj: any): obj is FullReport {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    typeof obj.summary === 'object' &&
+    Array.isArray(obj.salesByCupSize) &&
+    Array.isArray(obj.salesByBeerType)
+  );
 }

@@ -8,6 +8,9 @@ import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { DatePickerModule } from 'primeng/datepicker';
 import { TagModule } from 'primeng/tag';
+import { ToastModule } from 'primeng/toast';
+import { TooltipModule } from 'primeng/tooltip';  // ← NOVO: Import do Tooltip
+import { MessageService } from 'primeng/api';
 
 // App
 import { 
@@ -18,6 +21,7 @@ import {
   EMPTY_DATE_RANGE 
 } from '../../core/models/report.model';
 import { DatabaseService } from '../../core/services/database';
+import { EmailService } from '../../core/services/email';
 
 @Component({
   selector: 'app-reports-section',
@@ -29,34 +33,41 @@ import { DatabaseService } from '../../core/services/database';
     // PrimeNG Modules
     CardModule,
     ButtonModule,
-    DatePickerModule,  // ← DatePicker em vez de Calendar
-    TagModule
+    DatePickerModule,
+    TagModule,
+    ToastModule,
+    TooltipModule  // ← NOVO: Adicionado TooltipModule
   ],
+  providers: [MessageService],
   templateUrl: './reports-section.html',
   styleUrls: ['./reports-section.scss']
 })
 export class ReportsSectionComponent {
-  // Injeção de dependências moderna
+  // ==================== INJEÇÃO DE DEPENDÊNCIAS ====================
   private readonly dbService = inject(DatabaseService);
+  private readonly emailService = inject(EmailService);
+  private readonly messageService = inject(MessageService);
 
-  // Signals individuais para cada data - melhor para two-way binding
+  // ==================== SIGNALS ====================
   readonly startDate = signal<Date | null>(null);
-  readonly endDate = signal<Date | null>(null);  
+  readonly endDate = signal<Date | null>(null);
   
-   /**
-   * Computed que retorna a descrição do período do relatório
-   * Informa ao usuário qual período está sendo visualizado
+  /**
+   * NOVO: Controla estado de loading durante envio de email
    */
-   readonly periodDescription = computed<string>(() => {
+  readonly isSendingEmail = signal<boolean>(false);
+  
+  /**
+   * Computed que retorna a descrição do período do relatório
+   */
+  readonly periodDescription = computed<string>(() => {
     const start = this.startDate();
     const end = this.endDate();
 
-    // Se não há filtros, mostra todas as informações
     if (!start && !end) {
       return 'Carregado todas informações do banco de dados';
     }
 
-    // Formata as datas para exibição
     const formatDate = (date: Date): string => {
       return date.toLocaleDateString('pt-BR', {
         day: '2-digit',
@@ -65,17 +76,14 @@ export class ReportsSectionComponent {
       });
     };
 
-    // Se tem apenas data inicial
     if (start && !end) {
       return `Período: A partir de ${formatDate(start)}`;
     }
 
-    // Se tem apenas data final
     if (!start && end) {
       return `Período: Até ${formatDate(end)}`;
     }
 
-    // Se tem ambas as datas
     if (start && end) {
       return `Período: ${formatDate(start)} até ${formatDate(end)}`;
     }
@@ -83,27 +91,12 @@ export class ReportsSectionComponent {
     return 'Carregado todas informações do banco de dados';
   });
 
-
-
-  /**
-   * Computed signal que combina as datas em um DateRange
-   * É recalculado automaticamente quando startDate ou endDate mudam
-   */
   readonly dateRange = computed<DateRange>(() => ({
     startDate: this.startDate(),
     endDate: this.endDate()
   }));
 
-  /**
-   * Computed signal para o relatório
-   * VANTAGENS:
-   * - Lazy evaluation: só calcula quando necessário
-   * - Memoização: cacheia resultado se inputs não mudarem
-   * - Execução síncrona e previsível
-   * - Não causa loops infinitos como effect() pode causar
-   */
   readonly report = computed<FullReport | null>(() => {
-    // Verifica se o banco está pronto
     if (!this.dbService.isDbReady()) {
       return null;
     }
@@ -115,34 +108,10 @@ export class ReportsSectionComponent {
     );
   });
 
-  /**
-   * Expõe o enum para o template
-   * Boa prática: evita números mágicos no template
-   */
   readonly PresetPeriod = PresetPeriod;
 
-  /**
-   * Define um intervalo de datas pré-configurado
-   * Função pura extraída para o model - facilita testes
-   * 
-   * @param days Número de dias atrás (0 = hoje)
-   */
-  setPresetRange(days: number): void {
-    const range = createPresetDateRange(days);
-    this.startDate.set(range.startDate);
-    this.endDate.set(range.endDate);
-  }
-
-  /**
-   * Signal para controlar se o relatório deve ser exibido
-   * Permite ocultar o relatório ao limpar filtros para melhor UX
-   */
   private readonly shouldShowReport = signal<boolean>(true);
 
-  /**
-   * Computed que decide se mostra ou não o relatório
-   * Combina a existência do relatório com a flag de exibição
-   */
   readonly displayReport = computed<FullReport | null>(() => {
     if (!this.shouldShowReport()) {
       return null;
@@ -150,39 +119,176 @@ export class ReportsSectionComponent {
     return this.report();
   });
 
+  // ==================== COMPUTED SIGNALS PARA EMAIL ====================
+  
   /**
-   * Limpa os filtros de data E oculta o relatório
-   * Melhora a experiência do usuário ao resetar completamente a tela
-   * 
-   * FLUXO:
-   * 1. Oculta o relatório imediatamente (UX responsivo)
-   * 2. Limpa as datas dos filtros
-   * 3. Reexibe o relatório após 300ms (com dados limpos)
+   * Verifica se há emails configurados
+   * Depende de dbReady para recalcular quando banco carregar
    */
-  clearFilters(): void {
-    // 1. Oculta o relatório imediatamente
-    this.shouldShowReport.set(false);
+  readonly hasConfiguredEmails = computed(() => {
+    const dbReady = this.dbService.isDbReady();
     
-    // 2. Limpa os filtros de data
+    if (!dbReady) {
+      return false;
+    }
+    
+    return this.emailService.hasConfiguredEmails();
+  });
+
+  /**
+   * Mensagem de status dos emails
+   */
+  readonly emailsStatusMessage = computed(() => {
+    const dbReady = this.dbService.isDbReady();
+    
+    if (!dbReady) {
+      return 'Carregando...';
+    }
+    
+    return this.emailService.getEmailsStatusMessage();
+  });
+
+  /**
+   * Verifica se pode enviar o relatório
+   * Requer: emails configurados + relatório válido + não estar enviando
+   */
+  readonly canSendReport = computed(() => {
+    const dbReady = this.dbService.isDbReady();
+    
+    if (!dbReady) {
+      return false;
+    }
+    
+    const hasEmails = this.hasConfiguredEmails();
+    const report = this.displayReport();
+    const isValid = this.emailService.isReportValid(report);
+    const isSending = this.isSendingEmail();
+    
+    return hasEmails && isValid && !isSending;
+  });
+
+  // ==================== MÉTODOS EXISTENTES ====================
+
+  setPresetRange(days: number): void {
+    const range = createPresetDateRange(days);
+    this.startDate.set(range.startDate);
+    this.endDate.set(range.endDate);
+  }
+
+  clearFilters(): void {
+    this.shouldShowReport.set(false);
     this.startDate.set(EMPTY_DATE_RANGE.startDate);
     this.endDate.set(EMPTY_DATE_RANGE.endDate);
     
-    // 3. Reexibe o relatório após animação (mostra todos os dados)
     setTimeout(() => {
       this.shouldShowReport.set(true);
     }, 300);
-    
   }
 
-  /**
-   * Handlers para os eventos do datepicker
-   * Necessários para atualizar os signals quando o usuário seleciona datas
-   */
   onStartDateSelect(date: Date): void {
     this.startDate.set(date);
   }
 
   onEndDateSelect(date: Date): void {
     this.endDate.set(date);
+  }
+
+  // ==================== NOVOS MÉTODOS PARA EMAIL ====================
+
+  /**
+   * Envia o relatório por email
+   * Gera CSV e baixa localmente, mostra emails configurados
+   */
+  async sendReportByEmail(): Promise<void> {
+    if (!this.canSendReport()) {
+      this.showWarning('Não é possível enviar o relatório no momento.');
+      return;
+    }
+
+    const report = this.displayReport();
+    if (!report) {
+      this.showError('Nenhum relatório disponível para envio.');
+      return;
+    }
+
+    this.isSendingEmail.set(true);
+
+    try {
+      const result = await this.emailService.sendReport(
+        report,
+        this.periodDescription()
+      );
+
+      if (result.success) {
+        this.showSuccess(result.message);
+      } else {
+        this.showError(result.message);
+      }
+
+    } catch (error) {
+      console.error('❌ Erro ao enviar relatório:', error);
+      this.showError('Erro inesperado ao gerar relatório. Tente novamente.');
+    } finally {
+      this.isSendingEmail.set(false);
+    }
+  }
+
+  /**
+   * NOVO: Retorna o tooltip do botão de envio
+   */
+  getSendButtonTooltip(): string {
+    if (this.isSendingEmail()) {
+      return 'Gerando relatório...';
+    }
+
+    if (!this.hasConfiguredEmails()) {
+      return 'Configure emails nas configurações para enviar relatórios';
+    }
+
+    const report = this.displayReport();
+    if (!this.emailService.isReportValid(report)) {
+      return 'Nenhuma venda registrada no período selecionado';
+    }
+
+    const emailsList = this.emailService.getFormattedEmailsList(2);
+    return `Enviar relatório para: ${emailsList}`;
+  }
+
+  // ==================== MÉTODOS DE MENSAGENS ====================
+
+  private showSuccess(message: string): void {
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Relatório Gerado!',
+      detail: message,
+      life: 6000 // 6 segundos para ler a lista de emails
+    });
+  }
+
+  private showError(message: string): void {
+    this.messageService.add({
+      severity: 'error',
+      summary: 'Erro',
+      detail: message,
+      life: 5000
+    });
+  }
+
+  private showWarning(message: string): void {
+    this.messageService.add({
+      severity: 'warn',
+      summary: 'Atenção',
+      detail: message,
+      life: 4000
+    });
+  }
+
+  private showInfo(message: string): void {
+    this.messageService.add({
+      severity: 'info',
+      summary: 'Informação',
+      detail: message,
+      life: 4000
+    });
   }
 }

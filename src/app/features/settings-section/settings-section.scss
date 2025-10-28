@@ -1,0 +1,447 @@
+// src/app/features/settings-section/settings-section.scss
+
+/**
+ * Estilos customizados para o componente de configurações
+ * 
+ * NOTA: A maior parte da estilização usa classes utilitárias do Tailwind CSS
+ * diretamente no template HTML. Este arquivo SCSS contém apenas customizações
+ * adicionais e overrides quando necessário.
+ */
+
+// ========================================
+// ANIMAÇÕES CUSTOMIZADAS
+// ========================================
+
+/**
+ * Animação de fade-in para mensagens de erro
+ * Usada na classe: animate-fade-in
+ */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+// ========================================
+// TEXTAREA - MELHORIAS
+// ========================================
+
+/**
+ * Melhora a aparência do textarea de emails
+ * Garante que o redimensionamento funcione bem
+ */
+textarea[formControlName="emailsInput"] {
+  // Permite redimensionamento apenas vertical
+  resize: vertical;
+  
+  // Altura mínima garantida
+  min-height: 120px;
+  
+  // Altura máxima para evitar textarea gigante
+  max-height: 300px;
+  
+  // Linha de altura para melhor legibilidade
+  line-height: 1.6;
+  
+  // Transição suave no focus
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  
+  // Estado de foco melhorado
+  &:focus {
+    outline: none;
+    border-color: rgb(59, 130, 246); // blue-500
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+  
+  // Estado de erro
+  &.ng-invalid.ng-dirty,
+  &.ng-invalid.ng-touched {
+    border-color: rgb(239, 68, 68); // red-500
+    
+    &:focus {
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    }
+  }
+}
+
+// ========================================
+// BADGES DE EMAIL - COMPORTAMENTO
+// ========================================
+
+/**
+ * Container dos badges de email
+ * Garante quebra de linha suave
+ */
+.email-badges-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  
+  // Em telas muito pequenas, força coluna única
+  @media (max-width: 400px) {
+    flex-direction: column;
+    
+    .email-badge {
+      width: 100%;
+    }
+  }
+}
+
+/**
+ * Badge individual de email
+ * Hover effect para interatividade
+ */
+.email-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgb(187, 247, 208); // border-green-200
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  
+  // Efeito hover
+  &:hover {
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+  }
+  
+  // Badge number (círculo numerado)
+  .badge-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    background: rgb(22, 163, 74); // green-600
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  
+  // Email text
+  .badge-email {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.875rem;
+    color: rgb(22, 101, 52); // green-800
+    
+    // Truncate se muito longo (opcional)
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    
+    @media (max-width: 640px) {
+      max-width: 180px;
+    }
+  }
+  
+  // Ícone de verificado
+  .badge-icon {
+    color: rgb(22, 163, 74); // green-600
+    font-size: 0.75rem;
+    flex-shrink: 0;
+  }
+}
+
+// ========================================
+// CARDS - GRADIENTES E SOMBRAS
+// ========================================
+
+/**
+ * Card de emails configurados
+ * Melhora visual com gradiente suave
+ */
+.configured-emails-card {
+  background: linear-gradient(to right, rgb(240, 253, 244), rgb(209, 250, 229));
+  border-left: 4px solid rgb(34, 197, 94); // green-500
+  padding: 1rem;
+  border-radius: 0.5rem;
+  transition: box-shadow 0.2s ease;
+  
+  &:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  }
+}
+
+/**
+ * Card de aviso (sem emails)
+ */
+.warning-card {
+  background: linear-gradient(to right, rgb(254, 252, 232), rgb(254, 243, 199));
+  border-left: 4px solid rgb(234, 179, 8); // yellow-500
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
+/**
+ * Card de dicas
+ */
+.tips-card {
+  background: linear-gradient(to right, rgb(239, 246, 255), rgb(224, 242, 254));
+  border: 1px solid rgb(147, 197, 253); // blue-200
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
+// ========================================
+// BOTÕES - ESTADOS
+// ========================================
+
+/**
+ * Botão de editar (lápis)
+ * Melhora o feedback visual
+ */
+.edit-button {
+  transition: all 0.2s ease;
+  
+  &:hover:not(:disabled) {
+    transform: scale(1.1);
+  }
+  
+  &:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+}
+
+// ========================================
+// STATUS INDICATOR - ANIMAÇÃO
+// ========================================
+
+/**
+ * Indicador de status (bolinha verde/vermelha)
+ * Pulsa quando ativo
+ */
+.status-indicator {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  
+  &.active {
+    background: rgb(34, 197, 94); // green-500
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  &.inactive {
+    background: rgb(239, 68, 68); // red-500
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+// ========================================
+// RESPONSIVIDADE - AJUSTES FINOS
+// ========================================
+
+/**
+ * Em telas pequenas, ajusta espaçamentos
+ */
+@media (max-width: 768px) {
+  // Reduz padding dos cards
+  .configured-emails-card,
+  .warning-card,
+  .tips-card {
+    padding: 0.75rem;
+  }
+  
+  // Reduz tamanho de fonte em dispositivos móveis
+  .email-badge .badge-email {
+    font-size: 0.8125rem; // 13px
+  }
+  
+  // Botões full-width em mobile
+  .mobile-full-width {
+    width: 100%;
+  }
+}
+
+// ========================================
+// SCROLLBAR CUSTOMIZADA (OPCIONAL)
+// ========================================
+
+/**
+ * Melhora a aparência da scrollbar do textarea
+ * Funciona apenas em navegadores Webkit (Chrome, Safari)
+ */
+textarea[formControlName="emailsInput"] {
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgb(243, 244, 246); // gray-100
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgb(209, 213, 219); // gray-300
+    border-radius: 4px;
+    
+    &:hover {
+      background: rgb(156, 163, 175); // gray-400
+    }
+  }
+}
+
+// ========================================
+// TRANSITIONS GLOBAIS
+// ========================================
+
+/**
+ * Aplica transições suaves em elementos interativos
+ */
+p-button,
+button,
+a {
+  transition: all 0.2s ease-in-out;
+}
+
+// ========================================
+// PRINT STYLES (OPCIONAL)
+// ========================================
+
+/**
+ * Estilos para impressão
+ * Remove elementos desnecessários ao imprimir
+ */
+@media print {
+  // Esconde botões ao imprimir
+  p-button,
+  button {
+    display: none !important;
+  }
+  
+  // Remove sombras e bordas decorativas
+  .email-badge {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+  
+  // Força fundo branco
+  .configured-emails-card,
+  .warning-card,
+  .tips-card {
+    background: white !important;
+    border: 1px solid #ccc;
+  }
+}
+
+// ========================================
+// ACESSIBILIDADE - MELHORIAS
+// ========================================
+
+/**
+ * Melhora o foco visível para navegação por teclado
+ */
+*:focus-visible {
+  outline: 2px solid rgb(59, 130, 246); // blue-500
+  outline-offset: 2px;
+}
+
+/**
+ * Remove outline padrão apenas quando não for foco por teclado
+ */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+// ========================================
+// DARK MODE (PREPARAÇÃO FUTURA)
+// ========================================
+
+/**
+ * Variáveis CSS para facilitar implementação de dark mode no futuro
+ */
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --border-color: #e5e7eb;
+  --success-color: #22c55e;
+  --error-color: #ef4444;
+  --warning-color: #eab308;
+  
+  // Dark mode (comentado para uso futuro)
+  // @media (prefers-color-scheme: dark) {
+  //   --bg-primary: #1f2937;
+  //   --bg-secondary: #111827;
+  //   --text-primary: #f9fafb;
+  //   --text-secondary: #9ca3af;
+  //   --border-color: #374151;
+  // }
+}
+
+// ========================================
+// UTILITIES - CLASSES AUXILIARES
+// ========================================
+
+/**
+ * Classe para truncar texto com ellipsis
+ */
+.truncate-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/**
+ * Classe para texto em monospace (emails)
+ */
+.font-mono {
+  font-family: 'Courier New', Courier, monospace;
+}
+
+/**
+ * Classe para centralizar conteúdo
+ */
+.center-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// ========================================
+// COMENTÁRIOS FINAIS
+// ========================================
+
+/**
+ * IMPORTANTE:
+ * 
+ * Este arquivo SCSS é minimalista porque a maior parte da estilização
+ * está sendo feita com classes utilitárias do Tailwind CSS diretamente
+ * no HTML.
+ * 
+ * Use este arquivo apenas para:
+ * - Animações customizadas
+ * - Estados complexos (:hover, :focus, :active)
+ * - Media queries específicas
+ * - Overrides de bibliotecas (PrimeNG)
+ * - Estilos que não podem ser feitos com Tailwind
+ * 
+ * EVITE:
+ * - Duplicar classes que já existem no Tailwind
+ * - Criar muitas classes customizadas
+ * - Estilos inline no TypeScript
+ */

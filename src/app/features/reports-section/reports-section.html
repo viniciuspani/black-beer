@@ -1,3 +1,5 @@
+<p-toast></p-toast>
+
 <div class="flex flex-col gap-6">
   
   <!-- Card de Filtros por Data -->
@@ -81,6 +83,59 @@
       </div>
     </ng-template>
   </p-card>
+
+  <!-- ==================== BOTÃO DE ENVIAR RELATÓRIO ==================== -->
+  <div class="bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-300 p-4 rounded-lg shadow-sm">
+    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <!-- Informações -->
+      <div class="flex-1">
+        <div class="flex items-center gap-2 mb-2">
+          <i class="pi pi-send text-blue-600 text-xl"></i>
+          <h3 class="font-bold text-blue-900 text-lg">Enviar Relatório por Email</h3>
+        </div>
+        <p class="text-sm text-blue-800">
+          @if (hasConfiguredEmails()) {
+            <span class="flex items-center gap-2">
+              <i class="pi pi-check-circle text-green-600"></i>
+              <span>{{ emailsStatusMessage() }}</span>
+            </span>
+          } @else {
+            <span class="flex items-center gap-2 text-orange-700">
+              <i class="pi pi-exclamation-triangle"></i>
+              <span>Configure emails nas configurações para enviar relatórios</span>
+            </span>
+          }
+        </p>
+      </div>
+      
+      <!-- Botão de Envio -->
+      <div class="w-full md:w-auto">
+        <p-button 
+          label="Enviar Relatório"
+          icon="pi pi-send"
+          iconPos="left"
+          [loading]="isSendingEmail()"
+          [disabled]="!canSendReport()"
+          (onClick)="sendReportByEmail()"
+          [pTooltip]="getSendButtonTooltip()"
+          tooltipPosition="left"
+          styleClass="w-full md:w-auto"
+          severity="primary"
+          [raised]="true">
+        </p-button>
+      </div>
+    </div>
+    
+    <!-- Dica adicional quando não há emails -->
+    @if (!hasConfiguredEmails()) {
+      <div class="mt-3 pt-3 border-t border-blue-200">
+        <p class="text-xs text-blue-700 flex items-center gap-2">
+          <i class="pi pi-info-circle"></i>
+          <span>Acesse <strong>Configurações → Configurações de Email</strong> para adicionar emails</span>
+        </p>
+      </div>
+    }
+  </div>
 
   <!-- Área de Relatórios -->
   @if (displayReport(); as rep) {

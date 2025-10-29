@@ -1,48 +1,62 @@
-<div class="min-h-screen bg-gray-50">
-  <header class="bg-amber-600 text-white py-6 shadow-lg">
-    <div class="container mx-auto px-4 text-center">
-      <h1 class="text-3xl font-bold">Black Beer</h1>
-      <p class="text-amber-200">
-        Gestão de Vendas de Cerveja Artesanal
-      </p>
+<div class="min-h-screen bg-gray-50 flex flex-col">
+  <header class="bg-amber-600 text-white py-4 shadow-lg">
+    <div class="container mx-auto px-2 sm:px-4 text-center">
+      <h1 class="text-2xl sm:text-3xl font-bold">Black Beer</h1>
+      <p class="text-amber-200 text-sm sm:text-base">Gestão de Vendas de Cerveja Artesanal</p>
     </div>
   </header>
 
-  <main class="container mx-auto px-4 py-6 max-w-4xl">
-    <p-tabs >
-      <p-tablist>
+  <main class="flex-1 w-full px-2 sm:px-4 py-4 sm:py-6">
+    <p-tabs class="w-full">
+      <p-tablist class="w-full">
         <p-tab value="0">
-          <i class="pi pi-shopping-cart mr-2" style="color: red"></i>Nova Venda
+          <i class="pi pi-shopping-cart"></i>
+          <span> Nova Venda</span>
         </p-tab>
         <p-tab value="1">
-          <i class="pi pi-chart-bar mr-2" style="color: red"></i>Relatórios
+          <i class="pi pi-chart-bar"></i>
+          <span> Relatórios</span>
         </p-tab>
         <p-tab value="2">
-          <i class="pi pi-moon mr-2" style="color: red"></i>Cervejas
+          <i class="pi pi-moon"></i>
+          <span> Cervejas</span>
         </p-tab>
         <p-tab value="3">
-          <i class="pi pi-cog mr-2" style="color: red"></i>Configurações
+          <i class="pi pi-cog"></i>
+          <span> Configurações</span>
         </p-tab>
       </p-tablist>
+
       <p-tabpanels>
         <p-tabpanel value="0">
-          <p>Conteúdo da Nova Venda virá aqui.</p>
+          <div class="overflow-auto">
+           <app-sales-form></app-sales-form>
+          </div>
         </p-tabpanel>
+
         <p-tabpanel value="1">
-          <p>Conteúdo dos Relatórios virá aqui.</p>
+          <div class="overflow-auto">
+            <app-reports-section></app-reports-section>
+          </div>
         </p-tabpanel>
+
         <p-tabpanel value="2">
-          <app-beer-management></app-beer-management>
+          <div class="overflow-auto">
+            <app-beer-management></app-beer-management>
+          </div>
         </p-tabpanel>
+
         <p-tabpanel value="3">
-          <p>Conteúdo das Configurações virá aqui.</p>
+          <div class="overflow-auto">
+            <app-settings-section></app-settings-section>
+          </div>
         </p-tabpanel>
       </p-tabpanels>
     </p-tabs>
   </main>
 
-  <footer class="bg-gray-200 py-4 mt-12">
-    <div class="container mx-auto px-4 text-center text-gray-600">
+  <footer class="bg-gray-200 py-3 sm:py-4 mt-8 sm:mt-12">
+    <div class="container mx-auto px-2 sm:px-4 text-center text-gray-600 text-xs sm:text-base">
       <p>© 2025 Black Beer – Angular Edition</p>
     </div>
   </footer>

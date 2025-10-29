@@ -1,0 +1,512 @@
+<!-- src/app/features/settings-section/settings-section.html -->
+<p-toast></p-toast>
+
+<!-- Dialog de Confirmação para Limpar Banco -->
+<p-dialog 
+  [(visible)]="showClearDialog"
+  [modal]="true"
+  [closable]="true"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="w-full max-w-md"
+  header="⚠️ Confirmar Limpeza do Banco de Dados"
+>
+  <div class="flex flex-col gap-4">
+    <!-- Aviso Principal -->
+    <div class="bg-red-50 border-2 border-red-300 p-4 rounded-lg flex gap-3">
+      <i class="pi pi-exclamation-triangle text-red-600 text-3xl flex-shrink-0"></i>
+      <div class="flex-1">
+        <p class="font-bold text-red-900 mb-2 text-lg">Atenção! Esta ação é irreversível.</p>
+        <p class="text-sm text-red-800">
+          Ao confirmar, todos os dados serão <strong>permanentemente removidos</strong> do sistema.
+        </p>
+      </div>
+    </div>
+
+    <!-- Lista do que será removido/mantido -->
+    <div class="bg-white border border-gray-200 rounded-lg p-4">
+      <p class="font-semibold text-gray-900 mb-3">O que será afetado:</p>
+      <ul class="list-none flex flex-col gap-2 text-sm">
+        <li class="flex items-center gap-3">
+          <i class="pi pi-times-circle text-red-500 text-lg"></i>
+          <span><strong class="text-red-700">{{ dbStats().totalSales }}</strong> vendas registradas <span class="text-red-600 font-semibold">(SERÃO REMOVIDAS)</span></span>
+        </li>
+        <li class="flex items-center gap-3">
+          <i class="pi pi-times-circle text-red-500 text-lg"></i>
+          <span>Todas as <strong class="text-red-700">configurações de email</strong> <span class="text-red-600 font-semibold">(SERÃO REMOVIDAS)</span></span>
+        </li>
+        <li class="flex items-center gap-3">
+          <i class="pi pi-times-circle text-red-500 text-lg"></i>
+          <span>Todo o <strong class="text-red-700">histórico de relatórios</strong> <span class="text-red-600 font-semibold">(SERÁ REMOVIDO)</span></span>
+        </li>
+        <li class="flex items-center gap-3 pt-2 border-t border-gray-200">
+          <i class="pi pi-check-circle text-green-600 text-lg"></i>
+          <span>Os <strong class="text-green-700">{{ dbStats().totalBeerTypes }} tipos de cerveja</strong> padrão <span class="text-green-600 font-semibold">(SERÃO MANTIDOS)</span></span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Informação sobre o resultado -->
+    <div class="bg-blue-50 border border-blue-200 p-3 rounded flex items-start gap-2">
+      <i class="pi pi-info-circle text-blue-600 flex-shrink-0"></i>
+      <p class="text-sm text-blue-800">
+        O banco será <strong>reiniciado ao estado inicial</strong>, como se o aplicativo fosse instalado pela primeira vez.
+      </p>
+    </div>
+
+    <!-- Pergunta de confirmação -->
+    <div class="bg-gray-100 p-3 rounded text-center">
+      <p class="text-sm font-semibold text-gray-900">
+        Tem certeza que deseja continuar?
+      </p>
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="flex gap-3 justify-end w-full">
+      <p-button 
+        label="Não, Cancelar" 
+        icon="pi pi-times"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="closeClearDialog()"
+        [disabled]="isClearing()"
+        styleClass="flex-1"
+      ></p-button>
+      <p-button 
+        label="Sim, Limpar Tudo" 
+        icon="pi pi-trash"
+        severity="danger"
+        (onClick)="clearDatabase()"
+        [loading]="isClearing()"
+        styleClass="flex-1"
+      ></p-button>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<div class="flex flex-col gap-6">
+  <p-card header="⚙️ Configurações do Sistema">
+    <div class="flex flex-col gap-6">
+      
+      <!-- ==================== SEÇÃO: CONFIGURAÇÕES DE EMAIL (ATUALIZADA) ==================== -->
+      <div class="border-2 border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+        <div class="p-4 border-b-2 bg-gradient-to-r from-blue-50 to-blue-100">
+          <h3 class="font-semibold text-lg flex items-center gap-2 text-blue-900">
+            <i class="pi pi-envelope text-blue-600"></i>
+            Configurações de Email
+          </h3>
+          <p class="text-xs text-blue-700 mt-1">Configure até {{ MAX_EMAILS }} emails para receber relatórios automáticos</p>
+        </div>
+        
+        <div class="p-4 flex flex-col gap-4">
+          
+          <!-- CARD: Emails Configurados Atualmente -->
+          @if (hasConfiguredEmails()) {
+            <div class="configured-emails-card">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                  <i class="pi pi-check-circle text-green-600 text-xl"></i>
+                  <h4 class="font-semibold text-green-900">
+                    Emails Configurados Atualmente
+                  </h4>
+                </div>
+                <p-button 
+                  icon="pi pi-pencil" 
+                  [text]="true"
+                  size="small"
+                  severity="secondary"
+                  class="edit-button"
+                  (onClick)="editEmails()"
+                  pTooltip="Carregar emails para editar"
+                  tooltipPosition="left">
+                </p-button>
+              </div>
+              
+              <!-- Lista de emails em LINHA (horizontal com wrap) -->
+              <div class="email-badges-container">
+                @for (email of configuredEmails(); track email; let idx = $index) {
+                  <div class="email-badge">
+                    <span class="badge-number">
+                      {{ idx + 1 }}
+                    </span>
+                    <span class="badge-email">{{ email }}</span>
+                    <i class="badge-icon pi pi-verified"></i>
+                  </div>
+                }
+              </div>
+              
+              <div class="flex items-center justify-between pt-2 border-t border-green-200">
+                <p class="text-xs text-green-700 font-medium">
+                  <i class="pi pi-info-circle"></i>
+                  Total de {{ configuredEmailsCount() }} email(s) ativo(s)
+                </p>
+                <p-tag 
+                  [value]="'✓ Configurado'" 
+                  severity="success"
+                  [rounded]="true">
+                </p-tag>
+              </div>
+            </div>
+          } @else {
+            <div class="warning-card">
+              <div class="flex gap-3">
+                <i class="pi pi-exclamation-triangle text-yellow-600 text-2xl flex-shrink-0"></i>
+                <div class="flex-1">
+                  <p class="font-semibold text-yellow-900 mb-1">Nenhum Email Configurado</p>
+                  <p class="text-sm text-yellow-800">
+                    Configure pelo menos <strong>1 email</strong> abaixo para começar a receber relatórios.
+                  </p>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- FORMULÁRIO DE CONFIGURAÇÃO -->
+          <form [formGroup]="settingsForm" (ngSubmit)="saveSettings()">
+            <div class="flex flex-col gap-4">
+              
+              <!-- Label e Instruções -->
+              <div class="flex flex-col gap-1">
+                <label for="emails-input" class="font-bold text-gray-900 flex items-center gap-2 text-base">
+                  <i class="pi pi-plus-circle "></i>
+                  Adicionar/Atualizar Lista de Emails
+                  <span class="text-red-500">*</span>
+                </label>
+                <p class="text-xs text-gray-700 font-medium">
+                  Digite os emails que receberão os relatórios. Separe múltiplos emails com vírgula ou ponto-e-vírgula.
+                </p>
+              </div>
+
+              <!-- Campo Textarea -->
+              <div class="flex flex-col gap-2">
+                <textarea 
+                  pInputTextarea
+                  id="emails-input"
+                  formControlName="emailsInput"
+                  [rows]="5"
+                  placeholder="Exemplo: vendas@empresa.com, gerente@empresa.com; admin@empresa.com&#10;&#10;Dica: Você pode colar uma lista de emails aqui"
+                  [class.ng-invalid]="hasFieldError('emailsInput')"
+                  [class.ng-dirty]="hasFieldError('emailsInput')"
+                  class="w-full font-mono text-sm"
+                  style="resize: vertical; min-height: 120px;">
+                </textarea>
+                
+                <!-- Contador de caracteres/emails em tempo real -->
+                <div class="flex items-center justify-between text-xs">
+                  <span class="text-gray-500">
+                    <i class="pi pi-info-circle"></i>
+                    Limite: {{ MIN_EMAILS }} a {{ MAX_EMAILS }} emails
+                  </span>
+                  @if (getDetectedEmailsCount() > 0) {
+                    <span class="text-blue-600 font-medium">
+                      {{ getDetectedEmailsCount() }} email(s) detectado(s)
+                    </span>
+                  }
+                </div>
+                
+                <!-- Mensagem de erro -->
+                @if (hasFieldError('emailsInput')) {
+                  <div class="bg-red-50 border border-red-200 p-3 rounded flex items-start gap-2 animate-fade-in">
+                    <i class="pi pi-times-circle text-red-600 flex-shrink-0 mt-0.5"></i>
+                    <div class="flex-1">
+                      <p class="text-sm text-red-800 font-medium">{{ getFieldError('emailsInput') }}</p>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Card de Dicas -->
+              <div class="tips-card">
+                <p class="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                  <i class="pi pi-lightbulb text-yellow-500 text-lg"></i>
+                  Dicas de Uso
+                </p>
+                <ul class="text-sm text-blue-800 flex flex-col gap-2">
+                  <li class="flex items-start gap-2">
+                    <i class="pi pi-check text-blue-600 mt-0.5 flex-shrink-0"></i>
+                    <span>Use <strong class="font-mono bg-blue-100 px-1 rounded">vírgula (,)</strong> ou <strong class="font-mono bg-blue-100 px-1 rounded">ponto-e-vírgula (;)</strong> para separar emails</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <i class="pi pi-check text-blue-600 mt-0.5 flex-shrink-0"></i>
+                    <span>Configure entre <strong>{{ MIN_EMAILS }}</strong> e <strong>{{ MAX_EMAILS }}</strong> emails</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <i class="pi pi-check text-blue-600 mt-0.5 flex-shrink-0"></i>
+                    <span>Todos os emails serão validados antes de salvar</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <i class="pi pi-check text-blue-600 mt-0.5 flex-shrink-0"></i>
+                    <span>Ao salvar, a nova lista <strong>substitui completamente</strong> a anterior</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <i class="pi pi-check text-blue-600 mt-0.5 flex-shrink-0"></i>
+                    <span>Use o botão <i class="pi pi-pencil"></i> acima para editar a lista atual</span>
+                  </li>
+                </ul>
+              </div>
+
+              <!-- Botão de Salvar -->
+              <div class="pt-2">
+                <p-button 
+                  type="submit"
+                  label="Salvar Configurações" 
+                  icon="pi pi-save" 
+                  [disabled]="settingsForm.invalid"
+                  styleClass="w-full"
+                  severity="success"
+                  [raised]="true">
+                </p-button>
+              </div>
+            </div>
+          </form>
+
+          <!-- Status da Configuração (Card Informativo) -->
+          <div class="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-lg border border-gray-200 mt-2">
+            <div class="flex items-center justify-between">
+              <div class="flex-1">
+                <p class="font-semibold text-gray-800 flex items-center gap-2 mb-1">
+                  <span class="status-indicator" 
+                        [class.active]="isEmailConfigured()"
+                        [class.inactive]="!isEmailConfigured()"></span>
+                  Status da Configuração
+                </p>
+                <p class="text-sm text-gray-600 ml-4">
+                  @if (isEmailConfigured()) {
+                    <span class="flex items-center gap-2 text-green-700 font-medium">
+                      <i class="pi pi-check-circle"></i>
+                      {{ configuredEmailsCount() }} email(s) configurado(s) e ativo(s)
+                    </span>
+                  } @else {
+                    <span class="flex items-center gap-2 text-red-700 font-medium">
+                      <i class="pi pi-times-circle"></i>
+                      Nenhum email configurado - Configure para ativar relatórios
+                    </span>
+                  }
+                </p>
+              </div>
+              <div 
+                class="w-12 h-12 rounded-full flex items-center justify-center shadow-inner center-content"
+                [class.bg-green-100]="isEmailConfigured()"
+                [class.bg-red-100]="!isEmailConfigured()">
+                <i 
+                  class="text-2xl"
+                  [class.pi-check-circle]="isEmailConfigured()"
+                  [class.pi-times-circle]="!isEmailConfigured()"
+                  [class.text-green-600]="isEmailConfigured()"
+                  [class.text-red-600]="!isEmailConfigured()">
+                </i>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================== SEÇÃO: GERENCIAMENTO DO BANCO DE DADOS ==================== -->
+      <div class="border-2 border-red-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+        <div class="p-4 border-b-2 bg-gradient-to-r from-red-50 to-red-100">
+          <h3 class="font-semibold text-lg flex items-center gap-2 text-red-900">
+            <i class="pi pi-database text-red-600"></i>
+            Gerenciamento do Banco de Dados
+          </h3>
+          <p class="text-xs text-red-700 mt-1">Visualize estatísticas e gerencie seus dados</p>
+        </div>
+        
+        <div class="p-4 flex flex-col gap-4">
+          <!-- Estatísticas do Banco -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200 hover:shadow-md transition-all">
+              <div class="flex items-center justify-between mb-2">
+                <p class="text-xs font-semibold text-blue-700 uppercase tracking-wide">Total de Vendas</p>
+                <i class="pi pi-shopping-cart text-blue-500 text-xl"></i>
+              </div>
+              <p class="text-3xl font-bold text-blue-900">{{ dbStats().totalSales }}</p>
+              <p class="text-xs text-blue-600 mt-1">registros no sistema</p>
+            </div>
+            
+            <div class="bg-gradient-to-br from-amber-50 to-amber-100 p-4 rounded-lg border border-amber-200 hover:shadow-md transition-all">
+              <div class="flex items-center justify-between mb-2">
+                <p class="text-xs font-semibold text-amber-700 uppercase tracking-wide">Tipos de Cerveja</p>
+                <i class="pi pi-list text-amber-500 text-xl"></i>
+              </div>
+              <p class="text-3xl font-bold text-amber-900">{{ dbStats().totalBeerTypes }}</p>
+              <p class="text-xs text-amber-600 mt-1">categorias disponíveis</p>
+            </div>
+            
+            <div class="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200 hover:shadow-md transition-all">
+              <div class="flex items-center justify-between mb-2">
+                <p class="text-xs font-semibold text-green-700 uppercase tracking-wide">Configurações</p>
+                <i class="pi pi-cog text-green-500 text-xl"></i>
+              </div>
+              <p class="text-3xl font-bold text-green-900">
+                @if (dbStats().hasSettings) {
+                  <i class="pi pi-check-circle"></i>
+                } @else {
+                  <i class="pi pi-times-circle text-red-500"></i>
+                }
+              </p>
+              <p class="text-xs text-green-600 mt-1">
+                {{ dbStats().hasSettings ? 'configuradas' : 'não configuradas' }}
+              </p>
+            </div>
+          </div>
+
+          <p-divider></p-divider>
+
+          <!-- Aviso sobre a limpeza - ZONA DE PERIGO -->
+          <div class="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-300 p-4 rounded-lg">
+            <div class="flex gap-3">
+              <i class="pi pi-exclamation-triangle text-yellow-600 text-2xl flex-shrink-0 animate-pulse"></i>
+              <div class="flex-1">
+                <p class="font-bold text-yellow-900 mb-2 text-base flex items-center gap-2">
+                  ⚠️ Zona de Perigo
+                </p>
+                <p class="text-sm text-yellow-800 leading-relaxed">
+                  A limpeza do banco de dados é uma <strong>ação permanente e irreversível</strong>. 
+                  Todos os registros de vendas, histórico e configurações serão <strong>removidos para sempre</strong>.
+                  Use esta função apenas se realmente precisar reiniciar o sistema completamente.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botão de Limpar Banco -->
+          <div class="bg-red-50 border border-red-200 p-4 rounded-lg">
+            <p class="text-sm text-red-800 mb-3 font-medium">
+              <i class="pi pi-info-circle"></i>
+              Certifique-se de fazer backup dos dados importantes antes de continuar.
+            </p>
+            <p-button 
+              label="🗑️ Limpar Banco de Dados Completo" 
+              icon="pi pi-trash"
+              severity="danger"
+              [outlined]="false"
+              styleClass="w-full"
+              (onClick)="openClearDialog()"
+              [disabled]="!dbReady() || dbStats().totalSales === 0"
+            ></p-button>
+            
+            @if (dbStats().totalSales === 0) {
+              <small class="text-gray-500 text-center block mt-2">
+                <i class="pi pi-info-circle"></i>
+                Banco já está vazio. Nada para limpar.
+              </small>
+            } @else {
+              <small class="text-red-600 text-center block mt-2 font-medium">
+                <i class="pi pi-exclamation-triangle"></i>
+                Esta ação não pode ser desfeita!
+              </small>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SEÇÃO: INFORMAÇÕES DO APLICATIVO ==================== -->
+      <div class="border-2 border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+        <div class="p-4 border-b-2 bg-gradient-to-r from-purple-50 to-purple-100">
+          <h3 class="font-semibold text-lg flex items-center gap-2 text-purple-900">
+            <i class="pi pi-info-circle text-purple-600"></i>
+            Informações do Aplicativo
+          </h3>
+          <p class="text-xs text-purple-700 mt-1">Detalhes técnicos e status do sistema</p>
+        </div>
+        
+        <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div class="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <p class="font-semibold text-gray-700 flex items-center gap-2">
+              <i class="pi pi-bookmark text-purple-500"></i>
+              Versão
+            </p>
+            <p class="text-gray-600 ml-6 font-mono">2.0.0 (Angular 20)</p>
+          </div>
+          
+          <div class="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <p class="font-semibold text-gray-700 flex items-center gap-2">
+              <i class="pi pi-mobile text-purple-500"></i>
+              Tipo de Aplicativo
+            </p>
+            <p class="text-gray-600 ml-6">PWA (Progressive Web App)</p>
+          </div>
+          
+          <div class="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <p class="font-semibold text-gray-700 flex items-center gap-2">
+              <i class="pi pi-database text-purple-500"></i>
+              Armazenamento
+            </p>
+            <p class="text-gray-600 ml-6 font-mono">SQLite v{{ getDatabaseVersion() }}</p>
+          </div>
+          
+          <div class="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <p class="font-semibold text-gray-700 flex items-center gap-2">
+              <i class="pi pi-globe text-purple-500"></i>
+              Status do Sistema
+            </p>
+            <div class="flex items-center gap-2 ml-6">
+              <span class="text-gray-600 font-medium">
+                @if (dbReady()) {
+                  Online
+                } @else {
+                  Inicializando...
+                }
+              </span>
+              <div 
+                class="w-2.5 h-2.5 rounded-full shadow-lg"
+                [class.bg-green-500]="dbReady()"
+                [class.bg-yellow-500]="!dbReady()"
+                [class.animate-pulse]="dbReady()"
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Informações adicionais - Footer -->
+        <div class="p-4 border-t-2 border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
+          <p class="text-xs text-gray-500 text-center flex items-center justify-center gap-2">
+            <i class="pi pi-copyright"></i>
+            <span>2025 - Sistema de Gestão de Vendas de Cerveja</span>
+            <span class="text-gray-400">|</span>
+            <span>Desenvolvido com Angular & PrimeNG</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- ==================== SEÇÃO: DICAS DE USO ==================== -->
+      <div class="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg overflow-hidden shadow-sm">
+        <div class="p-4 flex items-start gap-3">
+          <i class="pi pi-lightbulb text-blue-600 text-2xl flex-shrink-0"></i>
+          <div class="flex-1">
+            <h4 class="font-bold text-blue-900 mb-3 text-base">💡 Dicas de Uso</h4>
+            <ul class="text-sm text-blue-800 flex flex-col gap-2">
+              <li class="flex items-start gap-2">
+                <i class="pi pi-check text-blue-600 mt-0.5"></i>
+                <span>Configure seus <strong>emails</strong> para receber relatórios automáticos de vendas</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i class="pi pi-check text-blue-600 mt-0.5"></i>
+                <span>As <strong>estatísticas do banco</strong> são atualizadas em tempo real</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i class="pi pi-check text-blue-600 mt-0.5"></i>
+                <span>A limpeza do banco <strong>remove todos os dados</strong>, mas mantém os tipos de cerveja padrão</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i class="pi pi-check text-blue-600 mt-0.5"></i>
+                <span>Todos os dados são armazenados <strong>localmente no seu navegador</strong> (SQLite)</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i class="pi pi-check text-blue-600 mt-0.5"></i>
+                <span>Não há necessidade de conexão com internet após a instalação do PWA</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i class="pi pi-check text-blue-600 mt-0.5"></i>
+                <span>Você pode configurar até <strong>{{ MAX_EMAILS }} emails</strong> diferentes para relatórios</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </p-card>
+</div>

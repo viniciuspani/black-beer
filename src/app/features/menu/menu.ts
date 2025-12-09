@@ -1,0 +1,70 @@
+import { CommonModule } from '@angular/common';
+import { Component, signal } from '@angular/core';
+import { TabsModule } from 'primeng/tabs';
+import { SalesFormComponent } from '../sales-form/sales-form';
+import { ReportsSectionComponent } from '../reports-section/reports-section';
+import { BeerManagementComponent } from '../beer-management/beer-management';
+import { SettingsUserComponent } from '../settings-user/settings-user';
+import { SettingsAdminComponent } from '../settings-admin/settings-admin';
+import { HelpComponent } from '../help/help';
+
+
+@Component({
+  selector: 'app-menu',
+   standalone: true,
+  imports: [
+    CommonModule,
+    TabsModule,
+    SalesFormComponent,
+    BeerManagementComponent,
+    ReportsSectionComponent,
+    SettingsUserComponent,
+    SettingsAdminComponent,
+    HelpComponent,
+  ],
+   templateUrl: './menu.html',
+  styleUrl: './menu.scss'
+
+})
+export class Menu {
+   protected readonly title = signal('black-beer');
+
+  /**
+   * Controla qual aba está ativa no mobile
+   * 0 = Nova Venda
+   * 1 = Relatórios
+   * 2 = Cervejas
+   * 3 = Configurações
+   */
+  protected readonly activeTabMobile = signal<number>(0);
+
+  /**
+   * Controla qual sub-aba de configurações está ativa
+   * 0 = Usuário
+   * 1 = Admin
+   * 2 = Ajuda
+   */
+  protected readonly activeSettingsTab = signal<number>(0);
+
+  /**
+   * Atualiza a aba ativa no mobile
+   * @param index Índice da aba (0-3)
+   */
+  protected setActiveTabMobile(index: number): void {
+    this.activeTabMobile.set(index);
+
+    // Scroll suave para o topo ao trocar de aba
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /**
+   * Atualiza a sub-aba ativa de configurações
+   * @param index Índice da sub-aba (0-2)
+   */
+  protected setActiveSettingsTab(index: number): void {
+    this.activeSettingsTab.set(index);
+
+    // Scroll suave para o topo ao trocar de sub-aba
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}

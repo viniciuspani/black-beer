@@ -1,0 +1,76 @@
+// src/app/features/settings-admin/settings-admin.scss
+
+/**
+ * Estilos customizados para configurações administrativas
+ */
+
+// ========================================
+// ANIMAÇÕES
+// ========================================
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+// ========================================
+// CARDS DE ESTATÍSTICAS
+// ========================================
+
+.stat-card {
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+}
+
+// ========================================
+// ZONA DE PERIGO
+// ========================================
+
+.danger-zone {
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(to right, rgb(239, 68, 68), rgb(234, 88, 12));
+  }
+}
+
+// ========================================
+// RESPONSIVIDADE
+// ========================================
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ========================================
+// ACESSIBILIDADE
+// ========================================
+
+*:focus-visible {
+  outline: 2px solid rgb(59, 130, 246);
+  outline-offset: 2px;
+}
+
+*:focus:not(:focus-visible) {
+  outline: none;
+}

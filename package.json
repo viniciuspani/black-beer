@@ -1,6 +1,6 @@
 {
   "name": "black-beer",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -9,7 +9,7 @@
     "test": "ng test",
     "serve:ssr:black-beer": "node dist/black-beer/server/server.mjs",
     "tailwind:init": "tailwindcss init",
-    "copy:wasm": "cp node_modules/sql.js/dist/sql-wasm.wasm src/assets/sql/",
+    "copy:wasm": "cp node_modules/sql.js/dist/sql-wasm.wasm src/asset",
     "postinstall": "npm run copy:wasm"
   },
   "prettier": {
@@ -36,7 +36,9 @@
     "@angular/service-worker": "^20.2.0",
     "@angular/ssr": "^20.2.1",
     "@primeuix/themes": "^1.2.3",
+    "chart.js": "^4.5.1",
     "express": "^5.1.0",
+    "ng2-charts": "^8.0.0",
     "primeicons": "^7.0.0",
     "primeng": "^20.1.1",
     "rxjs": "~7.8.0",

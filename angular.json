@@ -17,7 +17,6 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
-
             "browser": "src/main.ts",
             "polyfills": [
               "zone.js"
@@ -34,7 +33,6 @@
               "src/manifest.webmanifest"
             ],
             "styles": [
-
               "node_modules/primeicons/primeicons.css",
               "src/styles.scss"
             ],
@@ -81,6 +79,22 @@
           },
           "defaultConfiguration": "development"
         },
+        "serve-ssr": {
+          "builder": "@angular/build:ssr-dev-server",
+          "options": {
+            "buildTarget": "black-beer:build",
+            "port": 4000
+          },
+          "configurations": {
+            "production": {
+              "buildTarget": "black-beer:build:production"
+            },
+            "development": {
+              "buildTarget": "black-beer:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
+        },
         "extract-i18n": {
           "builder": "@angular/build:extract-i18n"
         },
@@ -94,11 +108,12 @@
             "tsConfig": "tsconfig.spec.json",
             "inlineStyleLanguage": "scss",
             "stylePreprocessorOptions": {
-            "includePaths": [
+              "includePaths": [
                 "node_modules"
               ]
             },
-            "assets": ["src/favicon.ico",
+            "assets": [
+              "src/favicon.ico",
               "src/manifest.webmanifest",
               "src/assets"
             ],

@@ -5,8 +5,8 @@ import { BeerType, Sale } from '../models/beer.model';
 import { FullReport, SalesSummary, SalesByCupSize, SalesByBeerType } from '../models/report.model';
 import { isPlatformBrowser } from '@angular/common';
 
-const DB_STORAGE_KEY = 'black_beer_sqlite_db_v2'; // v2 para forçar migração
-const DB_VERSION = 2; // Versionamento do schema
+const DB_STORAGE_KEY = 'black_beer_sqlite_db_v3'; // v2 para forçar migração
+const DB_VERSION = 3; // Versionamento do schema
 
 /**
  * Constantes para validação de emails
@@ -33,7 +33,7 @@ declare global {
  * - Seed data atualizado com IDs numéricos
  * - Queries tipadas e otimizadas
  * 
- * @version 2.0.0
+ * @version 3.0.0
  */
 @Injectable({
   providedIn: 'root'
@@ -66,7 +66,7 @@ export class DatabaseService {
 
       // Se não há DB salvo OU versão antiga, cria novo
       if (!savedDb || savedVersion < DB_VERSION) {
-        console.log('🔄 Criando novo banco de dados (versão 2)...');
+        console.log('🔄 Criando novo banco de dados (versão 3)...');
         this.createNewDatabase();
       } else {
         // Carrega banco existente
@@ -107,7 +107,7 @@ export class DatabaseService {
   private createSchemaV2(): void {
     if (!this.db) return;
 
-    const schema = `
+   const schema = `
       -- Tabela de tipos de cerveja com ID INTEGER
       CREATE TABLE IF NOT EXISTS beer_types (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -141,6 +141,20 @@ export class DatabaseService {
         isConfigured INTEGER NOT NULL DEFAULT 0 CHECK(isConfigured IN (0, 1))
       );
 
+      -- Tabela de usuários (NOVO)
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        email TEXT NOT NULL UNIQUE,
+        passwordHash TEXT NOT NULL,
+        role TEXT NOT NULL CHECK(role IN ('user', 'admin')) DEFAULT 'user',
+        createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        lastLoginAt TEXT
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+      CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+
       -- Tabela de versão do schema
       CREATE TABLE IF NOT EXISTS db_version (
         version INTEGER PRIMARY KEY
@@ -150,7 +164,9 @@ export class DatabaseService {
     `;
 
     this.db.exec(schema);
-    console.log('✅ Schema v2 criado com sucesso');
+    console.log('✅ Schema V3 criado com sucesso');
+    // Cria admin padrão
+    this.createDefaultAdmin();
   }
 
   /**
@@ -480,6 +496,34 @@ export class DatabaseService {
     } catch (error) {
       console.error('❌ Erro ao verificar tabela:', error);
       return false;
+    }
+  }
+
+  private createDefaultAdmin(): void {
+    try {
+      // Verifica se já existe admin
+      const existing = this.executeQuery(
+        "SELECT id FROM users WHERE email = 'admin@blackbeer.com' LIMIT 1"
+      );
+      if (existing.length > 0) {
+        console.log('ℹ️ Admin padrão já existe');
+        return;
+      }
+      // Hash simplificado da senha 'admin123'
+      const salt = 'blackbeer_salt_2025';
+      const password = 'admin123';
+      const combined = salt + password + salt;
+      const adminPassword = btoa(combined);
+      this.executeRun(
+        'INSERT INTO users (username, email, passwordHash, role) VALUES (?, ?, ?, ?)',
+        ['admin', 'admin@blackbeer.com', adminPassword, 'admin']
+      );
+      console.log('✅ Usuário admin padrão criado');
+      console.log('   Email: admin@blackbeer.com');
+      console.log('   Senha: admin123');
+
+    } catch (error) {
+      console.error('❌ Erro ao criar admin padrão:', error);
     }
   }
 }

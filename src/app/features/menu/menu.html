@@ -1,0 +1,250 @@
+
+<div class="min-h-screen bg-gray-50 flex flex-col">
+  <!-- ==================== HEADER ==================== -->
+  <header class="bg-amber-600 text-white py-3 sm:py-4 shadow-lg fixed top-0 left-0 right-0 z-40">
+    <div class="container mx-auto px-3 sm:px-4 text-center">
+      <h1 class="text-xl sm:text-2xl md:text-3xl font-bold">Black Beer</h1>
+      <p class="text-amber-200 text-xs sm:text-sm md:text-base">Gestão de Vendas de Cerveja Artesanal</p>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN CONTENT ==================== -->
+  <!-- Padding top para compensar header fixo -->
+  <!-- Padding bottom para compensar bottom nav em mobile -->
+  <main class="flex-1 w-full px-2 sm:px-4 py-4 sm:py-6 mt-[88px] sm:mt-[96px] mb-[72px] md:mb-0 overflow-y-auto">
+
+    <!-- ==================== DESKTOP TABS (visível apenas em MD+) ==================== -->
+    <div class="hidden md:block">
+      <p-tabs class="w-full">
+        <p-tablist class="w-full">
+          <p-tab value="0">
+            <i class="pi pi-shopping-cart"></i>
+            <span> Nova Venda</span>
+          </p-tab>
+          <p-tab value="1">
+            <i class="pi pi-chart-bar"></i>
+            <span> Relatórios</span>
+          </p-tab>
+          <p-tab value="2">
+            <i class="pi pi-moon"></i>
+            <span> Cervejas</span>
+          </p-tab>
+          <p-tab value="3">
+            <i class="pi pi-cog"></i>
+            <span> Configurações</span>
+          </p-tab>
+        </p-tablist>
+
+        <p-tabpanels>
+          <p-tabpanel value="0">
+            <div class="overflow-auto">
+              <app-sales-form></app-sales-form>
+            </div>
+          </p-tabpanel>
+
+          <p-tabpanel value="1">
+            <div class="overflow-auto">
+              <app-reports-section></app-reports-section>
+            </div>
+          </p-tabpanel>
+
+          <p-tabpanel value="2">
+            <div class="overflow-auto">
+              <app-beer-management></app-beer-management>
+            </div>
+          </p-tabpanel>
+
+          <p-tabpanel value="3">
+            <div class="overflow-auto">
+              <!-- Sub-abas de Configurações -->
+              <p-tabs class="w-full">
+                <p-tablist class="w-full">
+                  <p-tab value="0">
+                    <i class="pi pi-user"></i>
+                    <span> Usuário</span>
+                  </p-tab>
+                  <p-tab value="1">
+                    <i class="pi pi-shield"></i>
+                    <span> Admin</span>
+                  </p-tab>
+                  <p-tab value="2">
+                    <i class="pi pi-question-circle"></i>
+                    <span> Ajuda</span>
+                  </p-tab>
+                </p-tablist>
+
+                <p-tabpanels>
+                  <p-tabpanel value="0">
+                    <app-settings-user></app-settings-user>
+                  </p-tabpanel>
+                  <p-tabpanel value="1">
+                    <app-settings-admin></app-settings-admin>
+                  </p-tabpanel>
+                  <p-tabpanel value="2">
+                    <app-help></app-help>
+                  </p-tabpanel>
+                </p-tabpanels>
+              </p-tabs>
+            </div>
+          </p-tabpanel>
+        </p-tabpanels>
+      </p-tabs>
+    </div>
+
+    <!-- ==================== MOBILE CONTENT (visível apenas em <MD) ==================== -->
+    <div class="md:hidden">
+      <!-- Content baseado na aba ativa -->
+      @switch (activeTabMobile()) {
+        @case (0) {
+          <app-sales-form></app-sales-form>
+        }
+        @case (1) {
+          <app-reports-section></app-reports-section>
+        }
+        @case (2) {
+          <app-beer-management></app-beer-management>
+        }
+        @case (3) {
+          <!-- Sub-abas de Configurações para Mobile -->
+          <div class="flex flex-col gap-3">
+            <!-- Botões de Sub-navegação -->
+            <div class="bg-white rounded-lg shadow-sm p-2 flex gap-2">
+              <button
+                type="button"
+                (click)="setActiveSettingsTab(0)"
+                class="flex-1 py-2 px-3 rounded-md transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium"
+                [class.bg-amber-600]="activeSettingsTab() === 0"
+                [class.text-white]="activeSettingsTab() === 0"
+                [class.bg-gray-100]="activeSettingsTab() !== 0"
+                [class.text-gray-700]="activeSettingsTab() !== 0">
+                <i class="pi pi-user"></i>
+                <span>Usuário</span>
+              </button>
+              <button
+                type="button"
+                (click)="setActiveSettingsTab(1)"
+                class="flex-1 py-2 px-3 rounded-md transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium"
+                [class.bg-amber-600]="activeSettingsTab() === 1"
+                [class.text-white]="activeSettingsTab() === 1"
+                [class.bg-gray-100]="activeSettingsTab() !== 1"
+                [class.text-gray-700]="activeSettingsTab() !== 1">
+                <i class="pi pi-shield"></i>
+                <span>Admin</span>
+              </button>
+              <button
+                type="button"
+                (click)="setActiveSettingsTab(2)"
+                class="flex-1 py-2 px-3 rounded-md transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium"
+                [class.bg-amber-600]="activeSettingsTab() === 2"
+                [class.text-white]="activeSettingsTab() === 2"
+                [class.bg-gray-100]="activeSettingsTab() !== 2"
+                [class.text-gray-700]="activeSettingsTab() !== 2">
+                <i class="pi pi-question-circle"></i>
+                <span>Ajuda</span>
+              </button>
+            </div>
+
+            <!-- Conteúdo das Sub-abas -->
+            @switch (activeSettingsTab()) {
+              @case (0) {
+                <app-settings-user></app-settings-user>
+              }
+              @case (1) {
+                <app-settings-admin></app-settings-admin>
+              }
+              @case (2) {
+                <app-help></app-help>
+              }
+            }
+          </div>
+        }
+      }
+    </div>
+  </main>
+
+  <!-- ==================== BOTTOM NAVIGATION (apenas mobile) ==================== -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 shadow-2xl z-50">
+    <div class="grid grid-cols-4 h-[72px]">
+
+      <!-- Tab: Nova Venda -->
+      <button
+        type="button"
+        (click)="setActiveTabMobile(0)"
+        class="flex flex-col items-center justify-center gap-1 transition-all duration-300 active:scale-95"
+        [class.text-amber-600]="activeTabMobile() === 0"
+        [class.text-gray-500]="activeTabMobile() !== 0"
+        [class.bg-amber-50]="activeTabMobile() === 0"
+        aria-label="Nova Venda">
+        <i class="pi pi-shopping-cart text-2xl"
+           [class.scale-110]="activeTabMobile() === 0"></i>
+        <span class="text-xs font-medium"
+              [class.font-bold]="activeTabMobile() === 0">Venda</span>
+        @if (activeTabMobile() === 0) {
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-amber-600 rounded-t-full"></div>
+        }
+      </button>
+
+      <!-- Tab: Relatórios -->
+      <button
+        type="button"
+        (click)="setActiveTabMobile(1)"
+        class="flex flex-col items-center justify-center gap-1 transition-all duration-300 active:scale-95"
+        [class.text-amber-600]="activeTabMobile() === 1"
+        [class.text-gray-500]="activeTabMobile() !== 1"
+        [class.bg-amber-50]="activeTabMobile() === 1"
+        aria-label="Relatórios">
+        <i class="pi pi-chart-bar text-2xl"
+           [class.scale-110]="activeTabMobile() === 1"></i>
+        <span class="text-xs font-medium"
+              [class.font-bold]="activeTabMobile() === 1">Relatórios</span>
+        @if (activeTabMobile() === 1) {
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-amber-600 rounded-t-full"></div>
+        }
+      </button>
+
+      <!-- Tab: Cervejas -->
+      <button
+        type="button"
+        (click)="setActiveTabMobile(2)"
+        class="flex flex-col items-center justify-center gap-1 transition-all duration-300 active:scale-95"
+        [class.text-amber-600]="activeTabMobile() === 2"
+        [class.text-gray-500]="activeTabMobile() !== 2"
+        [class.bg-amber-50]="activeTabMobile() === 2"
+        aria-label="Cervejas">
+        <i class="pi pi-moon text-2xl"
+           [class.scale-110]="activeTabMobile() === 2"></i>
+        <span class="text-xs font-medium"
+              [class.font-bold]="activeTabMobile() === 2">Cervejas</span>
+        @if (activeTabMobile() === 2) {
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-amber-600 rounded-t-full"></div>
+        }
+      </button>
+
+      <!-- Tab: Configurações -->
+      <button
+        type="button"
+        (click)="setActiveTabMobile(3)"
+        class="flex flex-col items-center justify-center gap-1 transition-all duration-300 active:scale-95"
+        [class.text-amber-600]="activeTabMobile() === 3"
+        [class.text-gray-500]="activeTabMobile() !== 3"
+        [class.bg-amber-50]="activeTabMobile() === 3"
+        aria-label="Configurações">
+        <i class="pi pi-cog text-2xl"
+           [class.scale-110]="activeTabMobile() === 3"></i>
+        <span class="text-xs font-medium"
+              [class.font-bold]="activeTabMobile() === 3">Config</span>
+        @if (activeTabMobile() === 3) {
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-amber-600 rounded-t-full"></div>
+        }
+      </button>
+
+    </div>
+  </nav>
+
+  <!-- ==================== FOOTER (apenas desktop) ==================== -->
+  <footer class="hidden md:block bg-gray-200 py-3 sm:py-4 mt-8 sm:mt-12">
+    <div class="container mx-auto px-2 sm:px-4 text-center text-gray-600 text-xs sm:text-base">
+      <p>© 2025 Black Beer – Angular Edition</p>
+    </div>
+  </footer>
+</div>

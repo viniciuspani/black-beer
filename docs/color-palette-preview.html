@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Black Beer - Paleta de Cores</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #F9FAFB;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #D97706;
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #6B7280;
+      margin-bottom: 3rem;
+      font-size: 1.2rem;
+    }
+
+    .section {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .section h2 {
+      color: #111827;
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+      border-bottom: 3px solid #D97706;
+      padding-bottom: 0.5rem;
+    }
+
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .color-box {
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+      border: 1px solid #E5E7EB;
+      transition: transform 0.2s;
+      cursor: pointer;
+    }
+
+    .color-box:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    .color-swatch {
+      width: 100%;
+      height: 80px;
+      border-radius: 6px;
+      margin-bottom: 0.5rem;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .color-name {
+      font-weight: 600;
+      font-size: 0.875rem;
+      color: #374151;
+      margin-bottom: 0.25rem;
+    }
+
+    .color-hex {
+      font-size: 0.75rem;
+      color: #6B7280;
+      font-family: monospace;
+    }
+
+    .examples {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .example-card {
+      border: 2px solid #FDE68A;
+      border-radius: 12px;
+      padding: 1.5rem;
+      background: white;
+    }
+
+    .example-card h3 {
+      color: #B45309;
+      margin-bottom: 1rem;
+    }
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin: 0.5rem;
+    }
+
+    .btn-primary {
+      background: #D97706;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #B45309;
+    }
+
+    .btn-success {
+      background: #16A34A;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #15803D;
+    }
+
+    .btn-danger {
+      background: #DC2626;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #B91C1C;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin: 0.5rem;
+    }
+
+    .badge-success {
+      background: #DCFCE7;
+      color: #15803D;
+    }
+
+    .badge-error {
+      background: #FEE2E2;
+      color: #B91C1C;
+    }
+
+    .badge-warning {
+      background: #FEF3C7;
+      color: #92400E;
+    }
+
+    .gradient-box {
+      height: 120px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+    }
+
+    .header-preview {
+      background: #D97706;
+      color: white;
+      padding: 2rem;
+      text-align: center;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+    }
+
+    .header-preview h2 {
+      color: white;
+      border: none;
+      margin-bottom: 0.5rem;
+    }
+
+    .header-preview p {
+      color: #FDE68A;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🍺 Black Beer</h1>
+    <p class="subtitle">Paleta de Cores Profissional</p>
+
+    <!-- Header Preview -->
+    <div class="header-preview">
+      <h2>Black Beer</h2>
+      <p>Gestão de Vendas de Cerveja Artesanal</p>
+    </div>
+
+    <!-- Cores Primárias -->
+    <div class="section">
+      <h2>🍺 Cores Primárias - Amber (Âmbar)</h2>
+      <div class="color-grid">
+        <div class="color-box">
+          <div class="color-swatch" style="background: #FFFBEB;"></div>
+          <div class="color-name">amber-50</div>
+          <div class="color-hex">#FFFBEB</div>
+        </div>
+        <div class="color-box">
+          <div class="color-swatch" style="background: #FEF3C7;"></div>
+          <div class="color-name">amber-100</div>
+          <div class="color-hex">#FEF3C7</div>
+        </div>
+        <div class="color-box">
+          <div class="color-swatch" style="background: #FDE68A;"></div>
+          <div class="color-name">amber-200</div>
+          <div class="color-hex">#FDE68A</div>
+        </div>
+        <div class="color-box">
+          <div class="color-swatch" style="background: #FCD34D;"></div>
+          <div class="color-name">amber-300</div>
+          <div class="color-hex">#FCD34D</div>
+        </div>
+        <div class="color-box">
+          <div class="color-swatch" style="background: #FBBF24;"></div>
+          <div class="color-name">amber-400</div>
+          <div class="color-hex">#FBBF24</div>
+        </div>
+        <div class="color-box">
+          <div class="color-swatch" style="background: #F59E0B;"></div>
+          <div class="color-name">amber-500</div>
+          <div class="color-hex">#F59E0B</div>
+        </div>
+        <div class="color-box">
+          <div class="color-swatch" style="background: #D97706; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">★ PRINCIPAL</div>
+          <div class="color-name">amber-600</div>
+          <div class="color-hex">#D97706</div>
+        </div>
+        <div class="color-box">
+          <div class="color-swatch" style="background: #B45309;"></div>
+          <div class="color-name">amber-700</div>
+          <div class="color-hex">#B45309</div>
+        </div>
+        <div class="color-box">
+          <div class="color-swatch" style="background: #92400E;"></div>
+          <div class="color-name">amber-800</div>
+          <div class="color-hex">#92400E</div>
+        </div>
+        <div class="color-box">
+          <div class="color-swatch" style="background: #78350F;"></div>
+          <div class="color-name">amber-900</div>
+          <div class="color-hex">#78350F</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cores Semânticas -->
+    <div class="section">
+      <h2>✅ Cores Semânticas</h2>
+
+      <h3 style="color: #15803D; margin-top: 1.5rem;">Success (Sucesso)</h3>
+      <div class="color-grid">
+        <div class="color-box">
+          <div class="color-swatch" style="background: #F0FDF4;"></div>
+          <div class="color-name">success-50</div>
+          <div class="color-hex">#F0FDF4</div>
+        </div>
+        <div class="color-box">
+          <div class="color-swatch" style="background: #DCFCE7;"></div>
+          <div class="color-name">success-100</div>
+          <div class="color-hex">#DCFCE7</div>
+        </div>
+        <div class="color-box">
+          <div class="color-swatch" style="background: #22C55E; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">★</div>
+          <div class="color-name">success-500</div>
+          <div class="color-hex">#22C55E</div>
+        </div>
+        <div class="color-box">
+          <div class="color-swatch" style="background: #16A34A;"></div>
+          <div class="color-name">success-600</div>
+          <div class="color-hex">#16A34A</div>
+        </div>
+      </div>
+
+      <h3 style="color: #B91C1C; margin-top: 1.5rem;">Error (Erro)</h3>
+      <div class="color-grid">
+        <div class="color-box">
+          <div class="color-swatch" style="background: #FEF2F2;"></div>
+          <div class="color-name">error-50</div>
+          <div class="color-hex">#FEF2F2</div>
+        </div>
+        <div class="color-box">
+          <div class="color-swatch" style="background: #FEE2E2;"></div>
+          <div class="color-name">error-100</div>
+          <div class="color-hex">#FEE2E2</div>
+        </div>
+        <div class="color-box">
+          <div class="color-swatch" style="background: #EF4444; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">★</div>
+          <div class="color-name">error-500</div>
+          <div class="color-hex">#EF4444</div>
+        </div>
+        <div class="color-box">
+          <div class="color-swatch" style="background: #DC2626;"></div>
+          <div class="color-name">error-600</div>
+          <div class="color-hex">#DC2626</div>
+        </div>
+      </div>
+
+      <h3 style="color: #92400E; margin-top: 1.5rem;">Warning (Aviso)</h3>
+      <div class="color-grid">
+        <div class="color-box">
+          <div class="color-swatch" style="background: #FFFBEB;"></div>
+          <div class="color-name">warning-50</div>
+          <div class="color-hex">#FFFBEB</div>
+        </div>
+        <div class="color-box">
+          <div class="color-swatch" style="background: #FDE68A;"></div>
+          <div class="color-name">warning-200</div>
+          <div class="color-hex">#FDE68A</div>
+        </div>
+        <div class="color-box">
+          <div class="color-swatch" style="background: #F59E0B; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">★</div>
+          <div class="color-name">warning-500</div>
+          <div class="color-hex">#F59E0B</div>
+        </div>
+      </div>
+
+      <h3 style="color: #1D4ED8; margin-top: 1.5rem;">Info (Informação)</h3>
+      <div class="color-grid">
+        <div class="color-box">
+          <div class="color-swatch" style="background: #EFF6FF;"></div>
+          <div class="color-name">info-50</div>
+          <div class="color-hex">#EFF6FF</div>
+        </div>
+        <div class="color-box">
+          <div class="color-swatch" style="background: #DBEAFE;"></div>
+          <div class="color-name">info-100</div>
+          <div class="color-hex">#DBEAFE</div>
+        </div>
+        <div class="color-box">
+          <div class="color-swatch" style="background: #3B82F6; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">★</div>
+          <div class="color-name">info-500</div>
+          <div class="color-hex">#3B82F6</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gradientes -->
+    <div class="section">
+      <h2>🌈 Gradientes</h2>
+
+      <div class="gradient-box" style="background: linear-gradient(135deg, #F59E0B 0%, #B45309 100%);">
+        Gradiente Âmbar
+      </div>
+
+      <div class="gradient-box" style="background: linear-gradient(135deg, #FBBF24 0%, #E6A500 100%);">
+        Gradiente Dourado
+      </div>
+
+      <div class="gradient-box" style="background: linear-gradient(135deg, #F59E0B 0%, #FFC233 50%, #B45309 100%);">
+        Gradiente Pôr do Sol
+      </div>
+
+      <div class="gradient-box" style="background: linear-gradient(135deg, #A855F7 0%, #F59E0B 100%);">
+        Gradiente Premium
+      </div>
+    </div>
+
+    <!-- Exemplos de Uso -->
+    <div class="section">
+      <h2>💡 Exemplos de Uso</h2>
+
+      <h3 style="margin-bottom: 1rem;">Botões</h3>
+      <div>
+        <button class="btn btn-primary">Botão Primário</button>
+        <button class="btn btn-success">Botão Sucesso</button>
+        <button class="btn btn-danger">Botão Perigo</button>
+      </div>
+
+      <h3 style="margin: 2rem 0 1rem;">Badges</h3>
+      <div>
+        <span class="badge badge-success">✓ Configurado</span>
+        <span class="badge badge-error">✗ Não Configurado</span>
+        <span class="badge badge-warning">⚠ Atenção</span>
+      </div>
+
+      <h3 style="margin: 2rem 0 1rem;">Cards de Cerveja</h3>
+      <div class="examples">
+        <div class="example-card" style="border-color: #FDE68A; background: #FDE68A;">
+          <h3>🍺 IPA</h3>
+          <p style="color: #78350F;">Leve e frutada</p>
+        </div>
+        <div class="example-card" style="border-color: #FEF9C3; background: #FEF9C3;">
+          <h3>🍺 Lager</h3>
+          <p style="color: #78350F;">Amarga e aromática</p>
+        </div>
+        <div class="example-card" style="border-color: #F5F5F4; background: #F5F5F4;">
+          <h3>🍺 Session IPA</h3>
+          <p style="color: #78350F;">Escura e robusta</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="text-align: center; color: #6B7280; margin-top: 3rem; padding: 2rem; background: white; border-radius: 12px;">
+      <p><strong>Black Beer</strong> - Paleta de Cores v1.0.0</p>
+      <p style="margin-top: 0.5rem; font-size: 0.875rem;">Sistema de Gestão de Cerveja Artesanal</p>
+      <p style="margin-top: 1rem; font-size: 0.875rem;">© 2025 - Desenvolvido com Angular & PrimeNG</p>
+    </div>
+  </div>
+</body>
+</html>

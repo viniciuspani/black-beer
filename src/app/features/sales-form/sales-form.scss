@@ -2,10 +2,13 @@
    SALES FORM - CONTAINER PRINCIPAL
    ======================================== */
 
+// Importa a paleta de cores do Black Beer
+@use '../../../assets/styles/color-palette' as *;
+
 .sales-form-container {
   position: relative;
   width: 100%;
-  
+
   /* Padding bottom para compensar botão fixo em mobile */
   @media (max-width: 767px) {
     padding-bottom: 80px;
@@ -29,11 +32,11 @@
 }
 
 .summary-card {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  border: 2px solid #fbbf24;
+  background: linear-gradient(135deg, $wheat-100 0%, $amber-200 100%);
+  border: 2px solid $amber-400;
   border-radius: 0.75rem;
   padding: 0.75rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: $shadow-md;
   animation: slideDown 0.3s ease-out;
 }
 
@@ -53,10 +56,10 @@
   align-items: center;
   gap: 0.5rem;
   font-weight: 600;
-  color: #92400e;
+  color: $amber-800;
   font-size: 0.875rem;
   margin-bottom: 0.5rem;
-  
+
   i {
     font-size: 1rem;
   }
@@ -72,34 +75,34 @@
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
-  
+
   .label {
     font-size: 0.75rem;
-    color: #78350f;
+    color: $amber-900;
     font-weight: 500;
   }
-  
+
   .value {
     font-size: 0.875rem;
     font-weight: 700;
-    color: #92400e;
+    color: $amber-800;
   }
-  
+
   &.highlight {
     grid-column: 1 / -1;
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
     padding-top: 0.5rem;
-    border-top: 1px solid #fbbf24;
-    
+    border-top: 1px solid $amber-400;
+
     .label {
       font-size: 0.875rem;
     }
-    
+
     .value {
       font-size: 1.25rem;
-      color: #d97706;
+      color: $primary;
     }
   }
 }
@@ -124,15 +127,15 @@
   justify-content: center;
   gap: 0.75rem;
   font-size: 1.25rem;
-  
+
   @media (min-width: 640px) {
     font-size: 1.5rem;
   }
-  
+
   i {
     font-size: 1.5rem;
-    color: #d97706;
-    
+    color: $primary;
+
     @media (min-width: 640px) {
       font-size: 1.75rem;
     }
@@ -165,12 +168,12 @@
   gap: 0.5rem;
   font-size: 1rem;
   font-weight: 600;
-  color: #1f2937;
-  
+  color: $text-primary;
+
   @media (min-width: 640px) {
     font-size: 1.125rem;
   }
-  
+
   i {
     font-size: 1.25rem;
   }
@@ -200,46 +203,46 @@
   align-items: center;
   gap: 1rem;
   padding: 1rem;
-  border: 2px solid #e5e7eb;
+  border: 2px solid $border-light;
   border-radius: 0.75rem;
-  background: white;
+  background: $white;
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
-  
+
   /* Área de toque mínima */
   min-height: 72px;
-  
+
   /* Remove tap highlight */
   -webkit-tap-highlight-color: transparent;
-  
+
   &:hover:not(.beer-button-active) {
-    border-color: #fb923c; /* Orange-400 */
-    box-shadow: 0 2px 8px rgba(251, 146, 60, 0.2);
+    border-color: $amber-400;
+    box-shadow: $shadow-amber;
     transform: translateY(-2px);
   }
-  
+
   &:active {
     transform: translateY(0) scale(0.98);
   }
-  
+
   &.beer-button-active {
-    border-color: #ea580c; /* Orange-600 */
-    background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%); /* Orange-200 to Orange-300 */
-    box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
-    
+    border-color: $amber-700;
+    background: linear-gradient(135deg, $amber-100 0%, $amber-200 100%);
+    box-shadow: $shadow-amber;
+
     /* Texto mais escuro para melhor contraste */
     .beer-name {
-      color: #7c2d12; /* Orange-900 */
+      color: $brown-900;
     }
-    
+
     .beer-description {
-      color: #9a3412; /* Orange-800 */
+      color: $amber-900;
     }
   }
-  
+
   &:disabled {
-    opacity: 0.5;
+    opacity: $opacity-disabled;
     cursor: not-allowed;
   }
 }
@@ -251,20 +254,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  
+
   i {
     font-size: 2rem;
-    color: #ea580c; /* Orange-600 */
+    color: $amber-700;
     animation: scaleIn 0.3s ease-out;
   }
-  
+
   .beer-color-dot {
     width: 1.5rem;
     height: 1.5rem;
     border-radius: 50%;
-    border: 2px solid #d1d5db;
+    border: 2px solid $border-medium;
     transition: transform 0.2s ease;
-    
+
     .beer-button:hover & {
       transform: scale(1.1);
     }
@@ -293,23 +296,23 @@
 .beer-name {
   font-size: 1rem;
   font-weight: 600;
-  color: #1f2937;
-  
+  color: $text-primary;
+
   @media (min-width: 640px) {
     font-size: 1.125rem;
   }
-  
+
   .beer-button-active & {
-    color: #92400e;
+    color: $amber-800;
   }
 }
 
 .beer-description {
   font-size: 0.875rem;
-  color: #6b7280;
-  
+  color: $text-secondary;
+
   .beer-button-active & {
-    color: #78350f;
+    color: $amber-900;
   }
 }
 
@@ -336,21 +339,21 @@
   align-items: center;
   gap: 1rem;
   padding: 1rem;
-  border: 2px solid #e5e7eb;
+  border: 2px solid $border-light;
   border-radius: 0.75rem;
-  background: white;
+  background: $white;
   cursor: pointer;
   transition: all 0.2s ease;
-  
+
   /* Área de toque adequada */
   min-height: 80px;
-  
+
   -webkit-tap-highlight-color: transparent;
-  
+
   /* Mobile: layout horizontal */
   flex-direction: row;
   justify-content: flex-start;
-  
+
   /* Tablet+: layout vertical centralizado */
   @media (min-width: 640px) {
     flex-direction: column;
@@ -358,42 +361,42 @@
     text-align: center;
     min-height: 140px;
   }
-  
+
   &:hover:not(.cup-size-button-active) {
-    border-color: #fbbf24;
-    box-shadow: 0 2px 8px rgba(251, 191, 36, 0.2);
+    border-color: $amber-400;
+    box-shadow: $shadow-amber;
     transform: translateY(-2px);
   }
-  
+
   &:active {
     transform: translateY(0) scale(0.98);
   }
-  
+
   &.cup-size-button-active {
-    border-color: #d97706;
-    background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%);
-    box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
-    
+    border-color: $primary;
+    background: linear-gradient(135deg, $wheat-100 0%, $amber-100 100%);
+    box-shadow: $shadow-amber;
+
     .cup-icon i {
-      color: #d97706;
+      color: $primary;
     }
   }
 }
 
 .cup-icon {
   flex-shrink: 0;
-  color: #9ca3af;
+  color: $text-disabled;
   transition: all 0.2s ease;
-  
+
   i {
     display: block;
   }
-  
+
   .cup-size-button:hover & {
-    color: #fbbf24;
+    color: $amber-400;
     transform: scale(1.1);
   }
-  
+
   .cup-size-button-active & {
     animation: bounce 0.5s ease-out;
   }
@@ -421,28 +424,28 @@
 .cup-size-value {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #1f2937;
-  
+  color: $text-primary;
+
   @media (min-width: 640px) {
     font-size: 2rem;
   }
-  
+
   .cup-size-button-active & {
-    color: #92400e;
+    color: $amber-800;
   }
 }
 
 .cup-size-unit {
   font-size: 1rem;
   font-weight: 500;
-  color: #6b7280;
-  
+  color: $text-secondary;
+
   @media (min-width: 640px) {
     font-size: 1.125rem;
   }
-  
+
   .cup-size-button-active & {
-    color: #78350f;
+    color: $amber-900;
   }
 }
 
@@ -452,17 +455,17 @@
   right: 0.5rem;
   width: 1.5rem;
   height: 1.5rem;
-  background: #d97706;
+  background: $primary;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  
+
   i {
-    color: white;
+    color: $white;
     font-size: 0.875rem;
   }
-  
+
   animation: scaleIn 0.3s ease-out;
 }
 
@@ -486,62 +489,62 @@
   width: 3.5rem;
   height: 3.5rem;
   border-radius: 50%;
-  border: 2px solid #e5e7eb;
-  background: white;
+  border: 2px solid $border-light;
+  background: $white;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
   -webkit-tap-highlight-color: transparent;
-  
+
   @media (min-width: 640px) {
     width: 4rem;
     height: 4rem;
   }
-  
+
   i {
     font-size: 1.25rem;
-    color: #1f2937;
-    
+    color: $text-primary;
+
     @media (min-width: 640px) {
       font-size: 1.5rem;
     }
   }
-  
+
   &:hover:not(:disabled) {
-    border-color: #fbbf24;
-    box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
+    border-color: $amber-400;
+    box-shadow: $shadow-amber;
     transform: scale(1.05);
   }
-  
+
   &:active:not(:disabled) {
     transform: scale(0.95);
   }
-  
+
   &:disabled {
-    opacity: 0.3;
+    opacity: $opacity-disabled;
     cursor: not-allowed;
   }
-  
+
   &.quantity-button-minus {
     &:hover:not(:disabled) {
-      background: #fee2e2;
-      border-color: #ef4444;
-      
+      background: $error-50;
+      border-color: $error-500;
+
       i {
-        color: #ef4444;
+        color: $error-500;
       }
     }
   }
-  
+
   &.quantity-button-plus {
     &:hover:not(:disabled) {
-      background: #dcfce7;
-      border-color: #22c55e;
-      
+      background: $success-100;
+      border-color: $success-500;
+
       i {
-        color: #22c55e;
+        color: $success-500;
       }
     }
   }
@@ -554,17 +557,17 @@
   gap: 0.25rem;
   min-width: 120px;
   padding: 1rem;
-  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  background: linear-gradient(135deg, $gray-50 0%, $gray-100 100%);
   border-radius: 1rem;
-  border: 2px solid #e5e7eb;
+  border: 2px solid $border-light;
 }
 
 .quantity-value {
   font-size: 2.5rem;
   font-weight: 700;
-  color: #d97706;
+  color: $primary;
   line-height: 1;
-  
+
   @media (min-width: 640px) {
     font-size: 3rem;
   }
@@ -573,7 +576,7 @@
 .quantity-label {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #6b7280;
+  color: $text-secondary;
   text-transform: lowercase;
 }
 
@@ -582,11 +585,11 @@
    ======================================== */
 
 .desktop-summary {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  border: 2px solid #fbbf24;
+  background: linear-gradient(135deg, $wheat-100 0%, $amber-200 100%);
+  border: 2px solid $amber-400;
   border-radius: 0.75rem;
   padding: 1.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: $shadow-md;
 }
 
 .desktop-summary-title {
@@ -595,9 +598,9 @@
   gap: 0.5rem;
   font-size: 1.125rem;
   font-weight: 600;
-  color: #92400e;
+  color: $amber-800;
   margin-bottom: 1rem;
-  
+
   i {
     font-size: 1.25rem;
   }
@@ -613,24 +616,24 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  
+
   .label {
     font-size: 0.875rem;
-    color: #78350f;
+    color: $amber-900;
     font-weight: 500;
   }
-  
+
   .value {
     font-size: 1rem;
     font-weight: 600;
-    color: #92400e;
+    color: $amber-800;
   }
-  
+
   &.highlight {
     grid-column: 1 / -1;
     padding-top: 1rem;
-    border-top: 2px solid #fbbf24;
-    
+    border-top: 2px solid $amber-400;
+
     .label {
       font-size: 1rem;
     }
@@ -727,7 +730,7 @@
 .beer-button:focus-visible,
 .cup-size-button:focus-visible,
 .quantity-button:focus-visible {
-  outline: 3px solid #fbbf24;
+  outline: 3px solid $amber-400;
   outline-offset: 2px;
   z-index: 10;
 }
@@ -744,9 +747,9 @@
    ======================================== */
 
 .form-section.loading {
-  opacity: 0.6;
+  opacity: $opacity-disabled;
   pointer-events: none;
-  
+
   &::after {
     content: '';
     position: absolute;
@@ -755,8 +758,8 @@
     transform: translate(-50%, -50%);
     width: 2rem;
     height: 2rem;
-    border: 3px solid #f3f4f6;
-    border-top-color: #d97706;
+    border: 3px solid $gray-100;
+    border-top-color: $primary;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }

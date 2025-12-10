@@ -2,6 +2,8 @@
    BEER MANAGEMENT - CONTAINER PRINCIPAL
    ======================================== */
 
+@use '../../../assets/styles/color-palette' as *;
+
 .beer-management-container {
   width: 100%;
   animation: fadeIn 0.3s ease-out;
@@ -62,16 +64,16 @@
   gap: 0.75rem;
   flex: 1;
   min-width: 0;
-  
+
   @media (max-width: 640px) {
     justify-content: center;
   }
-  
+
   > i {
     font-size: 1.5rem;
-    color: #d97706;
+    color: $primary;
     flex-shrink: 0;
-    
+
     @media (min-width: 640px) {
       font-size: 1.75rem;
     }
@@ -88,8 +90,8 @@
 .header-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #ffffff; /* ← BRANCO para contraste com fundo escuro */
-  
+  color: $text-inverse;
+
   @media (min-width: 640px) {
     font-size: 1.25rem;
   }
@@ -97,9 +99,9 @@
 
 .header-subtitle {
   font-size: 0.75rem;
-  color: #d1d5db; /* ← CINZA CLARO para contraste */
+  color: $gray-300;
   font-weight: 500;
-  
+
   @media (min-width: 640px) {
     font-size: 0.875rem;
   }
@@ -121,11 +123,11 @@
 .add-form-container {
   margin-top: 1rem;
   padding: 1.5rem;
-  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); /* ← Orange-50 to Orange-100 */
-  border: 2px solid #fb923c; /* ← Orange-400 */
+  background: $white;
+  border: 2px solid $border-light;
   border-radius: 0.75rem;
   animation: slideDown 0.3s ease-out;
-  box-shadow: 0 4px 6px rgba(251, 146, 60, 0.1);
+  box-shadow: $shadow-md;
 }
 
 @keyframes slideDown {
@@ -178,16 +180,16 @@
   gap: 0.5rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #7c2d12; /* ← CORRIGIDO: Orange-900 (mais escuro) */
-  
+  color: $text-primary;
+
   i {
     font-size: 1rem;
-    color: #ea580c; /* ← Orange-600 */
+    color: $primary;
   }
-  
+
   &.required::after {
     content: '*';
-    color: #dc2626;
+    color: $error-600;
     margin-left: 0.25rem;
   }
 }
@@ -195,30 +197,30 @@
 .form-input {
   width: 100%;
   padding: 0.75rem;
-  border: 2px solid #d1d5db;
+  border: 2px solid $border-light;
   border-radius: 0.5rem;
   font-size: 1rem;
   transition: all 0.2s ease;
-  background: white;
-  color: #1f2937; /* ← CORRIGIDO: texto escuro */
-  
+  background: $white;
+  color: $text-primary;
+
   &:focus {
     outline: none;
-    border-color: #d97706; /* ← Amber mais escuro */
+    border-color: $primary;
     box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1);
   }
-  
+
   &::placeholder {
-    color: #9ca3af;
+    color: $text-secondary;
   }
-  
+
   /* Garante texto escuro mesmo em autofill */
   &:-webkit-autofill,
   &:-webkit-autofill:hover,
   &:-webkit-autofill:focus {
-    -webkit-text-fill-color: #1f2937;
-    -webkit-box-shadow: 0 0 0 1000px white inset;
-    box-shadow: 0 0 0 1000px white inset;
+    -webkit-text-fill-color: $text-primary;
+    -webkit-box-shadow: 0 0 0 1000px $white inset;
+    box-shadow: 0 0 0 1000px $white inset;
   }
 }
 
@@ -230,15 +232,15 @@
   display: flex;
   align-items: stretch;
   gap: 0.75rem;
-  background: white;
+  background: $white;
   padding: 0.75rem;
-  border: 2px solid #d1d5db;
+  border: 2px solid $border-light;
   border-radius: 0.5rem;
   transition: all 0.2s ease;
-  
+
   &:focus-within {
-    border-color: #ea580c; /* ← Orange-600 */
-    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.1);
+    border-color: $primary;
+    box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1);
   }
 }
 
@@ -246,7 +248,7 @@
   flex: 1;
   min-height: 48px;
   border-radius: 0.5rem;
-  border: 2px solid #e5e7eb;
+  border: 2px solid $border-light;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -254,7 +256,7 @@
   overflow: hidden;
   transition: transform 0.2s ease;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-  
+
   &:hover {
     transform: scale(1.02);
   }
@@ -263,7 +265,7 @@
 .color-preview-label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: white;
+  color: $white;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
   background: rgba(0, 0, 0, 0.4);
   padding: 0.25rem 0.5rem;
@@ -278,17 +280,17 @@
       width: 48px;
       height: 48px;
       border-radius: 0.5rem;
-      border: 2px solid #e5e7eb;
+      border: 2px solid $border-light;
       transition: all 0.2s ease;
       cursor: pointer;
-      
+
       &:hover {
-        border-color: #ea580c;
+        border-color: $primary;
         transform: scale(1.05);
-        box-shadow: 0 2px 8px rgba(234, 88, 12, 0.3);
+        box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);
       }
     }
-    
+
     /* Garantir que o panel apareça acima de tudo */
     .p-colorpicker-panel {
       z-index: 9999 !important;
@@ -360,38 +362,36 @@
 
 .desktop-table {
   margin-top: 1.5rem;
-  
+
   ::ng-deep {
     .p-datatable {
       border-radius: 0.5rem;
       overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      box-shadow: $shadow-sm;
     }
-    
+
     .p-datatable-thead > tr > th {
-      background: #f9fafb;
+      background: $bg-secondary;
       font-weight: 600;
-      color: #374151;
+      color: $text-primary;
       padding: 1rem;
     }
-    
+
     .p-datatable-tbody > tr {
       transition: background-color 0.2s ease, color 0.2s ease;
-      
-      /* ← Estado PADRÃO (sem hover): TEXTO BRANCO */
+
       > td {
         padding: 1rem;
-        border-bottom: 1px solid #e5e7eb;
-        color: #ffffff !important; /* Texto BRANCO */
+        border-bottom: 1px solid $border-light;
+        color: $text-inverse !important;
         transition: color 0.2s ease;
       }
-      
-      /* ← Estado HOVER: FUNDO LARANJA + TEXTO PRETO */
+
       &:hover {
-        background-color: #fed7aa; /* Orange-200 */
-        
+        background-color: $amber-100;
+
         > td {
-          color: #1f2937 !important; /* Texto PRETO para contraste */
+          color: $text-primary !important;
         }
       }
     }
@@ -423,8 +423,8 @@
 
 .beer-card {
   position: relative;
-  background: white;
-  border: 2px solid #e5e7eb;
+  background: $white;
+  border: 2px solid $border-light;
   border-radius: 0.75rem;
   padding: 1rem;
   display: flex;
@@ -432,21 +432,21 @@
   gap: 0.75rem;
   transition: all 0.2s ease;
   animation: fadeInUp 0.3s ease-out backwards;
-  
+
   @for $i from 1 through 20 {
     &:nth-child(#{$i}) {
       animation-delay: #{$i * 0.05}s;
     }
   }
-  
+
   &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: $shadow-md;
     transform: translateY(-2px);
   }
-  
+
   &.beer-card-default {
-    background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); /* Orange-50 to Orange-100 */
-    border-color: #fb923c; /* Orange-400 */
+    background: $white;
+    border-color: $primary;
   }
 }
 
@@ -480,11 +480,11 @@
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 0.5rem;
-  border: 2px solid #e5e7eb;
+  border: 2px solid $border-light;
   flex-shrink: 0;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s ease;
-  
+
   .beer-card:hover & {
     transform: scale(1.1);
   }
@@ -493,7 +493,7 @@
 .beer-name {
   font-size: 1.125rem;
   font-weight: 700;
-  color: #1f2937;
+  color: $text-primary;
   margin: 0;
   word-break: break-word;
 }
@@ -504,7 +504,7 @@
 
 .beer-description {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: $text-secondary;
   line-height: 1.5;
   margin: 0;
 }
@@ -545,39 +545,39 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background: white;
-  border: 2px solid #ef4444;
+  background: $white;
+  border: 2px solid $error-500;
   border-radius: 0.5rem;
-  color: #ef4444;
+  color: $error-500;
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   -webkit-tap-highlight-color: transparent;
-  
+
   /* Área de toque adequada */
   min-height: 44px;
-  
+
   i {
     font-size: 1rem;
   }
-  
+
   &:hover:not(.delete-button-disabled) {
-    background: #ef4444;
-    color: white;
+    background: $error-500;
+    color: $white;
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
   }
-  
+
   &:active:not(.delete-button-disabled) {
     transform: translateY(0) scale(0.98);
   }
-  
+
   &.delete-button-disabled {
     opacity: 0.4;
     cursor: not-allowed;
-    border-color: #d1d5db;
-    color: #9ca3af;
+    border-color: $border-light;
+    color: $text-secondary;
   }
 }
 
@@ -591,16 +591,16 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.5rem;
-  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); /* Orange-50 to Orange-100 */
-  border: 2px solid #fdba74; /* Orange-300 */
+  background: $amber-100;
+  border: 2px solid $primary;
   border-radius: 0.5rem;
   font-size: 0.75rem;
-  color: #7c2d12; /* Orange-900 */
+  color: $amber-900;
   font-weight: 600;
-  
+
   i {
     font-size: 0.875rem;
-    color: #ea580c; /* Orange-600 */
+    color: $primary;
   }
 }
 
@@ -616,10 +616,10 @@
   padding: 3rem 1rem;
   text-align: center;
   grid-column: 1 / -1;
-  
+
   i {
     font-size: 4rem;
-    color: #d1d5db;
+    color: $gray-300;
     margin-bottom: 1rem;
   }
 }
@@ -627,13 +627,13 @@
 .empty-state-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #6b7280;
+  color: $text-secondary;
   margin: 0 0 0.5rem 0;
 }
 
 .empty-state-text {
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: $text-secondary;
   margin: 0;
 }
 
@@ -687,29 +687,29 @@
   }
   
   &.info-card-primary {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border: 2px solid #fbbf24;
-    
+    background: $white;
+    border: 2px solid $border-light;
+
     i {
-      color: #d97706;
+      color: $primary;
     }
   }
-  
+
   &.info-card-info {
-    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-    border: 2px solid #3b82f6;
-    
+    background: $white;
+    border: 2px solid $border-light;
+
     i {
-      color: #1d4ed8;
+      color: $info-500;
     }
   }
-  
+
   &.info-card-success {
-    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-    border: 2px solid #10b981;
-    
+    background: $white;
+    border: 2px solid $border-light;
+
     i {
-      color: #059669;
+      color: $success-500;
     }
   }
 }
@@ -723,9 +723,9 @@
 .info-card-value {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #1f2937;
+  color: $text-primary;
   line-height: 1;
-  
+
   @media (min-width: 640px) {
     font-size: 1.75rem;
   }
@@ -734,7 +734,7 @@
 .info-card-label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #6b7280;
+  color: $text-secondary;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -787,7 +787,7 @@
 
 .delete-button:focus-visible,
 .form-input:focus-visible {
-  outline: 3px solid #fbbf24;
+  outline: 3px solid $primary;
   outline-offset: 2px;
 }
 
@@ -805,7 +805,7 @@
   opacity: 0.6;
   pointer-events: none;
   position: relative;
-  
+
   &::after {
     content: '';
     position: absolute;
@@ -814,8 +814,8 @@
     transform: translate(-50%, -50%);
     width: 2rem;
     height: 2rem;
-    border: 3px solid #f3f4f6;
-    border-top-color: #d97706;
+    border: 3px solid $gray-200;
+    border-top-color: $primary;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }

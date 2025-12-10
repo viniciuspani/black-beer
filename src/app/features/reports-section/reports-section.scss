@@ -2,6 +2,8 @@
    REPORTS SECTION - CONTAINER PRINCIPAL
    ======================================== */
 
+@use '../../../assets/styles/color-palette' as *;
+
 .reports-container {
   width: 100%;
   animation: fadeIn 0.3s ease-out;
@@ -41,12 +43,12 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  
+
   > i {
     font-size: 1.5rem;
-    color: #ea580c;
+    color: $primary;
     flex-shrink: 0;
-    
+
     @media (min-width: 640px) {
       font-size: 1.75rem;
     }
@@ -62,8 +64,8 @@
 .header-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #ffffff;
-  
+  color: $text-inverse;
+
   @media (min-width: 640px) {
     font-size: 1.25rem;
   }
@@ -71,9 +73,9 @@
 
 .header-subtitle {
   font-size: 0.75rem;
-  color: #d1d5db;
+  color: $gray-300;
   font-weight: 500;
-  
+
   @media (min-width: 640px) {
     font-size: 0.875rem;
   }
@@ -97,18 +99,18 @@
   gap: 0.5rem;
   font-size: 0.875rem;
   font-weight: 700;
-  color: #7c2d12; /* Orange-900 */
+  color: $text-primary;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin: 0 0 1rem 0;
-  
+
   @media (min-width: 640px) {
     font-size: 1rem;
   }
-  
+
   i {
     font-size: 1rem;
-    color: #ea580c; /* Orange-600 */
+    color: $primary;
   }
 }
 
@@ -117,11 +119,11 @@
    ======================================== */
 
 .filters-quick-card {
-  background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%); /* Orange-100 to Orange-200 */
-  border: 2px solid #fb923c; /* Orange-400 */
+  background: $white;
+  border: 2px solid $border-light;
   border-radius: 0.75rem;
   padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(251, 146, 60, 0.15);
+  box-shadow: $shadow-md;
   animation: slideDown 0.3s ease-out;
 }
 
@@ -130,11 +132,11 @@
    ======================================== */
 
 .filters-custom-card {
-  background: #ffffff; /* Branco */
-  border: 2px solid #ea580c; /* Orange-600 */
+  background: $white;
+  border: 2px solid $border-light;
   border-radius: 0.75rem;
   padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.15);
+  box-shadow: $shadow-md;
   animation: slideDown 0.4s ease-out;
 }
 
@@ -166,63 +168,63 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.875rem;
-  border: 2px solid #e5e7eb;
+  border: 2px solid $border-light;
   border-radius: 0.5rem;
-  background: white;
+  background: $white;
   cursor: pointer;
   transition: all 0.2s ease;
   min-height: 80px;
   -webkit-tap-highlight-color: transparent;
-  
+
   @media (min-width: 640px) {
     flex-direction: row;
     gap: 0.75rem;
     min-height: 60px;
   }
-  
+
   i {
     font-size: 1.5rem;
-    color: #6b7280;
+    color: $text-secondary;
     transition: all 0.2s ease;
-    
+
     @media (min-width: 640px) {
       font-size: 1.25rem;
     }
   }
-  
+
   span {
     font-size: 0.875rem;
     font-weight: 600;
-    color: #374151;
+    color: $text-primary;
     transition: color 0.2s ease;
   }
-  
+
   &:hover:not(.filter-button-active) {
-    border-color: #fb923c;
-    box-shadow: 0 2px 8px rgba(251, 146, 60, 0.2);
+    border-color: $primary;
+    box-shadow: $shadow-md;
     transform: translateY(-2px);
-    
+
     i {
-      color: #ea580c;
+      color: $primary;
     }
   }
-  
+
   &:active {
     transform: translateY(0) scale(0.98);
   }
-  
+
   &.filter-button-active {
-    border-color: #ea580c;
-    background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
-    box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
-    
+    border-color: $primary;
+    background: linear-gradient(135deg, $amber-100 0%, $amber-200 100%);
+    box-shadow: $shadow-amber;
+
     i {
-      color: #ea580c;
+      color: $primary;
       transform: scale(1.1);
     }
-    
+
     span {
-      color: #7c2d12;
+      color: $amber-900;
     }
   }
 }
@@ -299,20 +301,20 @@
   gap: 0.5rem;
   margin-top: 1rem;
   padding: 0.75rem 1rem;
-  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); /* Green-200 to Green-300 */
-  border: 2px solid #10b981; /* Green-500 */
+  background: $success-100;
+  border: 2px solid $success-600;
   border-radius: 0.5rem;
   animation: fadeInIndicator 0.3s ease-out;
-  
+
   i {
     font-size: 1rem;
-    color: #059669; /* Green-600 */
+    color: $success-600;
   }
-  
+
   span {
     font-size: 0.875rem;
     font-weight: 600;
-    color: #065f46; /* Green-800 */
+    color: $success-700;
   }
 }
 
@@ -448,59 +450,59 @@
 }
 
 .metric-card-primary {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  border-color: #fbbf24;
-  
+  background: $white;
+  border-color: $border-light;
+
   .metric-icon {
-    background: #fbbf24;
-    i { color: #78350f; }
+    background: $primary;
+    i { color: $white; }
   }
-  
-  .metric-label { color: #92400e; }
-  .metric-value { color: #d97706; }
-  .metric-subtitle { color: #92400e; }
+
+  .metric-label { color: $text-secondary; }
+  .metric-value { color: $text-primary; }
+  .metric-subtitle { color: $text-secondary; }
 }
 
 .metric-card-info {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  border-color: #3b82f6;
-  
+  background: $white;
+  border-color: $border-light;
+
   .metric-icon {
-    background: #3b82f6;
-    i { color: #eff6ff; }
+    background: $info-500;
+    i { color: $white; }
   }
-  
-  .metric-label { color: #1e40af; }
-  .metric-value { color: #1d4ed8; }
-  .metric-subtitle { color: #1e40af; }
+
+  .metric-label { color: $text-secondary; }
+  .metric-value { color: $text-primary; }
+  .metric-subtitle { color: $text-secondary; }
 }
 
 .metric-card-success {
-  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-  border-color: #10b981;
-  
+  background: $white;
+  border-color: $border-light;
+
   .metric-icon {
-    background: #10b981;
-    i { color: #ecfdf5; }
+    background: $success-500;
+    i { color: $white; }
   }
-  
-  .metric-label { color: #065f46; }
-  .metric-value { color: #059669; }
-  .metric-subtitle { color: #065f46; }
+
+  .metric-label { color: $text-secondary; }
+  .metric-value { color: $text-primary; }
+  .metric-subtitle { color: $text-secondary; }
 }
 
 .metric-card-warning {
-  background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
-  border-color: #f97316;
-  
+  background: $white;
+  border-color: $border-light;
+
   .metric-icon {
-    background: #f97316;
-    i { color: #fff7ed; }
+    background: $warning-500;
+    i { color: $white; }
   }
-  
-  .metric-label { color: #7c2d12; }
-  .metric-value { color: #ea580c; }
-  .metric-subtitle { color: #7c2d12; }
+
+  .metric-label { color: $text-secondary; }
+  .metric-value { color: $text-primary; }
+  .metric-subtitle { color: $text-secondary; }
 }
 
 /* ========================================
@@ -519,22 +521,22 @@
 }
 
 .chart-card {
-  background: white;
-  border: 2px solid #e5e7eb;
+  background: $white;
+  border: 2px solid $border-light;
   border-radius: 0.75rem;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: $shadow-sm;
   transition: all 0.2s ease;
-  
+
   &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: $shadow-md;
   }
 }
 
 .chart-header {
   padding: 1rem;
-  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-  border-bottom: 2px solid #e5e7eb;
+  background: $bg-secondary;
+  border-bottom: 2px solid $border-light;
 }
 
 .chart-title {
@@ -543,16 +545,16 @@
   gap: 0.5rem;
   font-size: 1rem;
   font-weight: 600;
-  color: #1f2937;
+  color: $text-primary;
   margin: 0;
-  
+
   @media (min-width: 640px) {
     font-size: 1.125rem;
   }
-  
+
   i {
     font-size: 1.25rem;
-    color: #ea580c;
+    color: $primary;
   }
 }
 
@@ -578,12 +580,12 @@
   align-items: center;
   justify-content: center;
   gap: 1rem;
-  color: #9ca3af;
-  
+  color: $text-secondary;
+
   i {
     font-size: 3rem;
   }
-  
+
   p {
     font-size: 0.875rem;
     margin: 0;
@@ -604,8 +606,8 @@
   justify-content: space-between;
   margin-bottom: 1rem;
   padding: 0.75rem 1rem;
-  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
-  border: 2px solid #fb923c;
+  background: $bg-secondary;
+  border: 2px solid $border-light;
   border-radius: 0.5rem;
 }
 
@@ -615,18 +617,18 @@
   gap: 0.5rem;
   font-size: 1rem;
   font-weight: 600;
-  color: #7c2d12;
+  color: $text-primary;
   margin: 0;
-  
+
   i {
     font-size: 1.125rem;
-    color: #ea580c;
+    color: $primary;
   }
 }
 
 .table-subtitle {
   font-size: 0.875rem;
-  color: #9a3412;
+  color: $text-secondary;
   font-weight: 500;
 }
 
@@ -634,31 +636,31 @@
   .p-datatable {
     border-radius: 0.5rem;
     overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: $shadow-sm;
   }
-  
+
   .p-datatable-thead > tr > th {
-    background: #f9fafb;
+    background: $bg-secondary;
     font-weight: 600;
-    color: #374151;
+    color: $text-primary;
     padding: 1rem;
   }
-  
+
   .p-datatable-tbody > tr {
     transition: background-color 0.2s ease;
-    
+
     > td {
       padding: 1rem;
-      border-bottom: 1px solid #e5e7eb;
-      color: #ffffff;
+      border-bottom: 1px solid $border-light;
+      color: $text-inverse;
       transition: color 0.2s ease;
     }
-    
+
     &:hover {
-      background-color: #fed7aa;
-      
+      background-color: $amber-100;
+
       > td {
-        color: #1f2937 !important;
+        color: $text-primary !important;
       }
     }
   }
@@ -678,8 +680,8 @@
   justify-content: space-between;
   margin-bottom: 1rem;
   padding: 0.75rem;
-  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
-  border: 2px solid #fb923c;
+  background: $bg-secondary;
+  border: 2px solid $border-light;
   border-radius: 0.5rem;
 }
 
@@ -689,24 +691,24 @@
   gap: 0.5rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #7c2d12;
+  color: $text-primary;
   margin: 0;
-  
+
   @media (min-width: 640px) {
     font-size: 1rem;
   }
-  
+
   i {
     font-size: 1rem;
-    color: #ea580c;
+    color: $primary;
   }
 }
 
 .sales-count {
   font-size: 0.75rem;
-  color: #9a3412;
+  color: $text-secondary;
   font-weight: 500;
-  
+
   @media (min-width: 640px) {
     font-size: 0.875rem;
   }
@@ -723,21 +725,21 @@
 }
 
 .sale-card {
-  background: white;
-  border: 2px solid #e5e7eb;
+  background: $white;
+  border: 2px solid $border-light;
   border-radius: 0.75rem;
   overflow: hidden;
   transition: all 0.2s ease;
   animation: fadeInUp 0.3s ease-out backwards;
-  
+
   @for $i from 1 through 20 {
     &:nth-child(#{$i}) {
       animation-delay: #{$i * 0.05}s;
     }
   }
-  
+
   &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: $shadow-md;
     transform: translateY(-2px);
   }
 }
@@ -747,14 +749,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1rem;
-  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-  border-bottom: 2px solid #e5e7eb;
+  background: $bg-secondary;
+  border-bottom: 2px solid $border-light;
 }
 
 .sale-id-label {
   font-size: 0.875rem;
   font-weight: 700;
-  color: #ea580c;
+  color: $primary;
   font-family: 'Courier New', monospace;
 }
 
@@ -763,8 +765,8 @@
   align-items: center;
   gap: 0.25rem;
   font-size: 0.75rem;
-  color: #6b7280;
-  
+  color: $text-secondary;
+
   i {
     font-size: 0.875rem;
   }
@@ -781,17 +783,17 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  
+
   i {
     font-size: 1.25rem;
-    color: #d97706;
+    color: $primary;
   }
 }
 
 .sale-beer-name {
   font-size: 1rem;
   font-weight: 700;
-  color: #1f2937;
+  color: $text-primary;
 }
 
 .sale-details {
@@ -805,32 +807,32 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem;
-  background: #f9fafb;
+  background: $bg-secondary;
   border-radius: 0.5rem;
-  
+
   i {
     font-size: 1rem;
-    color: #9ca3af;
+    color: $text-secondary;
   }
 }
 
 .detail-label {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: $text-secondary;
   font-weight: 500;
 }
 
 .detail-value {
   font-size: 0.875rem;
   font-weight: 700;
-  color: #1f2937;
+  color: $text-primary;
   margin-left: auto;
 }
 
 .sale-card-footer {
   padding: 0.75rem 1rem;
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  border-top: 2px solid #fbbf24;
+  background: $amber-100;
+  border-top: 2px solid $primary;
 }
 
 .sale-total {
@@ -842,13 +844,13 @@
 .total-label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #92400e;
+  color: $amber-900;
 }
 
 .total-value {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #d97706;
+  color: $primary;
 }
 
 /* ========================================
@@ -862,10 +864,10 @@
   justify-content: center;
   padding: 3rem 1rem;
   text-align: center;
-  
+
   i {
     font-size: 4rem;
-    color: #d1d5db;
+    color: $gray-300;
     margin-bottom: 1rem;
   }
 }
@@ -873,13 +875,13 @@
 .empty-state-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #6b7280;
+  color: $text-secondary;
   margin: 0 0 0.5rem 0;
 }
 
 .empty-state-text {
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: $text-secondary;
   margin: 0;
 }
 
@@ -888,7 +890,7 @@
    ======================================== */
 
 .filter-button:focus-visible {
-  outline: 3px solid #ea580c;
+  outline: 3px solid $primary;
   outline-offset: 2px;
   z-index: 10;
 }
@@ -932,10 +934,10 @@
   justify-content: space-between;
   margin-bottom: 1.5rem;
   padding: 1rem 1.25rem;
-  background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%); /* Orange-200 to Orange-300 */
-  border: 3px solid #fb923c; /* Orange-400 */
+  background: $bg-secondary;
+  border: 2px solid $border-light;
   border-radius: 0.75rem;
-  box-shadow: 0 2px 8px rgba(251, 146, 60, 0.25);
+  box-shadow: $shadow-md;
 }
 
 .data-title {
@@ -944,19 +946,19 @@
   gap: 0.75rem;
   font-size: 1.125rem;
   font-weight: 700;
-  color: #7c2d12; /* Orange-900 */
+  color: $text-primary;
   margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.025em;
-  
+
   @media (min-width: 640px) {
     font-size: 1.25rem;
   }
-  
+
   i {
     font-size: 1.25rem;
-    color: #ea580c; /* Orange-600 */
-    
+    color: $primary;
+
     @media (min-width: 640px) {
       font-size: 1.5rem;
     }
@@ -965,17 +967,17 @@
 
 /* Card de dados */
 .data-card {
-  background: #ffffff; /* Branco puro */
-  border: 3px solid #fb923c; /* Orange-400 */
+  background: $white;
+  border: 2px solid $border-light;
   border-radius: 1rem;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(251, 146, 60, 0.2);
+  box-shadow: $shadow-md;
   transition: all 0.3s ease;
-  
+
   &:hover {
-    box-shadow: 0 8px 24px rgba(251, 146, 60, 0.3);
+    box-shadow: $shadow-lg;
     transform: translateY(-4px);
-    border-color: #ea580c; /* Orange-600 */
+    border-color: $primary;
   }
 }
 
@@ -984,22 +986,22 @@
   align-items: center;
   gap: 0.75rem;
   padding: 1.25rem 1.5rem;
-  background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%); /* Orange-100 to Orange-200 */
-  border-bottom: 3px solid #fb923c;
+  background: $bg-secondary;
+  border-bottom: 2px solid $border-light;
   font-size: 1rem;
   font-weight: 700;
-  color: #7c2d12; /* Orange-900 */
+  color: $text-primary;
   margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.025em;
-  
+
   @media (min-width: 640px) {
     font-size: 1.125rem;
   }
-  
+
   i {
     font-size: 1.25rem;
-    color: #ea580c; /* Orange-600 */
+    color: $primary;
   }
 }
 
@@ -1008,7 +1010,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.875rem;
-  background: #ffffff;
+  background: $white;
 }
 
 /* Linha de dados */
@@ -1017,19 +1019,19 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.25rem;
-  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); /* Orange-50 to Orange-100 */
-  border: 2px solid #fed7aa; /* Orange-200 */
+  background: $white;
+  border: 2px solid $border-light;
   border-radius: 0.75rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
-  
+
   &:hover {
-    background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%); /* Orange-200 to Orange-300 */
-    border-color: #fb923c; /* Orange-400 */
+    background: $bg-secondary;
+    border-color: $primary;
     transform: translateX(8px) scale(1.02);
-    box-shadow: 0 4px 16px rgba(251, 146, 60, 0.3);
+    box-shadow: $shadow-md;
   }
-  
+
   &:active {
     transform: translateX(6px) scale(1.01);
   }
@@ -1047,27 +1049,27 @@
   width: 2rem;
   height: 2rem;
   border-radius: 50%;
-  border: 3px solid #ffffff;
+  border: 3px solid $white;
   flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2),
-              0 0 0 2px #fb923c; /* Orange-400 ring */
+              0 0 0 2px $border-light;
   transition: all 0.3s ease;
-  
+
   .data-row:hover & {
     transform: scale(1.25) rotate(360deg);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3),
-                0 0 0 3px #ea580c; /* Orange-600 ring */
+                0 0 0 3px $primary;
   }
 }
 
 .size-icon {
   font-size: 1.5rem;
-  color: #fb923c; /* Orange-400 */
+  color: $text-secondary;
   flex-shrink: 0;
   transition: all 0.3s ease;
-  
+
   .data-row:hover & {
-    color: #ea580c; /* Orange-600 */
+    color: $primary;
     transform: scale(1.2) rotate(-5deg);
   }
 }
@@ -1075,14 +1077,14 @@
 .data-row-name {
   font-size: 1rem;
   font-weight: 700;
-  color: #1f2937; /* Gray-800 - PRETO */
-  
+  color: $text-primary;
+
   @media (min-width: 640px) {
     font-size: 1.125rem;
   }
-  
+
   .data-row:hover & {
-    color: #7c2d12; /* Orange-900 */
+    color: $primary;
   }
 }
 
@@ -1097,14 +1099,14 @@
 .data-row-value {
   font-size: 1rem;
   font-weight: 800;
-  color: #ea580c; /* Orange-600 - LARANJA */
-  
+  color: $text-primary;
+
   @media (min-width: 640px) {
     font-size: 1.125rem;
   }
-  
+
   .data-row:hover & {
-    color: #c2410c; /* Orange-700 */
+    color: $primary;
     transform: scale(1.05);
   }
 }
@@ -1112,21 +1114,21 @@
 .data-row-subvalue {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #9a3412; /* Orange-800 */
-  
+  color: $text-secondary;
+
   .data-row:hover & {
-    color: #7c2d12; /* Orange-900 */
+    color: $primary;
   }
 }
 
 .no-data-text {
   text-align: center;
   padding: 3rem 1rem;
-  color: #9ca3af;
+  color: $text-secondary;
   font-size: 1rem;
   font-weight: 500;
   margin: 0;
-  
+
   &::before {
     content: '📭';
     display: block;
@@ -1145,30 +1147,30 @@
     .p-inputtext {
       width: 100%;
       padding: 0.75rem 2.5rem 0.75rem 0.75rem;
-      border: 2px solid #d1d5db;
+      border: 2px solid $border-light;
       border-radius: 0.5rem;
       font-size: 0.875rem;
       font-weight: 500;
-      color: #1f2937; /* Texto escuro */
-      background: #ffffff;
+      color: $text-primary;
+      background: $white;
       transition: all 0.2s ease;
-      
+
       &::placeholder {
-        color: #9ca3af;
+        color: $text-secondary;
         font-weight: 400;
       }
-      
+
       &:hover {
-        border-color: #fb923c; /* Orange-400 */
+        border-color: $primary;
       }
-      
+
       &:focus {
         outline: none;
-        border-color: #ea580c; /* Orange-600 */
-        box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.1);
+        border-color: $primary;
+        box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1);
       }
     }
-    
+
     /* Ícone do Calendar */
     .p-datepicker-trigger,
     .p-calendar-button {
@@ -1176,60 +1178,60 @@
       right: 0.5rem;
       top: 50%;
       transform: translateY(-50%);
-      color: #ea580c; /* Orange-600 */
+      color: $primary;
       background: transparent;
       border: none;
       padding: 0.5rem;
       cursor: pointer;
       transition: all 0.2s ease;
-      
+
       &:hover {
-        color: #c2410c; /* Orange-700 */
+        color: $primary-hover;
         transform: translateY(-50%) scale(1.1);
       }
-      
+
       .pi {
         font-size: 1rem;
       }
     }
-    
+
     /* Dropdown do Calendar */
     .p-datepicker {
-      border: 2px solid #ea580c; /* Orange-600 */
+      border: 2px solid $border-light;
       border-radius: 0.75rem;
-      box-shadow: 0 10px 25px rgba(234, 88, 12, 0.2);
+      box-shadow: $shadow-lg;
       font-family: inherit;
-      
+
       /* Header do Calendar */
       .p-datepicker-header {
-        background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%); /* Orange-200 to Orange-300 */
-        border-bottom: 2px solid #fb923c;
+        background: $bg-secondary;
+        border-bottom: 2px solid $border-light;
         padding: 0.75rem;
         border-radius: 0.5rem 0.5rem 0 0;
-        
+
         .p-datepicker-title {
-          color: #7c2d12; /* Orange-900 */
+          color: $text-primary;
           font-weight: 700;
-          
+
           .p-datepicker-month,
           .p-datepicker-year {
-            color: #7c2d12;
+            color: $text-primary;
             font-weight: 700;
-            
+
             &:hover {
-              color: #ea580c;
+              color: $primary;
             }
           }
         }
-        
+
         /* Botões de navegação */
         .p-datepicker-prev,
         .p-datepicker-next {
-          color: #ea580c;
-          
+          color: $primary;
+
           &:hover {
-            background: rgba(234, 88, 12, 0.1);
-            color: #c2410c;
+            background: rgba(217, 119, 6, 0.1);
+            color: $primary-hover;
           }
         }
       }
@@ -1238,58 +1240,58 @@
       .p-datepicker-calendar {
         /* Cabeçalho dos dias da semana */
         thead tr th {
-          color: #9a3412; /* Orange-800 */
+          color: $text-secondary;
           font-weight: 600;
           font-size: 0.75rem;
           padding: 0.5rem;
         }
-        
+
         /* Células dos dias */
         tbody tr td {
           padding: 0.25rem;
-          
+
           .p-datepicker-day {
-            color: #1f2937;
+            color: $text-primary;
             font-weight: 500;
             width: 2.5rem;
             height: 2.5rem;
             border-radius: 0.5rem;
             transition: all 0.2s ease;
-            
+
             &:hover {
-              background: #fed7aa; /* Orange-200 */
-              color: #7c2d12;
+              background: $amber-100;
+              color: $primary;
             }
-            
+
             /* Dia selecionado */
             &.p-datepicker-day-selected {
-              background: #ea580c; /* Orange-600 */
-              color: #ffffff;
+              background: $primary;
+              color: $white;
               font-weight: 700;
-              box-shadow: 0 2px 6px rgba(234, 88, 12, 0.4);
-              
+              box-shadow: 0 2px 6px rgba(217, 119, 6, 0.4);
+
               &:hover {
-                background: #c2410c; /* Orange-700 */
+                background: $primary-hover;
               }
             }
-            
+
             /* Dia de hoje */
             &.p-datepicker-today {
-              background: #ffedd5; /* Orange-100 */
-              color: #ea580c;
+              background: $amber-100;
+              color: $primary;
               font-weight: 700;
-              border: 2px solid #fb923c;
+              border: 2px solid $primary;
             }
           }
-          
+
           /* Dias de outros meses */
           &.p-datepicker-other-month {
             .p-datepicker-day {
-              color: #d1d5db;
-              
+              color: $gray-300;
+
               &:hover {
-                background: #f3f4f6;
-                color: #9ca3af;
+                background: $bg-secondary;
+                color: $text-secondary;
               }
             }
           }
@@ -1306,11 +1308,11 @@
   gap: 0.5rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #7c2d12; /* Orange-900 */
+  color: $text-primary;
   margin-bottom: 0.5rem;
-  
+
   i {
     font-size: 1rem;
-    color: #ea580c; /* Orange-600 */
+    color: $primary;
   }
 }

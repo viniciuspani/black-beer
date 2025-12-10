@@ -1,5 +1,7 @@
 // src/app/features/help/help.scss
 
+@use '../../../assets/styles/color-palette' as *;
+
 /**
  * Estilos customizados para a seção de ajuda
  */
@@ -49,7 +51,7 @@
 // ========================================
 
 *:focus-visible {
-  outline: 2px solid rgb(59, 130, 246);
+  outline: 2px solid $info-500;
   outline-offset: 2px;
 }
 

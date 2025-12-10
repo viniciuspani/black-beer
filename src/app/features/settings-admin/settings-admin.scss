@@ -1,5 +1,7 @@
 // src/app/features/settings-admin/settings-admin.scss
 
+@use '../../../assets/styles/color-palette' as *;
+
 /**
  * Estilos customizados para configurações administrativas
  */
@@ -48,7 +50,7 @@
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(to right, rgb(239, 68, 68), rgb(234, 88, 12));
+    background: linear-gradient(to right, $error-500, $warning-500);
   }
 }
 
@@ -67,7 +69,7 @@
 // ========================================
 
 *:focus-visible {
-  outline: 2px solid rgb(59, 130, 246);
+  outline: 2px solid $info-500;
   outline-offset: 2px;
 }
 

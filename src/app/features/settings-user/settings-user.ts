@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
+import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Subject } from 'rxjs';
 
 // PrimeNG
@@ -11,6 +11,7 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
+import { TooltipModule } from 'primeng/tooltip';
 
 // App
 import {
@@ -23,6 +24,7 @@ import {
   validateEmails
 } from '../../core/models/beer.model';
 import { DatabaseService, EMAIL_CONFIG } from '../../core/services/database';
+import { ClientConfigService } from '../../core/services/client-config.service';
 
 @Component({
   selector: 'app-settings-user',
@@ -30,12 +32,14 @@ import { DatabaseService, EMAIL_CONFIG } from '../../core/services/database';
   imports: [
     CommonModule,
     ReactiveFormsModule,
+    FormsModule,
     CardModule,
     ButtonModule,
     InputTextModule,
     TextareaModule,
     ToastModule,
-    TagModule
+    TagModule,
+    TooltipModule
   ],
   providers: [MessageService],
   templateUrl: './settings-user.html',
@@ -46,12 +50,20 @@ export class SettingsUserComponent implements OnInit, OnDestroy {
   private readonly dbService = inject(DatabaseService);
   private readonly fb = inject(FormBuilder);
   private readonly messageService = inject(MessageService);
+  private readonly clientConfigService = inject(ClientConfigService);
 
   private readonly destroy$ = new Subject<void>();
 
   // ==================== CONSTANTES ====================
   readonly MIN_EMAILS = EMAIL_CONFIG.MIN_EMAILS;
   readonly MAX_EMAILS = EMAIL_CONFIG.MAX_EMAILS;
+
+  // ==================== LOGO UPLOAD SIGNALS ====================
+  readonly selectedFile = signal<File | null>(null);
+  readonly selectedFileName = signal<string>('');
+  readonly isUploading = signal<boolean>(false);
+  readonly isDragging = signal<boolean>(false);
+  companyNameInput = '';
 
   // ==================== FORMULÁRIO REATIVO ====================
   readonly settingsForm: FormGroup;
@@ -411,5 +423,157 @@ export class SettingsUserComponent implements OnInit, OnDestroy {
       return 0;
     }
     return input.split(/[,;]/).filter((e: string) => e.trim()).length;
+  }
+
+  // ==================== LOGO UPLOAD METHODS ====================
+
+  /**
+   * Verifica se tem logo configurada
+   */
+  hasLogo(): boolean {
+    return this.clientConfigService.hasLogo();
+  }
+
+  /**
+   * Obtém a URL da logo
+   */
+  getLogoUrl(): string | null {
+    return this.clientConfigService.getLogoUrl();
+  }
+
+  /**
+   * Obtém o nome da empresa
+   */
+  getCompanyName(): string | null {
+    return this.clientConfigService.getCompanyName();
+  }
+
+  /**
+   * Evento de seleção de arquivo
+   */
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const file = input.files[0];
+      this.handleFileSelection(file);
+    }
+  }
+
+  /**
+   * Handler para drag over
+   */
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragging.set(true);
+  }
+
+  /**
+   * Handler para drag leave
+   */
+  onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragging.set(false);
+  }
+
+  /**
+   * Handler para drop
+   */
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragging.set(false);
+
+    const files = event.dataTransfer?.files;
+    if (files && files.length > 0) {
+      this.handleFileSelection(files[0]);
+    }
+  }
+
+  /**
+   * Processa o arquivo selecionado
+   */
+  private handleFileSelection(file: File): void {
+    // Validação de tipo
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/svg+xml'];
+    if (!validTypes.includes(file.type)) {
+      this.showErrorMessage('Formato inválido. Use JPEG, PNG ou SVG.');
+      return;
+    }
+
+    // Validação de tamanho (2MB)
+    const maxSize = 2 * 1024 * 1024;
+    if (file.size > maxSize) {
+      this.showErrorMessage('Arquivo muito grande. Máximo: 2MB.');
+      return;
+    }
+
+    this.selectedFile.set(file);
+    this.selectedFileName.set(file.name);
+    this.showInfoMessage(`Arquivo "${file.name}" selecionado.`);
+  }
+
+  /**
+   * Limpa o arquivo selecionado
+   */
+  clearSelectedFile(): void {
+    this.selectedFile.set(null);
+    this.selectedFileName.set('');
+  }
+
+  /**
+   * Faz upload da logo
+   */
+  async uploadLogo(): Promise<void> {
+    const file = this.selectedFile();
+    if (!file) {
+      this.showErrorMessage('Selecione uma imagem primeiro.');
+      return;
+    }
+
+    this.isUploading.set(true);
+
+    try {
+      await this.clientConfigService.uploadLogo(
+        file,
+        this.companyNameInput || undefined
+      );
+
+      this.showSuccessMessage('Logo salva com sucesso!');
+      this.clearSelectedFile();
+      this.companyNameInput = '';
+    } catch (error: any) {
+      console.error('Erro ao fazer upload:', error);
+      this.showErrorMessage(error.message || 'Erro ao salvar logo.');
+    } finally {
+      this.isUploading.set(false);
+    }
+  }
+
+  /**
+   * Remove a logo
+   */
+  removeLogo(): void {
+    try {
+      this.clientConfigService.removeLogo();
+      this.showSuccessMessage('Logo removida com sucesso!');
+    } catch (error) {
+      console.error('Erro ao remover logo:', error);
+      this.showErrorMessage('Erro ao remover logo.');
+    }
+  }
+
+  /**
+   * Formata o tamanho do arquivo em formato legível
+   */
+  protected formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   }
 }

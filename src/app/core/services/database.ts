@@ -72,7 +72,7 @@ export class DatabaseService {
         // Carrega banco existente
         const dbArray = this.stringToUint8Array(savedDb);
         this.db = new this.SQL.Database(dbArray);
-        console.log('✅ Banco de dados carregado (versão 2)');
+        console.log('✅ Banco de dados carregado (versão 3)');
       }
 
       this.isDbReady.set(true);
@@ -82,18 +82,18 @@ export class DatabaseService {
   }
 
   /**
-   * Cria um novo banco de dados do zero com schema v2
+   * Cria um novo banco de dados do zero com schema v3
    */
   private createNewDatabase(): void {
     this.db = new this.SQL.Database();
-    this.createSchemaV2();
+    this.createSchemaV3();
     this.seedInitialData();
     this.setStoredVersion(DB_VERSION);
     this.persist();
   }
 
   /**
-   * Cria o schema do banco de dados versão 2
+   * Cria o schema do banco de dados versão 3
    * 
    * MUDANÇAS PRINCIPAIS:
    * - beer_types.id: TEXT → INTEGER PRIMARY KEY AUTOINCREMENT
@@ -103,8 +103,9 @@ export class DatabaseService {
    * - Tabela de configurações com suporte a múltiplos emails
     * - email: String com emails separados por ; (ex: "a@x.com;b@x.com")
     * - Mínimo: 1 email, Máximo: 10 emails
+   * - client_config: Tabela para white-label (logo e nome da empresa)
    */
-  private createSchemaV2(): void {
+  private createSchemaV3(): void {
     if (!this.db) return;
 
    const schema = `
@@ -155,11 +156,21 @@ export class DatabaseService {
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 
+      -- Tabela de configurações do cliente (white-label)
+      CREATE TABLE IF NOT EXISTS client_config (
+        id INTEGER PRIMARY KEY CHECK(id = 1),
+        companyName TEXT,
+        logoBase64 TEXT,
+        logoMimeType TEXT,
+        logoFileName TEXT,
+        updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
       -- Tabela de versão do schema
       CREATE TABLE IF NOT EXISTS db_version (
         version INTEGER PRIMARY KEY
       );
-      
+
       INSERT INTO db_version (version) VALUES (${DB_VERSION});
     `;
 

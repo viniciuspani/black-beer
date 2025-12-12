@@ -1,12 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { TabsModule } from 'primeng/tabs';
+import { TooltipModule } from 'primeng/tooltip';
 import { SalesFormComponent } from '../sales-form/sales-form';
 import { ReportsSectionComponent } from '../reports-section/reports-section';
 import { BeerManagementComponent } from '../beer-management/beer-management';
 import { SettingsUserComponent } from '../settings-user/settings-user';
 import { SettingsAdminComponent } from '../settings-admin/settings-admin';
 import { HelpComponent } from '../help/help';
+import { ClientConfigService } from '../../core/services/client-config.service';
 
 
 @Component({
@@ -15,6 +17,7 @@ import { HelpComponent } from '../help/help';
   imports: [
     CommonModule,
     TabsModule,
+    TooltipModule,
     SalesFormComponent,
     BeerManagementComponent,
     ReportsSectionComponent,
@@ -27,7 +30,9 @@ import { HelpComponent } from '../help/help';
 
 })
 export class Menu {
-   protected readonly title = signal('black-beer');
+  private readonly clientConfigService = inject(ClientConfigService);
+
+  protected readonly title = signal('black-beer');
 
   /**
    * Controla qual aba está ativa no mobile
@@ -66,5 +71,28 @@ export class Menu {
 
     // Scroll suave para o topo ao trocar de sub-aba
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ==================== MÉTODOS PARA LOGO DO CLIENTE ====================
+
+  /**
+   * Verifica se existe uma logo do cliente configurada
+   */
+  protected hasClientLogo(): boolean {
+    return this.clientConfigService.hasLogo();
+  }
+
+  /**
+   * Obtém a URL da logo do cliente (base64 data URL)
+   */
+  protected getClientLogoUrl(): string | null {
+    return this.clientConfigService.getLogoUrl();
+  }
+
+  /**
+   * Obtém o nome da empresa do cliente
+   */
+  protected getClientCompanyName(): string | null {
+    return this.clientConfigService.getCompanyName();
   }
 }

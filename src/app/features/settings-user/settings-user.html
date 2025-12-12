@@ -4,6 +4,197 @@
   <p-card header="👤 Configurações do Usuário">
     <div class="flex flex-col gap-6">
 
+      <!-- ==================== SEÇÃO: LOGO DA EMPRESA ==================== -->
+      <div class="border-2 border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+        <div class="p-4 border-b-2 bg-gradient-to-r from-amber-50 to-amber-100">
+          <h3 class="font-semibold text-lg flex items-center gap-2 text-amber-900">
+            <i class="pi pi-image text-amber-600"></i>
+            Logo da Empresa
+          </h3>
+          <p class="text-xs text-amber-700 mt-1">Configure a logo da sua empresa para personalizar o sistema</p>
+        </div>
+
+        <div class="p-4 flex flex-col gap-4">
+
+          <!-- Preview da Logo Atual -->
+          @if (hasLogo()) {
+            <div class="logo-preview-card">
+              <div class="flex items-start justify-between gap-4 flex-wrap">
+                <div class="flex-1 min-w-0">
+                  <h4 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                    <i class="pi pi-check-circle text-green-600"></i>
+                    Logo Atual
+                  </h4>
+                  <div class="logo-preview-container">
+                    <img
+                      [src]="getLogoUrl()"
+                      [alt]="getCompanyName() || 'Logo da Empresa'"
+                      class="logo-preview-image">
+                  </div>
+                  @if (getCompanyName()) {
+                    <p class="mt-2 text-sm text-gray-600 font-medium text-center">
+                      {{ getCompanyName() }}
+                    </p>
+                  }
+                </div>
+                <div class="flex flex-col gap-2">
+                  <p-button
+                    label="Alterar Logo"
+                    icon="pi pi-upload"
+                    severity="secondary"
+                    [outlined]="true"
+                    size="small"
+                    (onClick)="fileInput.click()">
+                  </p-button>
+                  <p-button
+                    label="Remover Logo"
+                    icon="pi pi-trash"
+                    severity="danger"
+                    [outlined]="true"
+                    size="small"
+                    (onClick)="removeLogo()">
+                  </p-button>
+                </div>
+              </div>
+            </div>
+          } @else {
+            <div class="warning-card">
+              <div class="flex gap-3">
+                <i class="pi pi-info-circle text-blue-600 text-2xl flex-shrink-0"></i>
+                <div class="flex-1">
+                  <p class="font-semibold text-blue-900 mb-1">Nenhuma Logo Configurada</p>
+                  <p class="text-sm text-blue-800">
+                    Faça upload da logo da sua empresa para personalizar o header do sistema.
+                  </p>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- Upload Form -->
+          <div class="flex flex-col gap-4">
+            <div class="flex flex-col gap-2">
+              <label class="font-bold text-gray-200 flex items-center gap-2 text-base">
+                <i class="pi pi-upload text-amber-600"></i>
+                Upload de Logo
+              </label>
+
+              <!-- Input escondido -->
+              <input
+                #fileInput
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/svg+xml"
+                (change)="onFileSelected($event)"
+                class="hidden">
+
+              <!-- Área de upload -->
+              <div
+                class="logo-upload-area"
+                (click)="fileInput.click()"
+                (dragover)="onDragOver($event)"
+                (dragleave)="onDragLeave($event)"
+                (drop)="onDrop($event)"
+                [class.drag-over]="isDragging()">
+                <div class="flex flex-col items-center gap-3">
+                  <div class="upload-icon-container">
+                    <i class="pi pi-cloud-upload text-4xl text-amber-600"></i>
+                  </div>
+                  <div class="text-center">
+                    <p class="font-semibold text-gray-800">
+                      Clique para selecionar ou arraste a imagem aqui
+                    </p>
+                    <p class="text-sm text-gray-500 mt-1">
+                      Formatos aceitos: JPEG, PNG, SVG (máx. 2MB)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Nome do arquivo selecionado -->
+              @if (selectedFileName()) {
+                <div class="selected-file-info">
+                  <div class="file-icon">
+                    <i class="pi pi-file"></i>
+                  </div>
+                  <div class="file-details">
+                    <p class="file-name">{{ selectedFileName() }}</p>
+                    @if (selectedFile()) {
+                      <p class="file-size">{{ formatFileSize(selectedFile()!.size) }}</p>
+                    }
+                  </div>
+                  <button
+                    type="button"
+                    (click)="clearSelectedFile()"
+                    class="clear-button p-2 hover:bg-red-100 rounded-full transition-colors">
+                    <i class="pi pi-times text-red-600"></i>
+                  </button>
+                </div>
+              }
+            </div>
+
+            <!-- Nome da Empresa (Opcional) -->
+            <div class="flex flex-col gap-2">
+              <label for="company-name" class="font-bold text-gray-200 flex items-center gap-2 text-base">
+                <i class="pi pi-building text-amber-600"></i>
+                Nome da Empresa <span class="text-gray-200 text-sm font-normal">(opcional)</span>
+              </label>
+              <input
+                pInputText
+                id="company-name"
+                type="text"
+                [(ngModel)]="companyNameInput"
+                placeholder="Ex: Black Störk Cervejaria"
+                class="w-full">
+            </div>
+
+            <!-- Botão de Upload -->
+            <div class="pt-2">
+              <p-button
+                label="Salvar Logo"
+                icon="pi pi-check"
+                [disabled]="!selectedFile()"
+                [loading]="isUploading()"
+                styleClass="w-full"
+                severity="success"
+                [raised]="true"
+                (onClick)="uploadLogo()">
+              </p-button>
+            </div>
+          </div>
+
+          <!-- Info Card -->
+          <div class="tips-card">
+            <p class="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+              <i class="pi pi-info-circle text-blue-600 text-lg"></i>
+              Informações Importantes
+            </p>
+            <ul class="text-sm text-blue-800 flex flex-col gap-2">
+              <li class="flex items-start gap-2">
+                <i class="pi pi-check text-blue-600 mt-0.5 flex-shrink-0"></i>
+                <span>A logo será exibida no <strong>header do sistema</strong></span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i class="pi pi-check text-blue-600 mt-0.5 flex-shrink-0"></i>
+                <span>Tamanho recomendado: <strong>200x60 pixels</strong> (proporção 10:3)</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i class="pi pi-check text-blue-600 mt-0.5 flex-shrink-0"></i>
+                <span>Formatos aceitos: <strong>JPEG, PNG ou SVG</strong></span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i class="pi pi-check text-blue-600 mt-0.5 flex-shrink-0"></i>
+                <span>Tamanho máximo do arquivo: <strong>2MB</strong></span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i class="pi pi-check text-blue-600 mt-0.5 flex-shrink-0"></i>
+                <span>A logo é salva <strong>localmente</strong> no navegador</span>
+              </li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+
       <!-- ==================== SEÇÃO: CONFIGURAÇÕES DE EMAIL ==================== -->
       <div class="border-2 border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
         <div class="p-4 border-b-2 bg-gradient-to-r from-blue-50 to-blue-100">

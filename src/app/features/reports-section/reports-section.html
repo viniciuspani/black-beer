@@ -1,8 +1,8 @@
 <div class="reports-container">
-  
+
   <!-- ==================== CARD PRINCIPAL ==================== -->
   <p-card styleClass="reports-card">
-    
+
     <!-- ==================== HEADER ==================== -->
     <ng-template pTemplate="title">
       <div class="card-header">
@@ -17,17 +17,17 @@
     </ng-template>
 
     <ng-template pTemplate="content">
-      
+
       <!-- ==================== FILTROS DE PERÍODO ==================== -->
       <div class="filters-section">
-        
+
         <!-- Filtros Rápidos -->
         <div class="filters-quick-card">
           <h4 class="filters-subtitle">
             <i class="pi pi-filter"></i>
             Filtros Rápidos
           </h4>
-          
+
           <div class="filters-grid">
             <button
               type="button"
@@ -37,7 +37,7 @@
               <i class="pi pi-calendar"></i>
               <span>Hoje</span>
             </button>
-            
+
             <button
               type="button"
               class="filter-button"
@@ -46,7 +46,7 @@
               <i class="pi pi-calendar-plus"></i>
               <span>Semana</span>
             </button>
-            
+
             <button
               type="button"
               class="filter-button"
@@ -55,7 +55,7 @@
               <i class="pi pi-calendar-times"></i>
               <span>Mês</span>
             </button>
-            
+
             <button
               type="button"
               class="filter-button"
@@ -66,14 +66,14 @@
             </button>
           </div>
         </div>
-        
+
         <!-- Filtro por Range de Data -->
         <div class="filters-custom-card">
           <h4 class="filters-subtitle">
             <i class="pi pi-calendar-minus"></i>
             Período Personalizado
           </h4>
-          
+
           <div class="filters-custom-grid">
             <!-- Data Inicial -->
             <div class="filter-date-field">
@@ -93,7 +93,7 @@
                 styleClass="custom-calendar">
               </p-datepicker>
             </div>
-            
+
             <!-- Data Final -->
             <div class="filter-date-field">
               <label for="endDate" class="filter-date-label">
@@ -112,7 +112,7 @@
                 styleClass="custom-calendar">
               </p-datepicker>
             </div>
-            
+
             <!-- Botões de Ação -->
             <div class="filter-date-actions">
               <p-button
@@ -123,7 +123,7 @@
                 [disabled]="!startDate() || !endDate()"
                 (onClick)="applyCustomFilter()">
               </p-button>
-              
+
               <p-button
                 type="button"
                 label="Limpar"
@@ -135,7 +135,7 @@
               </p-button>
             </div>
           </div>
-          
+
           <!-- Indicador de Filtro Ativo -->
           @if (hasCustomFilter()) {
             <div class="filter-active-indicator">
@@ -149,7 +149,7 @@
       <!-- ==================== CARDS DE MÉTRICAS ==================== -->
       <div class="metrics-section">
         <div class="metrics-grid">
-          
+
           <!-- Card: Total de Vendas -->
           <div class="metric-card metric-card-primary">
             <div class="metric-icon">
@@ -161,7 +161,7 @@
               <span class="metric-subtitle">vendas realizadas</span>
             </div>
           </div>
-          
+
           <!-- Card: Volume Total -->
           <div class="metric-card metric-card-info">
             <div class="metric-icon">
@@ -173,7 +173,7 @@
               <span class="metric-subtitle">litros vendidos</span>
             </div>
           </div>
-          
+
           <!-- Card: Cerveja Mais Vendida -->
           <div class="metric-card metric-card-success">
             <div class="metric-icon">
@@ -185,7 +185,7 @@
               <span class="metric-subtitle">cerveja líder</span>
             </div>
           </div>
-          
+
           <!-- Card: Tamanho Preferido -->
           <div class="metric-card metric-card-warning">
             <div class="metric-icon">
@@ -202,7 +202,7 @@
 
       <!-- ==================== GRÁFICOS (Chart.js) ==================== -->
       <div class="charts-section">
-        
+
         <!-- Gráfico: Pizza - Vendas por Cerveja -->
         <div class="chart-card">
           <div class="chart-header">
@@ -227,7 +227,7 @@
             }
           </div>
         </div>
-        
+
         <!-- Gráfico: Barras - Vendas por Tamanho -->
         <div class="chart-card">
           <div class="chart-header">
@@ -262,7 +262,7 @@
             Dados Detalhados
           </h3>
         </div>
-        
+
         <!-- Desktop: Grid 2 colunas -->
         <div class="hidden md:grid md:grid-cols-2 gap-6">
           <!-- Vendas por Cerveja -->
@@ -288,7 +288,7 @@
               }
             </div>
           </div>
-          
+
           <!-- Vendas por Tamanho -->
           <div class="data-card">
             <h4 class="data-card-title">
@@ -312,7 +312,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- Mobile: Cards empilhados -->
         <div class="md:hidden flex flex-col gap-4">
           <!-- Vendas por Cerveja -->
@@ -338,7 +338,7 @@
               }
             </div>
           </div>
-          
+
           <!-- Vendas por Tamanho -->
           <div class="data-card">
             <h4 class="data-card-title">
@@ -364,7 +364,108 @@
         </div>
       </div>
 
+      <!-- ==================== SEÇÃO DE EXPORTAÇÃO ==================== -->
+      <div class="export-section">
+        <p-card styleClass="export-card">
+          <ng-template pTemplate="header">
+            <div class="export-header">
+              <i class="pi pi-send"></i>
+              <h3>Exportar Relatório</h3>
+            </div>
+          </ng-template>
+
+          <ng-template pTemplate="content">
+            <div class="export-content">
+              <!-- Download Local -->
+              <div class="export-option">
+                <div class="option-header">
+                  <i class="pi pi-download text-blue-600"></i>
+                  <h4>Baixar CSV</h4>
+                </div>
+                <p class="option-description">Baixe o relatório em formato CSV para seu computador</p>
+                <p-button
+                  label="Baixar Relatório"
+                  icon="pi pi-download"
+                  severity="secondary"
+                  [outlined]="true"
+                  styleClass="w-full"
+                  (onClick)="downloadCSV()">
+                </p-button>
+              </div>
+
+              <div class="divider"></div>
+
+              <!-- Enviar por Email -->
+              <div class="export-option">
+                <div class="option-header">
+                  <i class="pi pi-envelope text-amber-600"></i>
+                  <h4>Enviar por Email</h4>
+                </div>
+                <p class="option-description">Envie o relatório para até 10 destinatários (separados por vírgula)</p>
+
+                <div class="email-form">
+                  <div class="form-group">
+                    <label for="email-recipients" class="form-label">
+                      <i class="pi pi-users"></i>
+                      Destinatários
+                    </label>
+                    <input
+                      id="email-recipients"
+                      type="text"
+                      pInputText
+                      [(ngModel)]="emailRecipients"
+                      placeholder="exemplo@email.com, outro@email.com"
+                      class="w-full"
+                      [disabled]="isSendingEmail()">
+                    <small class="form-hint">Máximo de 10 emails, separados por vírgula</small>
+                  </div>
+
+                  @if (isSendingEmail() && uploadProgress() > 0) {
+                    <div class="progress-container">
+                      <div class="progress-bar">
+                        <div
+                          class="progress-fill"
+                          [style.width.%]="uploadProgress()">
+                        </div>
+                      </div>
+                      <span class="progress-text">{{ uploadProgress() }}%</span>
+                    </div>
+                  }
+
+                  <p-button
+                    label="Enviar Relatório"
+                    icon="pi pi-send"
+                    severity="success"
+                    styleClass="w-full"
+                    [loading]="isSendingEmail()"
+                    [disabled]="!emailRecipients() || isSendingEmail()"
+                    (onClick)="sendReportByEmail()">
+                  </p-button>
+                </div>
+              </div>
+
+              <!-- Info Card -->
+              <div class="export-info">
+                <i class="pi pi-info-circle"></i>
+                <div class="info-content">
+                  <p class="info-title">Formato do Relatório</p>
+                  <ul class="info-list">
+                    <li>Resumo de vendas (total e volume)</li>
+                    <li>Vendas por tipo de cerveja</li>
+                    <li>Vendas por tamanho de copo</li>
+                    <li>Período do relatório filtrado</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </ng-template>
+        </p-card>
+      </div>
+
     </ng-template>
   </p-card>
+
+  <!-- Toast para mensagens -->
+  <p-toast></p-toast>
 
 </div>

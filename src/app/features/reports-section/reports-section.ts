@@ -6,9 +6,12 @@ import { CardModule } from 'primeng/card';
 import { TableModule } from 'primeng/table';
 import { DatePickerModule } from 'primeng/datepicker';
 import { ButtonModule } from 'primeng/button';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
 import { BaseChartDirective } from 'ng2-charts';
 import { Chart, ChartConfiguration, ChartData, registerables } from 'chart.js';
 import { DatabaseService } from '../../core/services/database';
+import { EmailService } from '../../core/services/email.service';
 import { FullReport } from '../../core/models/report.model';
 
 // Registrar componentes do Chart.js ANTES de usar
@@ -24,8 +27,10 @@ Chart.register(...registerables);
     TableModule,
     DatePickerModule,
     ButtonModule,
+    ToastModule,
     BaseChartDirective
   ],
+  providers: [MessageService],
   templateUrl: './reports-section.html',
   styleUrl: './reports-section.scss'
 })
@@ -33,7 +38,9 @@ export class ReportsSectionComponent implements OnInit {
   
   // ==================== SERVIÇOS ====================
   private readonly dbService = inject(DatabaseService);
-  
+  private readonly emailService = inject(EmailService);
+  private readonly messageService = inject(MessageService);
+
   // ==================== SIGNALS ====================
   
   /**
@@ -50,7 +57,22 @@ export class ReportsSectionComponent implements OnInit {
    * Data final para filtro customizado
    */
   protected endDate = signal<Date | null>(null);
-  
+
+  /**
+   * Lista de emails para envio do relatório
+   */
+  protected emailRecipients = signal<string>('');
+
+  /**
+   * Indicador de loading do envio de email
+   */
+  protected isSendingEmail = signal<boolean>(false);
+
+  /**
+   * Progresso do upload (0-100)
+   */
+  protected uploadProgress = signal<number>(0);
+
   /**
    * Relatório completo carregado do banco de dados
    * Computed que reage a mudanças de filtro
@@ -379,5 +401,226 @@ export class ReportsSectionComponent implements OnInit {
    */
   protected hasCustomFilter(): boolean {
     return this.startDate() !== null && this.endDate() !== null;
+  }
+
+  // ==================== MÉTODOS DE EXPORTAÇÃO E EMAIL ====================
+
+  /**
+   * Gera arquivo CSV do relatório atual com encoding UTF-8 BOM
+   * Formatado com ponto-e-vírgula (;) como separador de colunas
+   * e ponto (.) como separador decimal (compatível com Excel PT-BR)
+   */
+  private generateCSV(): File {
+    const report = this.report();
+    const csvLines: string[] = [];
+
+    // ===========================================
+    // HEADER PRINCIPAL (linhas 1-2)
+    // ===========================================
+    csvLines.push('Relatório de Vendas - Black Beer');
+    csvLines.push('Data de Geração;' + new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR'));
+    csvLines.push(''); // Linha em branco
+
+    // ===========================================
+    // RESUMO GERAL (formato tabular)
+    // ===========================================
+    csvLines.push('=== RESUMO GERAL ===');
+    csvLines.push('Total vendas;Volume Total(Litros)');
+    csvLines.push(`="${report.summary.totalSales}";"${report.summary.totalVolumeLiters.toFixed(2)}"`);
+    csvLines.push(''); // Linha em branco
+
+    // ===========================================
+    // VENDAS POR TIPO DE CERVEJA (formato tabular)
+    // ===========================================
+    csvLines.push('=== VENDAS POR TIPO DE CERVEJA ===');
+    csvLines.push('Cerveja;Quantidade;Volume');
+
+    if (report.salesByBeerType.length > 0) {
+      report.salesByBeerType.forEach(beer => {
+        csvLines.push(`${beer.name};"${beer.totalCups}";"${beer.totalLiters.toFixed(2)}"`);
+      });
+    } else {
+      csvLines.push('Nenhuma venda registrada;;');
+    }
+
+    csvLines.push(''); // Linha em branco
+
+    // ===========================================
+    // VENDAS POR TAMANHO DE COPO (formato tabular)
+    // ===========================================
+    csvLines.push('=== VENDAS POR TAMANHO DE COPO ===');
+    csvLines.push('Tamanho(ml);Quantidade');
+
+    if (report.salesByCupSize.length > 0) {
+      // Ordenar por tamanho crescente (300, 500, 1000)
+      const sortedSizes = [...report.salesByCupSize].sort((a, b) => a.cupSize - b.cupSize);
+      sortedSizes.forEach(size => {
+        csvLines.push(`"${size.cupSize}";"${size.count}"`);
+      });
+    } else {
+      csvLines.push('Nenhuma venda registrada;');
+    }
+
+    csvLines.push(''); // Linha em branco
+
+    // ===========================================
+    // PERÍODO DO RELATÓRIO
+    // ===========================================
+    csvLines.push('=== PERÍODO DO RELATÓRIO ===');
+    csvLines.push('Descrição;Data');
+
+    if (this.hasCustomFilter()) {
+      const startDate = this.startDate();
+      const endDate = this.endDate();
+      csvLines.push('Período;' + (startDate ? startDate.toLocaleDateString('pt-BR') : 'N/A') + ' até ' + (endDate ? endDate.toLocaleDateString('pt-BR') : 'N/A'));
+    } else {
+      csvLines.push('Período;Todos os registros');
+    }
+
+    csvLines.push(''); // Linha em branco
+    csvLines.push('Relatório gerado automaticamente pelo sistema Black Beer');
+
+    // ===========================================
+    // CONVERTER PARA BLOB COM UTF-8 BOM
+    // ===========================================
+
+    // UTF-8 BOM (Byte Order Mark) para Excel reconhecer encoding correto
+    const BOM = '\uFEFF';
+    const csvContent = BOM + csvLines.join('\r\n'); // Windows line endings
+
+    // Criar blob com charset UTF-8
+    const blob = new Blob([csvContent], {
+      type: 'text/csv;charset=utf-8;'
+    });
+
+    // Nome do arquivo com data
+    const fileName = `relatorio-black-beer-${new Date().toISOString().split('T')[0]}.csv`;
+
+    return new File([blob], fileName, {
+      type: 'text/csv;charset=utf-8;'
+    });
+  }
+
+  /**
+   * Envia o relatório por email via API
+   */
+  protected async sendReportByEmail(): Promise<void> {
+    // Validar emails
+    const emailsInput = this.emailRecipients().trim();
+    if (!emailsInput) {
+      this.showError('Informe pelo menos um email para envio.');
+      return;
+    }
+
+    // Separar emails por vírgula
+    const recipients = emailsInput
+      .split(',')
+      .map(email => email.trim())
+      .filter(email => email.length > 0);
+
+    if (recipients.length === 0) {
+      this.showError('Informe pelo menos um email válido.');
+      return;
+    }
+
+    if (recipients.length > 10) {
+      this.showError('Máximo de 10 destinatários permitidos.');
+      return;
+    }
+
+    // Validar formato dos emails
+    const validation = this.emailService.validateRecipients(recipients);
+    if (!validation.valid) {
+      this.showError(`Emails inválidos: ${validation.invalidEmails.join(', ')}`);
+      return;
+    }
+
+    // Verificar se há dados no relatório
+    if (this.report().summary.totalSales === 0) {
+      this.showError('Não há dados para exportar. Faça algumas vendas primeiro.');
+      return;
+    }
+
+    try {
+      this.isSendingEmail.set(true);
+      this.uploadProgress.set(0);
+
+      // Gerar CSV
+      const csvFile = this.generateCSV();
+
+      // Enviar via API
+      this.emailService.sendEmailWithCSV({
+        recipients,
+        csvFile,
+        onProgress: (progress) => {
+          this.uploadProgress.set(progress);
+        }
+      }).subscribe({
+        next: (response) => {
+          if (response && response.success) {
+            this.showSuccess(`Relatório enviado com sucesso para ${recipients.length} destinatário(s)!`);
+            this.emailRecipients.set(''); // Limpar campo
+          }
+        },
+        error: (error) => {
+          console.error('Erro ao enviar email:', error);
+          this.showError(error.message || 'Erro ao enviar relatório por email.');
+        },
+        complete: () => {
+          this.isSendingEmail.set(false);
+          this.uploadProgress.set(0);
+        }
+      });
+    } catch (error: any) {
+      console.error('Erro ao preparar envio:', error);
+      this.showError(error.message || 'Erro ao preparar envio do relatório.');
+      this.isSendingEmail.set(false);
+      this.uploadProgress.set(0);
+    }
+  }
+
+  /**
+   * Baixa o CSV localmente (sem enviar por email)
+   */
+  protected downloadCSV(): void {
+    if (this.report().summary.totalSales === 0) {
+      this.showError('Não há dados para exportar.');
+      return;
+    }
+
+    try {
+      const csvFile = this.generateCSV();
+      const url = URL.createObjectURL(csvFile);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = csvFile.name;
+      link.click();
+      URL.revokeObjectURL(url);
+
+      this.showSuccess('Relatório baixado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao baixar CSV:', error);
+      this.showError('Erro ao baixar relatório.');
+    }
+  }
+
+  // ==================== MÉTODOS DE MENSAGENS ====================
+
+  private showSuccess(message: string): void {
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Sucesso',
+      detail: message,
+      life: 5000
+    });
+  }
+
+  private showError(message: string): void {
+    this.messageService.add({
+      severity: 'error',
+      summary: 'Erro',
+      detail: message,
+      life: 5000
+    });
   }
 }

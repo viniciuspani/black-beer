@@ -11,7 +11,7 @@
   min-height: 100vh;
   padding: 1rem;
   background: linear-gradient(135deg, #fed7aa 0%, #fb923c 100%); // Orange gradient
-  
+
   @media (max-width: 640px) {
     padding: 0.5rem;
   }
@@ -24,14 +24,14 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   border-radius: 1rem;
   overflow: hidden;
-  
+
   .p-card-body {
     padding: 0;
   }
-  
+
   .p-card-content {
     padding: 2rem;
-    
+
     @media (max-width: 640px) {
       padding: 1.5rem;
     }
@@ -44,7 +44,7 @@
   background: linear-gradient(135deg, #1f2937 0%, #111827 100%); // Gray-800 to Gray-900
   text-align: center;
   border-bottom: 4px solid #fb923c; // Orange-400
-  
+
   @media (max-width: 640px) {
     padding: 2rem 1.5rem 1.5rem;
   }
@@ -69,7 +69,7 @@
   font-weight: 700;
   color: #ffffff;
   margin: 0 0 0.5rem 0;
-  
+
   @media (max-width: 640px) {
     font-size: 1.75rem;
   }
@@ -80,7 +80,7 @@
   color: #fb923c; // Orange-400
   margin: 0;
   font-weight: 500;
-  
+
   @media (max-width: 640px) {
     font-size: 0.8125rem;
   }
@@ -106,7 +106,7 @@
   font-weight: 600;
   font-size: 0.875rem;
   color: #ffffff; // Gray-800
-  
+
   i {
     color: #fb923c; // Orange-400
     font-size: 0.875rem;
@@ -123,17 +123,17 @@
     border: 2px solid #e5e7eb;
     border-radius: 0.5rem;
     transition: all 0.2s ease;
-    
+
     &:focus {
       border-color: #fb923c; // Orange-400
       box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.1);
     }
-    
+
     &.ng-invalid.ng-dirty {
       border-color: #ef4444; // Red-500
     }
   }
-  
+
   .p-password {
     width: 100%;
   }
@@ -146,7 +146,7 @@
   color: #ef4444; // Red-500
   font-size: 0.8125rem;
   margin-top: -0.25rem;
-  
+
   i {
     font-size: 0.75rem;
   }
@@ -155,23 +155,31 @@
 .form-field-checkbox {
   display: flex;
   align-items: center;
-  
+  gap: 0.5rem;
+
+  .checkbox-label {
+    font-size: 0.875rem;
+    color: #d1d5db; // Gray-300
+    cursor: pointer;
+    user-select: none;
+  }
+
   ::ng-deep .p-checkbox-label {
     margin-left: 0.5rem;
     font-size: 0.875rem;
-    color: #ffffff; // Gray-500
+    color: #d1d5db; // Gray-300
   }
 }
 
 .form-actions {
   margin-top: 0.5rem;
-  
+
   ::ng-deep p-button button {
     height: 3rem;
     font-size: 1rem;
     font-weight: 600;
     transition: all 0.2s ease;
-    
+
     &:hover:not(:disabled) {
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(251, 146, 60, 0.4);
@@ -185,14 +193,14 @@
   align-items: center;
   text-align: center;
   margin: 1rem 0;
-  
+
   &::before,
   &::after {
     content: '';
     flex: 1;
     border-bottom: 1px solid #e5e7eb;
   }
-  
+
   span {
     padding: 0 0.75rem;
     color: #9ca3af;
@@ -206,7 +214,7 @@
   padding: 1.5rem 2rem;
   background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); // Orange-50 to Orange-100
   border-top: 2px solid #fed7aa; // Orange-200
-  
+
   @media (max-width: 640px) {
     padding: 1rem 1.5rem;
   }
@@ -221,17 +229,17 @@
   color: #7c2d12; // Orange-900
   margin: 0;
   text-align: center;
-  
+
   i {
     color: #fb923c; // Orange-400
     flex-shrink: 0;
   }
-  
+
   strong {
     color: #ea580c; // Orange-600
     font-family: 'Courier New', Courier, monospace;
   }
-  
+
   @media (max-width: 640px) {
     font-size: 0.75rem;
     flex-direction: column;

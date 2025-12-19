@@ -8,7 +8,7 @@
 <div class="login-container">
   <!-- Card de Login -->
   <p-card styleClass="login-card">
-    
+
     <!-- Logo/Header -->
     <ng-template pTemplate="header">
       <div class="login-header">
@@ -23,22 +23,22 @@
     <!-- Formulário -->
     <ng-template pTemplate="content">
       <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
-        
+
         <!-- Campo: Email ou Username -->
         <div class="form-field">
           <label for="emailOrUsername" class="form-label">
             <i class="pi pi-user"></i>
             Email ou Usuário
           </label>
-          <input 
-            pInputText 
-            id="emailOrUsername" 
+          <input
+            pInputText
+            id="emailOrUsername"
             formControlName="emailOrUsername"
             placeholder="Digite seu email ou usuário"
             [class.ng-invalid]="hasError('emailOrUsername')"
             [class.ng-dirty]="hasError('emailOrUsername')"
             class="w-full" />
-          
+
           @if (hasError('emailOrUsername')) {
             <small class="error-message">
               <i class="pi pi-exclamation-circle"></i>
@@ -53,7 +53,7 @@
             <i class="pi pi-lock"></i>
             Senha
           </label>
-          <p-password 
+          <p-password
             id="password"
             formControlName="password"
             placeholder="Digite sua senha"
@@ -64,7 +64,7 @@
             styleClass="w-full"
             inputStyleClass="w-full">
           </p-password>
-          
+
           @if (hasError('password')) {
             <small class="error-message">
               <i class="pi pi-exclamation-circle"></i>
@@ -75,18 +75,17 @@
 
         <!-- Lembrar-me -->
         <div class="form-field-checkbox">
-          <p-checkbox 
+          <p-checkbox
             formControlName="rememberMe"
             [binary]="true"
-            inputId="rememberMe"
-            label="Lembrar-me">
-            <span class="form-field-checkbox">Lembrar-me</span>           
+            inputId="rememberMe">
           </p-checkbox>
+          <label for="rememberMe" class="checkbox-label">Lembrar-me</label>
         </div>
 
         <!-- Botão de Login -->
         <div class="form-actions">
-          <p-button 
+          <p-button
             type="submit"
             label="Entrar"
             icon="pi pi-sign-in"
@@ -105,7 +104,7 @@
 
         <!-- Botão de Cadastro -->
         <div class="form-actions">
-          <p-button 
+          <p-button
             type="button"
             label="Criar Nova Conta"
             icon="pi pi-user-plus"

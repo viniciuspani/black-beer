@@ -25,14 +25,14 @@ declare global {
 
 /**
  * Serviço responsável por gerenciar o banco de dados SQLite da aplicação
- * 
+ *
  * MUDANÇAS NA REFATORAÇÃO:
  * - IDs mudados de TEXT para INTEGER (auto-increment)
  * - Tabela settings reestruturada (id, email, isConfigured)
  * - Foreign key beerId agora é INTEGER
  * - Seed data atualizado com IDs numéricos
  * - Queries tipadas e otimizadas
- * 
+ *
  * @version 3.0.0
  */
 @Injectable({
@@ -94,7 +94,7 @@ export class DatabaseService {
 
   /**
    * Cria o schema do banco de dados versão 3
-   * 
+   *
    * MUDANÇAS PRINCIPAIS:
    * - beer_types.id: TEXT → INTEGER PRIMARY KEY AUTOINCREMENT
    * - sales.id: TEXT → INTEGER PRIMARY KEY AUTOINCREMENT
@@ -131,7 +131,7 @@ export class DatabaseService {
 
       -- Índice para melhorar performance em queries por data
       CREATE INDEX IF NOT EXISTS idx_sales_timestamp ON sales(timestamp);
-      
+
       -- Índice para melhorar performance em queries por cerveja
       CREATE INDEX IF NOT EXISTS idx_sales_beerId ON sales(beerId);
 
@@ -299,19 +299,19 @@ export class DatabaseService {
   /**
    * Converte Uint8Array para string base64
    */
-  private uint8ArrayToString = (arr: Uint8Array): string => 
+  private uint8ArrayToString = (arr: Uint8Array): string =>
     btoa(String.fromCharCode.apply(null, Array.from(arr)));
 
   /**
    * Converte string base64 para Uint8Array
    */
-  private stringToUint8Array = (str: string): Uint8Array => 
+  private stringToUint8Array = (str: string): Uint8Array =>
     new Uint8Array(atob(str).split('').map(c => c.charCodeAt(0)));
 
   /**
    * Limpa completamente o banco de dados e reinicia ao estado inicial
    * Remove todos os dados mas mantém o schema v2
-   * 
+   *
    * @returns Promise<void>
    */
   public async clearDatabase(): Promise<void> {
@@ -341,16 +341,16 @@ export class DatabaseService {
    * Obtém estatísticas do banco de dados
    * @returns Objeto com contadores de registros
    */
-  public getDatabaseStats(): { 
-    totalSales: number; 
-    totalBeerTypes: number; 
+  public getDatabaseStats(): {
+    totalSales: number;
+    totalBeerTypes: number;
     hasSettings: boolean;
     dbVersion: number;
   } {
     if (!this.db) {
-      return { 
-        totalSales: 0, 
-        totalBeerTypes: 0, 
+      return {
+        totalSales: 0,
+        totalBeerTypes: 0,
         hasSettings: false,
         dbVersion: 0
       };
@@ -370,9 +370,9 @@ export class DatabaseService {
       };
     } catch (error) {
       console.error('❌ Erro ao obter estatísticas:', error);
-      return { 
-        totalSales: 0, 
-        totalBeerTypes: 0, 
+      return {
+        totalSales: 0,
+        totalBeerTypes: 0,
         hasSettings: false,
         dbVersion: 0
       };
@@ -382,7 +382,7 @@ export class DatabaseService {
   /**
    * Gera relatório completo com filtros opcionais de data
    * ATUALIZADO para trabalhar com IDs INTEGER
-   * 
+   *
    * @param startDate Data inicial do filtro (opcional)
    * @param endDate Data final do filtro (opcional)
    * @returns Relatório completo com resumo e dados agregados
@@ -420,9 +420,9 @@ export class DatabaseService {
       FROM sales
       ${whereClause}
     `;
-    const summaryResult = this.executeQuery(summaryQuery, params)[0] || { 
-      totalSales: 0, 
-      totalVolumeLiters: 0 
+    const summaryResult = this.executeQuery(summaryQuery, params)[0] || {
+      totalSales: 0,
+      totalVolumeLiters: 0
     };
 
     // Query por tamanho de copo
@@ -480,7 +480,7 @@ export class DatabaseService {
    */
   public getLastInsertId(): number {
     if (!this.db) return 0;
-    
+
     try {
       const result = this.executeQuery('SELECT last_insert_rowid() as id');
       return result[0]?.id || 0;
@@ -536,5 +536,9 @@ export class DatabaseService {
     } catch (error) {
       console.error('❌ Erro ao criar admin padrão:', error);
     }
+  }
+
+  public getUsuarios(): any[] {
+    return this.executeQuery('SELECT id, username, email, role, createdAt, lastLoginAt FROM users');
   }
 }

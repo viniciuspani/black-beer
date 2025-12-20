@@ -3,7 +3,7 @@
 // Componente de Login (Angular 20 otimizado)
 // ========================================
 
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -19,6 +19,7 @@ import { MessageService } from 'primeng/api';
 
 // App
 import { AuthService } from '../../../core/services/auth.service';
+import { DatabaseService } from '../../../core/services/database';
 
 @Component({
   selector: 'app-login',
@@ -39,6 +40,7 @@ import { AuthService } from '../../../core/services/auth.service';
 })
 export class LoginComponent implements OnInit {
   private readonly authService = inject(AuthService);
+  private readonly dbService = inject(DatabaseService);
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly messageService = inject(MessageService);
@@ -52,6 +54,14 @@ export class LoginComponent implements OnInit {
   });
 
   constructor() {
+    // Usa effect para reagir quando o banco estiver pronto
+    // effect(() => {
+    //   if (this.dbService.isDbReady()) {
+    //     console.log('✅ Banco de dados pronto! Listando usuários...');
+    //     this.authService.listarUsuarios();
+    //   }
+    // });
+
     if (this.authService.isLoggedIn()) {
       this.router.navigate(['/']);
     }

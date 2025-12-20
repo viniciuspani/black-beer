@@ -27,8 +27,19 @@
           </div>
         }
 
-        <!-- Espaço vazio à direita para simetria -->
-        <div class="header-spacer"></div>
+        <!-- Botão de Logout -->
+        <div class="logout-container">
+          <button
+            type="button"
+            class="logout-button"
+            (click)="logout()"
+            pTooltip="Sair do sistema"
+            tooltipPosition="bottom"
+            aria-label="Logout">
+            <i class="pi pi-sign-out"></i>
+            <span class="logout-text">Sair</span>
+          </button>
+        </div>
       </div>
     </div>
   </header>

@@ -1,0 +1,350 @@
+// ========================================
+// src/app/features/auth/register/register.component.scss
+// Estilos do Register
+// ========================================
+
+// Container principal - centraliza o card
+.register-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1rem;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%); // Green gradient
+
+  @media (max-width: 640px) {
+    padding: 0.5rem;
+    align-items: flex-start;
+    padding-top: 2rem;
+  }
+}
+
+// Card de cadastro
+::ng-deep .register-card {
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  border-radius: 1rem;
+  overflow: hidden;
+
+  .p-card-body {
+    padding: 0;
+  }
+
+  .p-card-content {
+    padding: 2rem;
+
+    @media (max-width: 640px) {
+      padding: 1.5rem;
+    }
+  }
+}
+
+// Header do card (logo + título)
+.register-header {
+  padding: 3rem 2rem 2rem;
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%); // Gray-800 to Gray-900
+  text-align: center;
+  border-bottom: 4px solid #10b981; // Green-500
+
+  @media (max-width: 640px) {
+    padding: 2rem 1.5rem 1.5rem;
+  }
+}
+
+.logo-container {
+  margin-bottom: 1rem;
+  animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.app-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 0.5rem 0;
+
+  @media (max-width: 640px) {
+    font-size: 1.75rem;
+  }
+}
+
+.app-subtitle {
+  font-size: 0.875rem;
+  color: #10b981; // Green-500
+  margin: 0;
+  font-weight: 500;
+
+  @media (max-width: 640px) {
+    font-size: 0.8125rem;
+  }
+}
+
+// Formulário
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #1f2937; // Gray-800
+
+  i {
+    color: #10b981; // Green-500
+    font-size: 0.875rem;
+  }
+
+  .required {
+    color: #ef4444; // Red-500
+    margin-left: 0.125rem;
+  }
+}
+
+// Override PrimeNG input styles
+::ng-deep {
+  .p-inputtext,
+  .p-password input {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+
+    &:focus {
+      border-color: #10b981; // Green-500
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+
+    &.ng-invalid.ng-dirty {
+      border-color: #ef4444; // Red-500
+    }
+
+    &.ng-valid.ng-dirty {
+      border-color: #10b981; // Green-500
+    }
+  }
+
+  .p-password {
+    width: 100%;
+  }
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: #ef4444; // Red-500
+  font-size: 0.8125rem;
+
+  i {
+    font-size: 0.75rem;
+  }
+}
+
+.success-message {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: #10b981; // Green-500
+  font-size: 0.8125rem;
+  font-weight: 500;
+  animation: fadeIn 0.3s ease;
+
+  i {
+    font-size: 0.75rem;
+  }
+}
+
+.help-text {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: #6b7280; // Gray-500
+  font-size: 0.8125rem;
+
+  i {
+    font-size: 0.75rem;
+  }
+}
+
+// Indicador de força da senha (customizado)
+.password-strength-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.password-strength-bar {
+  flex: 1;
+  height: 0.5rem;
+  background: #e5e7eb;
+  border-radius: 0.25rem;
+  overflow: hidden;
+}
+
+.password-strength-fill {
+  height: 100%;
+  transition: all 0.3s ease;
+  border-radius: 0.25rem;
+}
+
+.password-strength-text {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  min-width: 4rem;
+  text-align: right;
+}
+
+.form-actions {
+  margin-top: 0.5rem;
+
+  ::ng-deep p-button button {
+    height: 3rem;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+
+    &:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+  }
+}
+
+// Divider
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1rem 0;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  span {
+    padding: 0 0.75rem;
+    color: #9ca3af;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+}
+
+// Footer
+.register-footer {
+  padding: 1.5rem 2rem;
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); // Green-50 to Green-100
+  border-top: 2px solid #a7f3d0; // Green-200
+
+  @media (max-width: 640px) {
+    padding: 1rem 1.5rem;
+  }
+}
+
+.footer-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: #065f46; // Green-800
+  margin: 0;
+  text-align: center;
+
+  i {
+    color: #10b981; // Green-500
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 640px) {
+    font-size: 0.75rem;
+  }
+}
+
+// Animações
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.register-card {
+  animation: fadeIn 0.4s ease-out;
+}
+
+// Loading state
+::ng-deep {
+  .p-button-loading {
+    pointer-events: none;
+    opacity: 0.7;
+  }
+}
+
+// Accessibility - focus visible
+*:focus-visible {
+  outline: 2px solid #10b981;
+  outline-offset: 2px;
+}
+
+// Override PrimeNG Password Strength
+::ng-deep {
+  .p-password-panel {
+    padding: 0.75rem;
+
+    .p-password-meter {
+      margin-bottom: 0.5rem;
+      height: 0.5rem;
+    }
+  }
+}
+
+// Responsividade extra
+@media (max-width: 400px) {
+  .register-form {
+    gap: 1rem;
+  }
+
+  .form-field {
+    gap: 0.375rem;
+  }
+
+  .password-strength-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.375rem;
+  }
+
+  .password-strength-text {
+    text-align: left;
+  }
+}

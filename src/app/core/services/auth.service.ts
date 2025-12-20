@@ -75,12 +75,34 @@ export class AuthService {
   }
 
   // ==================== REGISTRO (CADASTRO) ====================
+
+  public listarUsuarios(): any[] {
+    try {
+      // Verifica se o banco está pronto
+      if (!this.dbService.isDbReady()) {
+        console.warn('⚠️ Banco de dados ainda não está pronto. Aguarde a inicialização.');
+        return [];
+      }
+
+      const result = this.dbService.getUsuarios();
+      console.log('✅ Usuários listados:', result);
+      console.log('✅ Total de usuários:', result.length);
+      return result;
+    } catch (error) {
+      console.error('❌ Erro ao listar usuários:', error);
+      return [];
+    }
+  }
+
   async register(dto: CreateUserDto): Promise<LoginResponse> {
     if (!this.dbService.isDbReady()) {
       return { success: false, message: 'Sistema não está pronto. Aguarde...' };
     }
 
+    console.log('📝 Tentando registrar usuário:', dto);
+
     const validation = this.validateRegistration(dto);
+
     if (!validation.valid) {
       return { success: false, message: validation.error! };
     }
@@ -89,15 +111,23 @@ export class AuthService {
       if (this.usernameExists(dto.username)) return { success: false, message: 'Nome de usuário já está em uso' };
       if (this.emailExists(dto.email)) return { success: false, message: 'Email já está cadastrado' };
 
+      console.log('✅ Dados de registro validados. Criando usuário...');
+      console.log('🔐 Verifica usuario...', this.usernameExists(dto.username));
+      console.log('🔐 Verifica email...', this.emailExists(dto.email));
+
+
       const passwordHash = this.hashPassword(dto.password);
       const role: UserRole = dto.role || 'user';
 
-      this.dbService.executeRun('INSERT INTO users (username, email, passwordHash, role) VALUES (?, ?, ?, ?)', [
+      var resultado = this.dbService.executeRun('INSERT INTO users (username, email, passwordHash, role) VALUES (?, ?, ?, ?)', [
         dto.username.trim(),
         dto.email.trim().toLowerCase(),
         passwordHash,
         role,
       ]);
+
+      console.log('✅ Usuário criado. Resultado:', resultado);
+      console.log('✅ Usuário criado com sucesso. ID:', this.dbService.getLastInsertId());
 
       const userId = this.dbService.getLastInsertId();
       const user = this.getUserById(userId);

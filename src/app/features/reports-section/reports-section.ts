@@ -1,27 +1,21 @@
-// src/app/features/reports-section/reports-section.component.ts
-import { Component, inject, signal, computed } from '@angular/core';
-import { CommonModule, DecimalPipe } from '@angular/common';
+// src/app/features/reports-section/reports-section.ts
+import { CommonModule } from '@angular/common';
+import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-
-// PrimeNG 20+ - DatePicker substitui Calendar
 import { CardModule } from 'primeng/card';
-import { ButtonModule } from 'primeng/button';
+import { TableModule } from 'primeng/table';
 import { DatePickerModule } from 'primeng/datepicker';
-import { TagModule } from 'primeng/tag';
+import { ButtonModule } from 'primeng/button';
 import { ToastModule } from 'primeng/toast';
-import { TooltipModule } from 'primeng/tooltip';  // ← NOVO: Import do Tooltip
 import { MessageService } from 'primeng/api';
-
-// App
-import { 
-  FullReport, 
-  DateRange, 
-  PresetPeriod, 
-  createPresetDateRange, 
-  EMPTY_DATE_RANGE 
-} from '../../core/models/report.model';
+import { BaseChartDirective } from 'ng2-charts';
+import { Chart, ChartConfiguration, ChartData, registerables } from 'chart.js';
 import { DatabaseService } from '../../core/services/database';
-import { EmailService } from '../../core/services/email';
+import { EmailService } from '../../core/services/email.service';
+import { FullReport } from '../../core/models/report.model';
+
+// Registrar componentes do Chart.js ANTES de usar
+Chart.register(...registerables);
 
 @Component({
   selector: 'app-reports-section',
@@ -29,229 +23,585 @@ import { EmailService } from '../../core/services/email';
   imports: [
     CommonModule,
     FormsModule,
-    DecimalPipe,
-    // PrimeNG Modules
     CardModule,
-    ButtonModule,
+    TableModule,
     DatePickerModule,
-    TagModule,
+    ButtonModule,
     ToastModule,
-    TooltipModule  // ← NOVO: Adicionado TooltipModule
+    BaseChartDirective
   ],
   providers: [MessageService],
   templateUrl: './reports-section.html',
-  styleUrls: ['./reports-section.scss']
+  styleUrl: './reports-section.scss'
 })
-export class ReportsSectionComponent {
-  // ==================== INJEÇÃO DE DEPENDÊNCIAS ====================
+export class ReportsSectionComponent implements OnInit {
+  
+  // ==================== SERVIÇOS ====================
   private readonly dbService = inject(DatabaseService);
   private readonly emailService = inject(EmailService);
   private readonly messageService = inject(MessageService);
 
   // ==================== SIGNALS ====================
-  readonly startDate = signal<Date | null>(null);
-  readonly endDate = signal<Date | null>(null);
   
   /**
-   * NOVO: Controla estado de loading durante envio de email
+   * Período selecionado para filtro rápido
    */
-  readonly isSendingEmail = signal<boolean>(false);
+  protected readonly selectedPeriod = signal<'today' | 'week' | 'month' | 'all'>('all');
   
   /**
-   * Computed que retorna a descrição do período do relatório
+   * Data inicial para filtro customizado
    */
-  readonly periodDescription = computed<string>(() => {
+  protected startDate = signal<Date | null>(null);
+  
+  /**
+   * Data final para filtro customizado
+   */
+  protected endDate = signal<Date | null>(null);
+
+  /**
+   * Lista de emails para envio do relatório
+   */
+  protected emailRecipients = signal<string>('');
+
+  /**
+   * Indicador de loading do envio de email
+   */
+  protected isSendingEmail = signal<boolean>(false);
+
+  /**
+   * Progresso do upload (0-100)
+   */
+  protected uploadProgress = signal<number>(0);
+
+  /**
+   * Relatório completo carregado do banco de dados
+   * Computed que reage a mudanças de filtro
+   */
+  protected readonly report = computed<FullReport>(() => {
+    if (!this.dbService.isDbReady()) {
+      return {
+        summary: { totalSales: 0, totalVolumeLiters: 0 },
+        salesByCupSize: [],
+        salesByBeerType: []
+      };
+    }
+    
     const start = this.startDate();
     const end = this.endDate();
-
-    if (!start && !end) {
-      return 'Carregado todas informações do banco de dados';
-    }
-
-    const formatDate = (date: Date): string => {
-      return date.toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
-    };
-
-    if (start && !end) {
-      return `Período: A partir de ${formatDate(start)}`;
-    }
-
-    if (!start && end) {
-      return `Período: Até ${formatDate(end)}`;
-    }
-
-    if (start && end) {
-      return `Período: ${formatDate(start)} até ${formatDate(end)}`;
-    }
-
-    return 'Carregado todas informações do banco de dados';
-  });
-
-  readonly dateRange = computed<DateRange>(() => ({
-    startDate: this.startDate(),
-    endDate: this.endDate()
-  }));
-
-  readonly report = computed<FullReport | null>(() => {
-    if (!this.dbService.isDbReady()) {
-      return null;
-    }
-
-    const range = this.dateRange();
+    
+    // DatabaseService.getFullReport já faz a filtragem no SQL
     return this.dbService.getFullReport(
-      range.startDate ?? undefined,
-      range.endDate ?? undefined
+      start ?? undefined,
+      end ?? undefined
     );
   });
-
-  readonly PresetPeriod = PresetPeriod;
-
-  private readonly shouldShowReport = signal<boolean>(true);
-
-  readonly displayReport = computed<FullReport | null>(() => {
-    if (!this.shouldShowReport()) {
-      return null;
-    }
-    return this.report();
-  });
-
-  // ==================== COMPUTED SIGNALS PARA EMAIL ====================
+  
+  // ==================== CONFIGURAÇÕES DOS GRÁFICOS ====================
   
   /**
-   * Verifica se há emails configurados
-   * Depende de dbReady para recalcular quando banco carregar
+   * Configuração do gráfico de pizza (vendas por cerveja)
    */
-  readonly hasConfiguredEmails = computed(() => {
-    const dbReady = this.dbService.isDbReady();
+  protected pieChartOptions: ChartConfiguration['options'] = {
+    responsive: true,
+    maintainAspectRatio: true,
+    aspectRatio: 2,
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          padding: 15,
+          font: { size: 12 },
+          color: '#1f2937'
+        }
+      },
+      tooltip: {
+        callbacks: {
+          label: (context) => {
+            const label = context.label || '';
+            const value = context.parsed || 0;
+            const total = (context.dataset.data as number[]).reduce((a, b) => a + b, 0);
+            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+            return `${label}: ${value} copos (${percentage}%)`;
+          }
+        }
+      }
+    }
+  };
+  
+  /**
+   * Dados do gráfico de pizza (vendas por cerveja)
+   * Usa dados já agregados do report.salesByBeerType
+   */
+  protected pieChartData = computed<ChartData<'pie'>>(() => {
+    const salesByBeer = this.report().salesByBeerType;
     
-    if (!dbReady) {
-      return false;
+    if (salesByBeer.length === 0) {
+      return {
+        labels: [],
+        datasets: [{
+          data: [],
+          backgroundColor: [],
+          borderWidth: 0
+        }]
+      };
     }
     
-    return this.emailService.hasConfiguredEmails();
+    return {
+      labels: salesByBeer.map(item => item.name),
+      datasets: [{
+        data: salesByBeer.map(item => item.totalCups),
+        backgroundColor: salesByBeer.map(item => item.color || '#fbbf24'),
+        borderWidth: 3,
+        borderColor: '#ffffff',
+        hoverBorderWidth: 4,
+        hoverBorderColor: '#1f2937'
+      }]
+    };
   });
-
+  
   /**
-   * Mensagem de status dos emails
+   * Configuração do gráfico de barras (vendas por tamanho)
    */
-  readonly emailsStatusMessage = computed(() => {
-    const dbReady = this.dbService.isDbReady();
+  protected barChartOptions: ChartConfiguration['options'] = {
+    responsive: true,
+    maintainAspectRatio: true,
+    aspectRatio: 2,
+    plugins: {
+      legend: {
+        display: false
+      },
+      tooltip: {
+        callbacks: {
+          label: (context) => {
+            return `Quantidade: ${context.parsed.y} copos`;
+          }
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          stepSize: 1,
+          color: '#6b7280'
+        },
+        grid: {
+          color: 'rgba(0, 0, 0, 0.05)'
+        }
+      },
+      x: {
+        ticks: {
+          color: '#6b7280'
+        },
+        grid: {
+          display: false
+        }
+      }
+    }
+  };
+  
+  /**
+   * Dados do gráfico de barras (vendas por tamanho)
+   * Usa dados já agregados do report.salesByCupSize
+   */
+  protected barChartData = computed<ChartData<'bar'>>(() => {
+    const salesBySize = this.report().salesByCupSize;
     
-    if (!dbReady) {
-      return 'Carregando...';
+    if (salesBySize.length === 0) {
+      return {
+        labels: [],
+        datasets: [{
+          label: 'Quantidade Vendida',
+          data: [],
+          backgroundColor: '#fbbf24',
+          borderColor: '#d97706',
+          borderWidth: 0
+        }]
+      };
     }
     
-    return this.emailService.getEmailsStatusMessage();
-  });
-
-  /**
-   * Verifica se pode enviar o relatório
-   * Requer: emails configurados + relatório válido + não estar enviando
-   */
-  readonly canSendReport = computed(() => {
-    const dbReady = this.dbService.isDbReady();
+    // Ordenar por tamanho
+    const sortedSizes = [...salesBySize].sort((a, b) => a.cupSize - b.cupSize);
     
-    if (!dbReady) {
-      return false;
+    return {
+      labels: sortedSizes.map(item => `${item.cupSize}ml`),
+      datasets: [{
+        label: 'Quantidade Vendida',
+        data: sortedSizes.map(item => item.count),
+        backgroundColor: '#fbbf24',
+        borderColor: '#d97706',
+        borderWidth: 2,
+        borderRadius: 8,
+        hoverBackgroundColor: '#f59e0b',
+        hoverBorderColor: '#b45309',
+        hoverBorderWidth: 3
+      }]
+    };
+  });
+  
+  ngOnInit(): void {
+    // Nada a fazer aqui - o computed 'report' já carrega os dados automaticamente
+    // quando dbService.isDbReady() muda para true
+  }
+  
+  // ==================== MÉTODOS DE FILTRO ====================
+  
+  /**
+   * Define o período de filtro rápido
+   * Limpa filtro customizado ao usar filtro rápido
+   */
+  protected setPeriod(period: 'today' | 'week' | 'month' | 'all'): void {
+    this.selectedPeriod.set(period);
+    
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (period) {
+      case 'today':
+        this.startDate.set(today);
+        this.endDate.set(new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59));
+        break;
+      
+      case 'week':
+        const weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        this.startDate.set(weekAgo);
+        this.endDate.set(new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59));
+        break;
+      
+      case 'month':
+        const monthAgo = new Date(today);
+        monthAgo.setDate(monthAgo.getDate() - 30);
+        this.startDate.set(monthAgo);
+        this.endDate.set(new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59));
+        break;
+      
+      case 'all':
+      default:
+        this.startDate.set(null);
+        this.endDate.set(null);
+        break;
+    }
+  }
+  
+  /**
+   * Aplica filtro por range customizado
+   */
+  protected applyCustomFilter(): void {
+    const start = this.startDate();
+    const end = this.endDate();
+    
+    if (!start || !end) {
+      alert('Selecione ambas as datas (inicial e final)');
+      return;
     }
     
-    const hasEmails = this.hasConfiguredEmails();
-    const report = this.displayReport();
-    const isValid = this.emailService.isReportValid(report);
-    const isSending = this.isSendingEmail();
+    // Validação: data inicial não pode ser maior que data final
+    if (start > end) {
+      alert('Data inicial não pode ser maior que data final');
+      return;
+    }
     
-    return hasEmails && isValid && !isSending;
-  });
-
-  // ==================== MÉTODOS EXISTENTES ====================
-
-  setPresetRange(days: number): void {
-    const range = createPresetDateRange(days);
-    this.startDate.set(range.startDate);
-    this.endDate.set(range.endDate);
-  }
-
-  clearFilters(): void {
-    this.shouldShowReport.set(false);
-    this.startDate.set(EMPTY_DATE_RANGE.startDate);
-    this.endDate.set(EMPTY_DATE_RANGE.endDate);
+    // Normaliza as datas
+    const normalizedStart = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 0, 0, 0);
+    const normalizedEnd = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59);
     
-    setTimeout(() => {
-      this.shouldShowReport.set(true);
-    }, 300);
+    this.startDate.set(normalizedStart);
+    this.endDate.set(normalizedEnd);
+    
+    // Limpa seleção de período rápido
+    this.selectedPeriod.set('all');
+  }
+  
+  /**
+   * Limpa filtro customizado
+   */
+  protected clearCustomFilter(): void {
+    this.startDate.set(null);
+    this.endDate.set(null);
+    this.selectedPeriod.set('all');
+  }
+  
+  // ==================== MÉTODOS DE DADOS PARA O TEMPLATE ====================
+  
+  /**
+   * Retorna o total de vendas
+   */
+  protected getTotalSales(): number {
+    return this.report().summary.totalSales;
+  }
+  
+  /**
+   * Retorna o volume total vendido em litros
+   */
+  protected getTotalVolume(): string {
+    return this.report().summary.totalVolumeLiters.toFixed(2);
+  }
+  
+  /**
+   * Retorna a cerveja mais vendida
+   */
+  protected getTopBeer(): string {
+    const salesByBeer = this.report().salesByBeerType;
+    
+    if (salesByBeer.length === 0) {
+      return 'N/A';
+    }
+    
+    // Já vem ordenado por totalLiters DESC do banco
+    const topBeer = salesByBeer[0];
+    return topBeer.name;
+  }
+  
+  /**
+   * Retorna o tamanho preferido
+   */
+  protected getPreferredSize(): number {
+    const salesBySize = this.report().salesByCupSize;
+    
+    if (salesBySize.length === 0) {
+      return 0;
+    }
+    
+    // Encontra o tamanho com maior quantidade
+    let preferredSize = salesBySize[0];
+    
+    for (const sizeData of salesBySize) {
+      if (sizeData.count > preferredSize.count) {
+        preferredSize = sizeData;
+      }
+    }
+    
+    return preferredSize.cupSize;
+  }
+  
+  /**
+   * Retorna a lista de vendas para a tabela/cards
+   * NOTA: Como agora usamos FullReport (dados agregados),
+   * precisamos reconstruir a lista de vendas individuais
+   * ou adaptar o template para mostrar dados agregados
+   */
+  protected getSalesList(): any[] {
+    // Para manter compatibilidade com o template,
+    // retornamos array vazio por enquanto
+    // O ideal seria adaptar o template para mostrar dados agregados
+    // ou criar um método no DatabaseService que retorne vendas individuais
+    return [];
+  }
+  
+  /**
+   * Retorna a contagem de vendas
+   */
+  protected getSalesCount(): number {
+    return this.report().summary.totalSales;
+  }
+  
+  /**
+   * Verifica se há filtro customizado ativo
+   */
+  protected hasCustomFilter(): boolean {
+    return this.startDate() !== null && this.endDate() !== null;
   }
 
-  onStartDateSelect(date: Date): void {
-    this.startDate.set(date);
-  }
-
-  onEndDateSelect(date: Date): void {
-    this.endDate.set(date);
-  }
-
-  // ==================== NOVOS MÉTODOS PARA EMAIL ====================
+  // ==================== MÉTODOS DE EXPORTAÇÃO E EMAIL ====================
 
   /**
-   * Envia o relatório por email
-   * Gera CSV e baixa localmente, mostra emails configurados
+   * Gera arquivo CSV do relatório atual com encoding UTF-8 BOM
+   * Formatado com ponto-e-vírgula (;) como separador de colunas
+   * e ponto (.) como separador decimal (compatível com Excel PT-BR)
    */
-  async sendReportByEmail(): Promise<void> {
-    if (!this.canSendReport()) {
-      this.showWarning('Não é possível enviar o relatório no momento.');
+  private generateCSV(): File {
+    const report = this.report();
+    const csvLines: string[] = [];
+
+    // ===========================================
+    // HEADER PRINCIPAL (linhas 1-2)
+    // ===========================================
+    csvLines.push('Relatório de Vendas - Black Beer');
+    csvLines.push('Data de Geração;' + new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR'));
+    csvLines.push(''); // Linha em branco
+
+    // ===========================================
+    // RESUMO GERAL (formato tabular)
+    // ===========================================
+    csvLines.push('=== RESUMO GERAL ===');
+    csvLines.push('Total vendas;Volume Total(Litros)');
+    csvLines.push(`="${report.summary.totalSales}";"${report.summary.totalVolumeLiters.toFixed(2)}"`);
+    csvLines.push(''); // Linha em branco
+
+    // ===========================================
+    // VENDAS POR TIPO DE CERVEJA (formato tabular)
+    // ===========================================
+    csvLines.push('=== VENDAS POR TIPO DE CERVEJA ===');
+    csvLines.push('Cerveja;Quantidade;Volume');
+
+    if (report.salesByBeerType.length > 0) {
+      report.salesByBeerType.forEach(beer => {
+        csvLines.push(`${beer.name};"${beer.totalCups}";"${beer.totalLiters.toFixed(2)}"`);
+      });
+    } else {
+      csvLines.push('Nenhuma venda registrada;;');
+    }
+
+    csvLines.push(''); // Linha em branco
+
+    // ===========================================
+    // VENDAS POR TAMANHO DE COPO (formato tabular)
+    // ===========================================
+    csvLines.push('=== VENDAS POR TAMANHO DE COPO ===');
+    csvLines.push('Tamanho(ml);Quantidade');
+
+    if (report.salesByCupSize.length > 0) {
+      // Ordenar por tamanho crescente (300, 500, 1000)
+      const sortedSizes = [...report.salesByCupSize].sort((a, b) => a.cupSize - b.cupSize);
+      sortedSizes.forEach(size => {
+        csvLines.push(`"${size.cupSize}";"${size.count}"`);
+      });
+    } else {
+      csvLines.push('Nenhuma venda registrada;');
+    }
+
+    csvLines.push(''); // Linha em branco
+
+    // ===========================================
+    // PERÍODO DO RELATÓRIO
+    // ===========================================
+    csvLines.push('=== PERÍODO DO RELATÓRIO ===');
+    csvLines.push('Descrição;Data');
+
+    if (this.hasCustomFilter()) {
+      const startDate = this.startDate();
+      const endDate = this.endDate();
+      csvLines.push('Período;' + (startDate ? startDate.toLocaleDateString('pt-BR') : 'N/A') + ' até ' + (endDate ? endDate.toLocaleDateString('pt-BR') : 'N/A'));
+    } else {
+      csvLines.push('Período;Todos os registros');
+    }
+
+    csvLines.push(''); // Linha em branco
+    csvLines.push('Relatório gerado automaticamente pelo sistema Black Beer');
+
+    // ===========================================
+    // CONVERTER PARA BLOB COM UTF-8 BOM
+    // ===========================================
+
+    // UTF-8 BOM (Byte Order Mark) para Excel reconhecer encoding correto
+    const BOM = '\uFEFF';
+    const csvContent = BOM + csvLines.join('\r\n'); // Windows line endings
+
+    // Criar blob com charset UTF-8
+    const blob = new Blob([csvContent], {
+      type: 'text/csv;charset=utf-8;'
+    });
+
+    // Nome do arquivo com data
+    const fileName = `relatorio-black-beer-${new Date().toISOString().split('T')[0]}.csv`;
+
+    return new File([blob], fileName, {
+      type: 'text/csv;charset=utf-8;'
+    });
+  }
+
+  /**
+   * Envia o relatório por email via API
+   */
+  protected async sendReportByEmail(): Promise<void> {
+    // Validar emails
+    const emailsInput = this.emailRecipients().trim();
+    if (!emailsInput) {
+      this.showError('Informe pelo menos um email para envio.');
       return;
     }
 
-    const report = this.displayReport();
-    if (!report) {
-      this.showError('Nenhum relatório disponível para envio.');
+    // Separar emails por vírgula
+    const recipients = emailsInput
+      .split(',')
+      .map(email => email.trim())
+      .filter(email => email.length > 0);
+
+    if (recipients.length === 0) {
+      this.showError('Informe pelo menos um email válido.');
       return;
     }
 
-    this.isSendingEmail.set(true);
+    if (recipients.length > 10) {
+      this.showError('Máximo de 10 destinatários permitidos.');
+      return;
+    }
+
+    // Validar formato dos emails
+    const validation = this.emailService.validateRecipients(recipients);
+    if (!validation.valid) {
+      this.showError(`Emails inválidos: ${validation.invalidEmails.join(', ')}`);
+      return;
+    }
+
+    // Verificar se há dados no relatório
+    if (this.report().summary.totalSales === 0) {
+      this.showError('Não há dados para exportar. Faça algumas vendas primeiro.');
+      return;
+    }
 
     try {
-      const result = await this.emailService.sendReport(
-        report,
-        this.periodDescription()
-      );
+      this.isSendingEmail.set(true);
+      this.uploadProgress.set(0);
 
-      if (result.success) {
-        this.showSuccess(result.message);
-      } else {
-        this.showError(result.message);
-      }
+      // Gerar CSV
+      const csvFile = this.generateCSV();
 
-    } catch (error) {
-      console.error('❌ Erro ao enviar relatório:', error);
-      this.showError('Erro inesperado ao gerar relatório. Tente novamente.');
-    } finally {
+      // Enviar via API
+      this.emailService.sendEmailWithCSV({
+        recipients,
+        csvFile,
+        onProgress: (progress) => {
+          this.uploadProgress.set(progress);
+        }
+      }).subscribe({
+        next: (response) => {
+          if (response && response.success) {
+            this.showSuccess(`Relatório enviado com sucesso para ${recipients.length} destinatário(s)!`);
+            this.emailRecipients.set(''); // Limpar campo
+          }
+        },
+        error: (error) => {
+          console.error('Erro ao enviar email:', error);
+          this.showError(error.message || 'Erro ao enviar relatório por email.');
+        },
+        complete: () => {
+          this.isSendingEmail.set(false);
+          this.uploadProgress.set(0);
+        }
+      });
+    } catch (error: any) {
+      console.error('Erro ao preparar envio:', error);
+      this.showError(error.message || 'Erro ao preparar envio do relatório.');
       this.isSendingEmail.set(false);
+      this.uploadProgress.set(0);
     }
   }
 
   /**
-   * NOVO: Retorna o tooltip do botão de envio
+   * Baixa o CSV localmente (sem enviar por email)
    */
-  getSendButtonTooltip(): string {
-    if (this.isSendingEmail()) {
-      return 'Gerando relatório...';
+  protected downloadCSV(): void {
+    if (this.report().summary.totalSales === 0) {
+      this.showError('Não há dados para exportar.');
+      return;
     }
 
-    if (!this.hasConfiguredEmails()) {
-      return 'Configure emails nas configurações para enviar relatórios';
-    }
+    try {
+      const csvFile = this.generateCSV();
+      const url = URL.createObjectURL(csvFile);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = csvFile.name;
+      link.click();
+      URL.revokeObjectURL(url);
 
-    const report = this.displayReport();
-    if (!this.emailService.isReportValid(report)) {
-      return 'Nenhuma venda registrada no período selecionado';
+      this.showSuccess('Relatório baixado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao baixar CSV:', error);
+      this.showError('Erro ao baixar relatório.');
     }
-
-    const emailsList = this.emailService.getFormattedEmailsList(2);
-    return `Enviar relatório para: ${emailsList}`;
   }
 
   // ==================== MÉTODOS DE MENSAGENS ====================
@@ -259,9 +609,9 @@ export class ReportsSectionComponent {
   private showSuccess(message: string): void {
     this.messageService.add({
       severity: 'success',
-      summary: 'Relatório Gerado!',
+      summary: 'Sucesso',
       detail: message,
-      life: 6000 // 6 segundos para ler a lista de emails
+      life: 5000
     });
   }
 
@@ -271,24 +621,6 @@ export class ReportsSectionComponent {
       summary: 'Erro',
       detail: message,
       life: 5000
-    });
-  }
-
-  private showWarning(message: string): void {
-    this.messageService.add({
-      severity: 'warn',
-      summary: 'Atenção',
-      detail: message,
-      life: 4000
-    });
-  }
-
-  private showInfo(message: string): void {
-    this.messageService.add({
-      severity: 'info',
-      summary: 'Informação',
-      detail: message,
-      life: 4000
     });
   }
 }

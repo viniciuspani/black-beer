@@ -1,0 +1,60 @@
+// src/app/features/help/help.scss
+
+@use '../../../assets/styles/color-palette' as *;
+
+/**
+ * Estilos customizados para a seção de ajuda
+ */
+
+// ========================================
+// ANIMAÇÕES
+// ========================================
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+// ========================================
+// FEATURE CARDS
+// ========================================
+
+.feature-card {
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+}
+
+// ========================================
+// RESPONSIVIDADE
+// ========================================
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ========================================
+// ACESSIBILIDADE
+// ========================================
+
+*:focus-visible {
+  outline: 2px solid $info-500;
+  outline-offset: 2px;
+}
+
+*:focus:not(:focus-visible) {
+  outline: none;
+}

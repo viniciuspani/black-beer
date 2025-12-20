@@ -1,0 +1,378 @@
+/**
+ * ============================================
+ * BLACK BEER - PALETA DE CORES
+ * Sistema de Gestão de Cerveja Artesanal
+ * ============================================
+ *
+ * Paleta elegante e profissional inspirada em:
+ * - Tons âmbar e dourados (cerveja, malte)
+ * - Marrom escuro (cerveja preta, sofisticação)
+ * - Neutros equilibrados (profissionalismo)
+ * - Acentos vibrantes (interatividade)
+ */
+
+// ============================================
+// 🍺 CORES PRIMÁRIAS (Identidade da Marca)
+// ============================================
+
+/**
+ * AMBER (Âmbar) - Cor principal da marca
+ * Representa a cor da cerveja artesanal, calor e tradição
+ */
+$amber-50:  #FFFBEB;  // Fundo muito claro (hover suave)
+$amber-100: #FEF3C7;  // Fundo claro (badges, tags)
+$amber-200: #FDE68A;  // Destaque suave
+$amber-300: #FCD34D;  // Destaque médio
+$amber-400: #FBBF24;  // Interações (hover)
+$amber-500: #F59E0B;  // Principal (botões, links)
+$amber-600: #D97706;  // Principal escuro (header, ativo)
+$amber-700: #B45309;  // Enfático
+$amber-800: #92400E;  // Muito escuro
+$amber-900: #78350F;  // Ultra escuro
+
+/**
+ * BROWN (Marrom) - Cor secundária
+ * Representa a cerveja escura, elegância e seriedade
+ */
+$brown-50:  #FAFAF9;  // Fundo muito claro
+$brown-100: #F5F5F4;  // Fundo claro
+$brown-200: #E7E5E4;  // Divisores
+$brown-300: #D6D3D1;  // Bordas
+$brown-400: #A8A29E;  // Texto secundário
+$brown-500: #78716C;  // Texto normal
+$brown-600: #57534E;  // Texto escuro
+$brown-700: #44403C;  // Ênfase
+$brown-800: #292524;  // Muito escuro (dark mode)
+$brown-900: #1C1917;  // Ultra escuro (backgrounds)
+
+// ============================================
+// 🎨 CORES SECUNDÁRIAS (Complementares)
+// ============================================
+
+/**
+ * GOLD (Dourado) - Destaque premium
+ * Representa qualidade premium e certificação
+ */
+$gold-50:  #FFFCF0;
+$gold-100: #FFF7D6;
+$gold-200: #FFECAD;
+$gold-300: #FFE085;
+$gold-400: #FFD15C;
+$gold-500: #FFC233;  // Principal
+$gold-600: #E6A500;
+$gold-700: #B38100;
+$gold-800: #805D00;
+$gold-900: #4D3800;
+
+/**
+ * WHEAT (Trigo) - Tom quente e acolhedor
+ * Representa os grãos, malte e ingredientes naturais
+ */
+$wheat-50:  #FEFCE8;
+$wheat-100: #FEF9C3;
+$wheat-200: #FEF08A;
+$wheat-300: #FDE047;
+$wheat-400: #FACC15;
+$wheat-500: #EAB308;  // Principal
+$wheat-600: #CA8A04;
+$wheat-700: #A16207;
+$wheat-800: #854D0E;
+$wheat-900: #713F12;
+
+// ============================================
+// 🌐 CORES NEUTRAS (Backgrounds, Textos, UI)
+// ============================================
+
+/**
+ * GRAY (Cinza) - Escala neutra profissional
+ */
+$gray-50:  #F9FAFB;  // Fundo muito claro
+$gray-100: #F3F4F6;  // Fundo claro (cards)
+$gray-200: #E5E7EB;  // Divisores, bordas
+$gray-300: #D1D5DB;  // Bordas médias
+$gray-400: #9CA3AF;  // Texto placeholder
+$gray-500: #6B7280;  // Texto secundário
+$gray-600: #4B5563;  // Texto normal
+$gray-700: #374151;  // Texto escuro
+$gray-800: #1F2937;  // Background dark
+$gray-900: #111827;  // Background ultra dark
+
+/**
+ * SLATE (Ardósia) - Cinza azulado elegante
+ */
+$slate-50:  #F8FAFC;
+$slate-100: #F1F5F9;
+$slate-200: #E2E8F0;
+$slate-300: #CBD5E1;
+$slate-400: #94A3B8;
+$slate-500: #64748B;  // Principal
+$slate-600: #475569;
+$slate-700: #334155;
+$slate-800: #1E293B;
+$slate-900: #0F172A;
+
+/**
+ * Neutros Puros
+ */
+$white: #FFFFFF;
+$black: #000000;
+
+// ============================================
+// ✅ CORES SEMÂNTICAS (Estados do Sistema)
+// ============================================
+
+/**
+ * SUCCESS (Sucesso) - Verde
+ * Confirmações, operações bem-sucedidas
+ */
+$success-50:  #F0FDF4;
+$success-100: #DCFCE7;
+$success-200: #BBF7D0;
+$success-300: #86EFAC;
+$success-400: #4ADE80;
+$success-500: #22C55E;  // Principal
+$success-600: #16A34A;
+$success-700: #15803D;
+$success-800: #166534;
+$success-900: #14532D;
+
+/**
+ * ERROR (Erro) - Vermelho
+ * Erros, validações, ações destrutivas
+ */
+$error-50:  #FEF2F2;
+$error-100: #FEE2E2;
+$error-200: #FECACA;
+$error-300: #FCA5A5;
+$error-400: #F87171;
+$error-500: #EF4444;  // Principal
+$error-600: #DC2626;
+$error-700: #B91C1C;
+$error-800: #991B1B;
+$error-900: #7F1D1D;
+
+/**
+ * WARNING (Aviso) - Amarelo/Laranja
+ * Alertas, atenção necessária
+ */
+$warning-50:  #FFFBEB;
+$warning-100: #FEF3C7;
+$warning-200: #FDE68A;
+$warning-300: #FCD34D;
+$warning-400: #FBBF24;
+$warning-500: #F59E0B;  // Principal
+$warning-600: #D97706;
+$warning-700: #B45309;
+$warning-800: #92400E;
+$warning-900: #78350F;
+
+/**
+ * INFO (Informação) - Azul
+ * Dicas, informações, tutoriais
+ */
+$info-50:  #EFF6FF;
+$info-100: #DBEAFE;
+$info-200: #BFDBFE;
+$info-300: #93C5FD;
+$info-400: #60A5FA;
+$info-500: #3B82F6;  // Principal
+$info-600: #2563EB;
+$info-700: #1D4ED8;
+$info-800: #1E40AF;
+$info-900: #1E3A8A;
+
+// ============================================
+// 🎯 CORES DE ACENTO (Ações Especiais)
+// ============================================
+
+/**
+ * TEAL (Verde-azulado) - Frescor
+ * Estatísticas positivas, crescimento
+ */
+$teal-50:  #F0FDFA;
+$teal-100: #CCFBF1;
+$teal-200: #99F6E4;
+$teal-300: #5EEAD4;
+$teal-400: #2DD4BF;
+$teal-500: #14B8A6;  // Principal
+$teal-600: #0D9488;
+$teal-700: #0F766E;
+$teal-800: #115E59;
+$teal-900: #134E4A;
+
+/**
+ * PURPLE (Roxo) - Premium
+ * Recursos especiais, VIP
+ */
+$purple-50:  #FAF5FF;
+$purple-100: #F3E8FF;
+$purple-200: #E9D5FF;
+$purple-300: #D8B4FE;
+$purple-400: #C084FC;
+$purple-500: #A855F7;  // Principal
+$purple-600: #9333EA;
+$purple-700: #7E22CE;
+$purple-800: #6B21A8;
+$purple-900: #581C87;
+
+// ============================================
+// 🌈 GRADIENTES (Destaques Visuais)
+// ============================================
+
+/**
+ * Gradientes para headers, cards especiais e CTAs
+ */
+$gradient-amber: linear-gradient(135deg, #{$amber-500} 0%, #{$amber-700} 100%);
+$gradient-gold: linear-gradient(135deg, #{$gold-400} 0%, #{$gold-600} 100%);
+$gradient-sunset: linear-gradient(135deg, #{$amber-500} 0%, #{$gold-600} 50%, #{$amber-700} 100%);
+$gradient-dark: linear-gradient(135deg, #{$brown-800} 0%, #{$brown-900} 100%);
+$gradient-premium: linear-gradient(135deg, #{$purple-500} 0%, #{$amber-500} 100%);
+
+// ============================================
+// 🎭 VARIÁVEIS DE CONTEXTO (Uso Específico)
+// ============================================
+
+/**
+ * Cores principais da aplicação
+ */
+$primary: $amber-600;           // Cor primária (header, botões principais)
+$primary-hover: $amber-700;     // Hover da cor primária
+$primary-light: $amber-100;     // Fundo claro primário
+$primary-dark: $amber-800;      // Escuro primário
+
+$secondary: $brown-600;         // Cor secundária
+$secondary-hover: $brown-700;   // Hover secundário
+$secondary-light: $brown-100;   // Fundo claro secundário
+
+$accent: $gold-500;             // Cor de destaque
+$accent-hover: $gold-600;       // Hover de destaque
+
+/**
+ * Backgrounds
+ */
+$bg-primary: $white;            // Fundo principal
+$bg-secondary: $gray-50;        // Fundo secundário
+$bg-tertiary: $gray-100;        // Fundo terciário
+$bg-dark: $gray-900;            // Fundo escuro (dark mode)
+$bg-darker: $brown-900;         // Fundo mais escuro
+
+/**
+ * Textos
+ */
+$text-primary: $gray-900;       // Texto principal
+$text-secondary: $gray-600;     // Texto secundário
+$text-tertiary: $gray-500;      // Texto terciário
+$text-disabled: $gray-400;      // Texto desabilitado
+$text-inverse: $white;          // Texto em fundo escuro
+
+/**
+ * Bordas
+ */
+$border-light: $gray-200;       // Borda clara
+$border-medium: $gray-300;      // Borda média
+$border-dark: $gray-400;        // Borda escura
+
+/**
+ * Sombras (valores para box-shadow)
+ */
+$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+$shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+$shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+$shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+
+/**
+ * Sombras coloridas (para elementos de destaque)
+ */
+$shadow-amber: 0 10px 15px -3px rgba(217, 119, 6, 0.3);
+$shadow-gold: 0 10px 15px -3px rgba(255, 194, 51, 0.3);
+$shadow-success: 0 10px 15px -3px rgba(34, 197, 94, 0.3);
+$shadow-error: 0 10px 15px -3px rgba(239, 68, 68, 0.3);
+
+// ============================================
+// 📱 CORES ESPECÍFICAS (Componentes)
+// ============================================
+
+/**
+ * Header/Navegação
+ */
+$header-bg: $amber-600;
+$header-text: $white;
+$header-subtitle: $amber-200;
+
+/**
+ * Cards de Cerveja
+ */
+$card-beer-ipa: $amber-200;        // IPA - Amarelo dourado
+$card-beer-lager: $wheat-100;      // Lager - Bege claro
+$card-beer-pilsen: $gray-50;       // Pilsen - Clarinho
+$card-beer-session: $brown-100;    // Session IPA - Marrom claro
+$card-beer-stout: $brown-800;      // Stout - Escura
+$card-beer-porter: $brown-700;     // Porter - Marrom escuro
+
+/**
+ * Tamanhos de Copo (Selecionados)
+ */
+$cup-selected: $amber-500;         // Copo selecionado
+$cup-unselected: $white;           // Copo não selecionado
+$cup-disabled: $gray-200;          // Copo desabilitado
+
+/**
+ * Status de Configuração
+ */
+$status-configured: $success-500;  // Configurado
+$status-unconfigured: $error-500;  // Não configurado
+$status-pending: $warning-500;     // Pendente
+
+/**
+ * Zona de Perigo (Limpeza de DB)
+ */
+$danger-bg: $error-50;
+$danger-border: $error-300;
+$danger-text: $error-900;
+$danger-button: $error-600;
+
+// ============================================
+// 🌙 DARK MODE (Preparação Futura)
+// ============================================
+
+/**
+ * Variáveis para dark mode
+ * Descomente quando implementar dark mode
+ */
+// $dark-bg-primary: $gray-900;
+// $dark-bg-secondary: $gray-800;
+// $dark-bg-tertiary: $gray-700;
+// $dark-text-primary: $gray-50;
+// $dark-text-secondary: $gray-300;
+// $dark-border: $gray-700;
+
+// ============================================
+// 📊 OPACIDADES ÚTEIS
+// ============================================
+
+$opacity-disabled: 0.6;
+$opacity-hover: 0.8;
+$opacity-overlay: 0.5;
+
+// ============================================
+// FIM DA PALETA
+// ============================================
+
+/**
+ * COMO USAR:
+ *
+ * 1. Importe este arquivo em seus componentes SCSS:
+ *    @import '../../assets/styles/color-palette';
+ *
+ * 2. Use as variáveis:
+ *    .botao-principal {
+ *      background-color: $primary;
+ *      color: $text-inverse;
+ *      &:hover {
+ *        background-color: $primary-hover;
+ *      }
+ *    }
+ *
+ * 3. Para Tailwind CSS, adicione ao tailwind.config.js
+ */

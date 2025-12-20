@@ -1,0 +1,192 @@
+<p-toast></p-toast>
+
+<!-- Dialog de Confirmação para Limpar Banco -->
+<p-dialog
+  [(visible)]="showClearDialog"
+  [modal]="true"
+  [closable]="true"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="w-full max-w-md"
+  header="⚠️ Confirmar Limpeza do Banco de Dados"
+>
+  <div class="flex flex-col gap-4">
+    <!-- Aviso Principal -->
+    <div class="bg-red-50 border-2 border-red-300 p-4 rounded-lg flex gap-3">
+      <i class="pi pi-exclamation-triangle text-red-600 text-3xl flex-shrink-0"></i>
+      <div class="flex-1">
+        <p class="font-bold text-red-900 mb-2 text-lg">Atenção! Esta ação é irreversível.</p>
+        <p class="text-sm text-red-800">
+          Ao confirmar, todos os dados serão <strong>permanentemente removidos</strong> do sistema.
+        </p>
+      </div>
+    </div>
+
+    <!-- Lista do que será removido/mantido -->
+    <div class="bg-white border border-gray-200 rounded-lg p-4">
+      <p class="font-semibold text-gray-900 mb-3">O que será afetado:</p>
+      <ul class="list-none flex flex-col gap-2 text-sm">
+        <li class="flex items-center gap-3">
+          <i class="pi pi-times-circle text-red-500 text-lg"></i>
+          <span><strong class="text-red-700">{{ dbStats().totalSales }}</strong> vendas registradas <span class="text-red-600 font-semibold">(SERÃO REMOVIDAS)</span></span>
+        </li>
+        <li class="flex items-center gap-3">
+          <i class="pi pi-times-circle text-red-500 text-lg"></i>
+          <span>Todas as <strong class="text-red-700">configurações de email</strong> <span class="text-red-600 font-semibold">(SERÃO REMOVIDAS)</span></span>
+        </li>
+        <li class="flex items-center gap-3">
+          <i class="pi pi-times-circle text-red-500 text-lg"></i>
+          <span>Todo o <strong class="text-red-700">histórico de relatórios</strong> <span class="text-red-600 font-semibold">(SERÁ REMOVIDO)</span></span>
+        </li>
+        <li class="flex items-center gap-3 pt-2 border-t border-gray-200">
+          <i class="pi pi-check-circle text-green-600 text-lg"></i>
+          <span>Os <strong class="text-green-700">{{ dbStats().totalBeerTypes }} tipos de cerveja</strong> padrão <span class="text-green-600 font-semibold">(SERÃO MANTIDOS)</span></span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Informação sobre o resultado -->
+    <div class="bg-blue-50 border border-blue-200 p-3 rounded flex items-start gap-2">
+      <i class="pi pi-info-circle text-blue-600 flex-shrink-0"></i>
+      <p class="text-sm text-blue-800">
+        O banco será <strong>reiniciado ao estado inicial</strong>, como se o aplicativo fosse instalado pela primeira vez.
+      </p>
+    </div>
+
+    <!-- Pergunta de confirmação -->
+    <div class="bg-gray-100 p-3 rounded text-center">
+      <p class="text-sm font-semibold text-gray-900">
+        Tem certeza que deseja continuar?
+      </p>
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="flex gap-3 justify-end w-full">
+      <p-button
+        label="Não, Cancelar"
+        icon="pi pi-times"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="closeClearDialog()"
+        [disabled]="isClearing()"
+        styleClass="flex-1"
+      ></p-button>
+      <p-button
+        label="Sim, Limpar Tudo"
+        icon="pi pi-trash"
+        severity="danger"
+        (onClick)="clearDatabase()"
+        [loading]="isClearing()"
+        styleClass="flex-1"
+      ></p-button>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<div class="flex flex-col gap-6">
+  <p-card header="🔧 Configurações Administrativas">
+    <div class="flex flex-col gap-6">
+
+      <!-- ==================== SEÇÃO: GERENCIAMENTO DO BANCO DE DADOS ==================== -->
+      <div class="border-2 border-red-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+        <div class="p-4 border-b-2 bg-gradient-to-r from-red-50 to-red-100">
+          <h3 class="font-semibold text-lg flex items-center gap-2 text-red-900">
+            <i class="pi pi-database text-red-600"></i>
+            Gerenciamento do Banco de Dados
+          </h3>
+          <p class="text-xs text-red-700 mt-1">Visualize estatísticas e gerencie seus dados</p>
+        </div>
+
+        <div class="p-4 flex flex-col gap-4">
+          <!-- Estatísticas do Banco -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200 hover:shadow-md transition-all">
+              <div class="flex items-center justify-between mb-2">
+                <p class="text-xs font-semibold text-blue-700 uppercase tracking-wide">Total de Vendas</p>
+                <i class="pi pi-shopping-cart text-blue-500 text-xl"></i>
+              </div>
+              <p class="text-3xl font-bold text-blue-900">{{ dbStats().totalSales }}</p>
+              <p class="text-xs text-blue-600 mt-1">registros no sistema</p>
+            </div>
+
+            <div class="bg-gradient-to-br from-amber-50 to-amber-100 p-4 rounded-lg border border-amber-200 hover:shadow-md transition-all">
+              <div class="flex items-center justify-between mb-2">
+                <p class="text-xs font-semibold text-amber-700 uppercase tracking-wide">Tipos de Cerveja</p>
+                <i class="pi pi-list text-amber-500 text-xl"></i>
+              </div>
+              <p class="text-3xl font-bold text-amber-900">{{ dbStats().totalBeerTypes }}</p>
+              <p class="text-xs text-amber-600 mt-1">categorias disponíveis</p>
+            </div>
+
+            <div class="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200 hover:shadow-md transition-all">
+              <div class="flex items-center justify-between mb-2">
+                <p class="text-xs font-semibold text-green-700 uppercase tracking-wide">Configurações</p>
+                <i class="pi pi-cog text-green-500 text-xl"></i>
+              </div>
+              <p class="text-3xl font-bold text-green-900">
+                @if (dbStats().hasSettings) {
+                  <i class="pi pi-check-circle"></i>
+                } @else {
+                  <i class="pi pi-times-circle text-red-500"></i>
+                }
+              </p>
+              <p class="text-xs text-green-600 mt-1">
+                {{ dbStats().hasSettings ? 'configuradas' : 'não configuradas' }}
+              </p>
+            </div>
+          </div>
+
+          <p-divider></p-divider>
+
+          <!-- Aviso sobre a limpeza - ZONA DE PERIGO -->
+          <div class="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-300 p-4 rounded-lg">
+            <div class="flex gap-3">
+              <i class="pi pi-exclamation-triangle text-yellow-600 text-2xl flex-shrink-0 animate-pulse"></i>
+              <div class="flex-1">
+                <p class="font-bold text-yellow-900 mb-2 text-base flex items-center gap-2">
+                   Zona de Perigo
+                </p>
+                <p class="text-sm text-yellow-800 leading-relaxed">
+                  A limpeza do banco de dados é uma <strong>ação permanente e irreversível</strong>.
+                  Todos os registros de vendas, histórico e configurações serão <strong>removidos para sempre</strong>.
+                  Use esta função apenas se realmente precisar reiniciar o sistema completamente.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botão de Limpar Banco -->
+          <div class="bg-red-50 border border-red-200 p-4 rounded-lg">
+            <p class="text-sm text-red-800 mb-3 font-medium">
+              <i class="pi pi-info-circle"></i>
+              Certifique-se de fazer backup dos dados importantes antes de continuar.
+            </p>
+            <p-button
+              label=" Limpar Banco de Dados Completo"
+              icon="pi pi-trash"
+              severity="danger"
+              [outlined]="false"
+              styleClass="w-full"
+              (onClick)="openClearDialog()"
+              [disabled]="!dbReady() || dbStats().totalSales === 0"
+            ></p-button>
+
+            @if (dbStats().totalSales === 0) {
+              <small class="text-gray-500 text-center block mt-2">
+                <i class="pi pi-info-circle"></i>
+                Banco já está vazio. Nada para limpar.
+              </small>
+            } @else {
+              <small class="text-red-600 text-center block mt-2 font-medium">
+                <i class="pi pi-exclamation-triangle"></i>
+                Esta ação não pode ser desfeita!
+              </small>
+            }
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </p-card>
+</div>

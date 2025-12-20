@@ -1,0 +1,772 @@
+/* ========================================
+   SALES FORM - CONTAINER PRINCIPAL
+   ======================================== */
+
+// Importa a paleta de cores do Black Beer
+@use '../../../assets/styles/color-palette' as *;
+
+.sales-form-container {
+  position: relative;
+  width: 100%;
+
+  /* Padding bottom para compensar botão fixo em mobile */
+  @media (max-width: 767px) {
+    padding-bottom: 80px;
+  }
+}
+
+/* ========================================
+   RESUMO FIXO NO TOPO (MOBILE ONLY)
+   ======================================== */
+
+.sticky-summary {
+  position: sticky;
+  top: 96px; /* Altura do header fixo + padding */
+  z-index: 30;
+  margin-bottom: 1rem;
+  padding: 0 0.5rem;
+  
+  @media (min-width: 640px) {
+    top: 104px;
+  }
+}
+
+.summary-card {
+  background: linear-gradient(135deg, $wheat-100 0%, $amber-200 100%);
+  border: 2px solid $amber-400;
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  box-shadow: $shadow-md;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.summary-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: $amber-800;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+
+  i {
+    font-size: 1rem;
+  }
+}
+
+.summary-content {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+
+  .label {
+    font-size: 0.75rem;
+    color: $amber-900;
+    font-weight: 500;
+  }
+
+  .value {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: $amber-800;
+  }
+
+  &.highlight {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 0.5rem;
+    border-top: 1px solid $amber-400;
+
+    .label {
+      font-size: 0.875rem;
+    }
+
+    .value {
+      font-size: 1.25rem;
+      color: $primary;
+    }
+  }
+}
+
+/* ========================================
+   CARD PRINCIPAL
+   ======================================== */
+
+.sales-form-card {
+  ::ng-deep .p-card-body {
+    padding: 1rem;
+    
+    @media (min-width: 640px) {
+      padding: 1.5rem;
+    }
+  }
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  font-size: 1.25rem;
+
+  @media (min-width: 640px) {
+    font-size: 1.5rem;
+  }
+
+  i {
+    font-size: 1.5rem;
+    color: $primary;
+
+    @media (min-width: 640px) {
+      font-size: 1.75rem;
+    }
+  }
+}
+
+/* ========================================
+   FORM E SEÇÕES
+   ======================================== */
+
+.sales-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  
+  @media (min-width: 640px) {
+    gap: 2.5rem;
+  }
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: $text-primary;
+
+  @media (min-width: 640px) {
+    font-size: 1.125rem;
+  }
+
+  i {
+    font-size: 1.25rem;
+  }
+}
+
+/* ========================================
+   GRID DE CERVEJAS - RESPONSIVO
+   ======================================== */
+
+.beer-grid {
+  display: grid;
+  gap: 0.75rem;
+  
+  /* Mobile: 1 coluna */
+  grid-template-columns: 1fr;
+  
+  /* Tablet: 2 colunas */
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+}
+
+.beer-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 2px solid $border-light;
+  border-radius: 0.75rem;
+  background: $white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+
+  /* Área de toque mínima */
+  min-height: 72px;
+
+  /* Remove tap highlight */
+  -webkit-tap-highlight-color: transparent;
+
+  &:hover:not(.beer-button-active) {
+    border-color: $amber-400;
+    box-shadow: $shadow-amber;
+    transform: translateY(-2px);
+  }
+
+  &:active {
+    transform: translateY(0) scale(0.98);
+  }
+
+  &.beer-button-active {
+    border-color: $amber-700;
+    background: linear-gradient(135deg, $amber-100 0%, $amber-200 100%);
+    box-shadow: $shadow-amber;
+
+    /* Texto mais escuro para melhor contraste */
+    .beer-name {
+      color: $brown-900;
+    }
+
+    .beer-description {
+      color: $amber-900;
+    }
+  }
+
+  &:disabled {
+    opacity: $opacity-disabled;
+    cursor: not-allowed;
+  }
+}
+
+.beer-button-indicator {
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  i {
+    font-size: 2rem;
+    color: $amber-700;
+    animation: scaleIn 0.3s ease-out;
+  }
+
+  .beer-color-dot {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    border: 2px solid $border-medium;
+    transition: transform 0.2s ease;
+
+    .beer-button:hover & {
+      transform: scale(1.1);
+    }
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.beer-button-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.beer-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: $text-primary;
+
+  @media (min-width: 640px) {
+    font-size: 1.125rem;
+  }
+
+  .beer-button-active & {
+    color: $amber-800;
+  }
+}
+
+.beer-description {
+  font-size: 0.875rem;
+  color: $text-secondary;
+
+  .beer-button-active & {
+    color: $amber-900;
+  }
+}
+
+/* ========================================
+   TAMANHOS DE COPO - LAYOUT RESPONSIVO
+   ======================================== */
+
+.cup-size-container {
+  display: grid;
+  gap: 0.75rem;
+  
+  /* Mobile: stack vertical */
+  grid-template-columns: 1fr;
+  
+  /* Tablet+: horizontal */
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.cup-size-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 2px solid $border-light;
+  border-radius: 0.75rem;
+  background: $white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  /* Área de toque adequada */
+  min-height: 80px;
+
+  -webkit-tap-highlight-color: transparent;
+
+  /* Mobile: layout horizontal */
+  flex-direction: row;
+  justify-content: flex-start;
+
+  /* Tablet+: layout vertical centralizado */
+  @media (min-width: 640px) {
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    min-height: 140px;
+  }
+
+  &:hover:not(.cup-size-button-active) {
+    border-color: $amber-400;
+    box-shadow: $shadow-amber;
+    transform: translateY(-2px);
+  }
+
+  &:active {
+    transform: translateY(0) scale(0.98);
+  }
+
+  &.cup-size-button-active {
+    border-color: $primary;
+    background: linear-gradient(135deg, $wheat-100 0%, $amber-100 100%);
+    box-shadow: $shadow-amber;
+
+    .cup-icon i {
+      color: $primary;
+    }
+  }
+}
+
+.cup-icon {
+  flex-shrink: 0;
+  color: $text-disabled;
+  transition: all 0.2s ease;
+
+  i {
+    display: block;
+  }
+
+  .cup-size-button:hover & {
+    color: $amber-400;
+    transform: scale(1.1);
+  }
+
+  .cup-size-button-active & {
+    animation: bounce 0.5s ease-out;
+  }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+.cup-size-label {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  
+  /* Mobile: alinhado à esquerda */
+  flex-direction: row;
+  
+  /* Tablet+: centralizado */
+  @media (min-width: 640px) {
+    justify-content: center;
+  }
+}
+
+.cup-size-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: $text-primary;
+
+  @media (min-width: 640px) {
+    font-size: 2rem;
+  }
+
+  .cup-size-button-active & {
+    color: $amber-800;
+  }
+}
+
+.cup-size-unit {
+  font-size: 1rem;
+  font-weight: 500;
+  color: $text-secondary;
+
+  @media (min-width: 640px) {
+    font-size: 1.125rem;
+  }
+
+  .cup-size-button-active & {
+    color: $amber-900;
+  }
+}
+
+.cup-size-badge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  background: $primary;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  i {
+    color: $white;
+    font-size: 0.875rem;
+  }
+
+  animation: scaleIn 0.3s ease-out;
+}
+
+/* ========================================
+   CONTROLE DE QUANTIDADE
+   ======================================== */
+
+.quantity-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 1rem;
+  
+  @media (min-width: 640px) {
+    gap: 2rem;
+  }
+}
+
+.quantity-button {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  border: 2px solid $border-light;
+  background: $white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+
+  @media (min-width: 640px) {
+    width: 4rem;
+    height: 4rem;
+  }
+
+  i {
+    font-size: 1.25rem;
+    color: $text-primary;
+
+    @media (min-width: 640px) {
+      font-size: 1.5rem;
+    }
+  }
+
+  &:hover:not(:disabled) {
+    border-color: $amber-400;
+    box-shadow: $shadow-amber;
+    transform: scale(1.05);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+
+  &:disabled {
+    opacity: $opacity-disabled;
+    cursor: not-allowed;
+  }
+
+  &.quantity-button-minus {
+    &:hover:not(:disabled) {
+      background: $error-50;
+      border-color: $error-500;
+
+      i {
+        color: $error-500;
+      }
+    }
+  }
+
+  &.quantity-button-plus {
+    &:hover:not(:disabled) {
+      background: $success-100;
+      border-color: $success-500;
+
+      i {
+        color: $success-500;
+      }
+    }
+  }
+}
+
+.quantity-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 120px;
+  padding: 1rem;
+  background: linear-gradient(135deg, $gray-50 0%, $gray-100 100%);
+  border-radius: 1rem;
+  border: 2px solid $border-light;
+}
+
+.quantity-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: $primary;
+  line-height: 1;
+
+  @media (min-width: 640px) {
+    font-size: 3rem;
+  }
+}
+
+.quantity-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: $text-secondary;
+  text-transform: lowercase;
+}
+
+/* ========================================
+   RESUMO DESKTOP
+   ======================================== */
+
+.desktop-summary {
+  background: linear-gradient(135deg, $wheat-100 0%, $amber-200 100%);
+  border: 2px solid $amber-400;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  box-shadow: $shadow-md;
+}
+
+.desktop-summary-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: $amber-800;
+  margin-bottom: 1rem;
+
+  i {
+    font-size: 1.25rem;
+  }
+}
+
+.desktop-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.desktop-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+
+  .label {
+    font-size: 0.875rem;
+    color: $amber-900;
+    font-weight: 500;
+  }
+
+  .value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: $amber-800;
+  }
+
+  &.highlight {
+    grid-column: 1 / -1;
+    padding-top: 1rem;
+    border-top: 2px solid $amber-400;
+
+    .label {
+      font-size: 1rem;
+    }
+  }
+}
+
+/* ========================================
+   BOTÃO DE SUBMIT
+   ======================================== */
+
+.submit-container {
+  /* Mobile: fixo no bottom */
+  @media (max-width: 767px) {
+    position: fixed;
+    bottom: 72px; /* Altura da bottom nav */
+    left: 0;
+    right: 0;
+    padding: 0.75rem;
+    background: linear-gradient(to top, white 0%, rgba(255, 255, 255, 0.95) 80%, transparent 100%);
+    backdrop-filter: blur(10px);
+    z-index: 20;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Safe area para iOS */
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    @media (max-width: 767px) {
+      bottom: calc(72px + env(safe-area-inset-bottom));
+    }
+  }
+}
+
+.submit-button {
+  ::ng-deep {
+    .p-button {
+      width: 100%;
+      height: 3.5rem;
+      font-size: 1.125rem;
+      font-weight: 600;
+      border-radius: 0.75rem;
+      
+      @media (min-width: 640px) {
+        height: 4rem;
+        font-size: 1.25rem;
+      }
+      
+      &:not(:disabled):hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(217, 119, 6, 0.4);
+      }
+      
+      &:not(:disabled):active {
+        transform: translateY(0) scale(0.98);
+      }
+      
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+  }
+}
+
+/* ========================================
+   ANIMAÇÕES E TRANSIÇÕES
+   ======================================== */
+
+/* Fade in para elementos ao aparecer */
+.form-section {
+  animation: fadeInUp 0.4s ease-out backwards;
+  
+  @for $i from 1 through 5 {
+    &:nth-child(#{$i}) {
+      animation-delay: #{$i * 0.1}s;
+    }
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========================================
+   ESTADOS DE FOCO (ACESSIBILIDADE)
+   ======================================== */
+
+.beer-button:focus-visible,
+.cup-size-button:focus-visible,
+.quantity-button:focus-visible {
+  outline: 3px solid $amber-400;
+  outline-offset: 2px;
+  z-index: 10;
+}
+
+/* Remove outline padrão */
+.beer-button:focus:not(:focus-visible),
+.cup-size-button:focus:not(:focus-visible),
+.quantity-button:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ========================================
+   LOADING STATES (preparação futura)
+   ======================================== */
+
+.form-section.loading {
+  opacity: $opacity-disabled;
+  pointer-events: none;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 2rem;
+    height: 2rem;
+    border: 3px solid $gray-100;
+    border-top-color: $primary;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}

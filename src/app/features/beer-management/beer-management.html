@@ -1,87 +1,270 @@
 <p-toast></p-toast>
-<p-confirmDialog [style]="{width: '30rem'}"></p-confirmDialog>
+<p-confirmDialog [style]="{width: '90vw', maxWidth: '30rem'}"></p-confirmDialog>
 
-<p-card>
-  <ng-template pTemplate="title">
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <i class="pi pi-database text-2xl"></i>
-        <span>Gerenciar Tipos de Cerveja</span>
+<div class="beer-management-container">
+  
+  <!-- ==================== CARD PRINCIPAL ==================== -->
+  <p-card styleClass="beer-management-card">
+    
+    <!-- ==================== HEADER COM BOTÃO ==================== -->
+    <ng-template pTemplate="title">
+      <div class="card-header">
+        <div class="header-content">
+          <i class="pi pi-database"></i>
+          <div class="header-text">
+            <span class="header-title">Gerenciar Cervejas</span>
+            <span class="header-subtitle">{{ getTotalBeerTypes() }} tipo(s) cadastrado(s)</span>
+          </div>
+        </div>
+        @if (!isAdding()) {
+          <p-button
+            icon="pi pi-plus"
+            label="Nova"
+            severity="primary"
+            [rounded]="true"
+            styleClass="header-button"
+            (onClick)="toggleAddForm()">
+          </p-button>          
+        }
       </div>
-      <p-button
-        [icon]="isAdding() ? 'pi pi-times' : 'pi pi-plus'"
-        [label]="isAdding() ? 'Cancelar' : 'Nova Cerveja'"
-        [severity]="isAdding() ? 'secondary' : 'primary'"
-        (onClick)="toggleAddForm()">
-      </p-button>
-    </div>
-  </ng-template>
+    </ng-template>
 
-  <ng-template pTemplate="content">
-    <div class="mb-6 border-2 border-gray-200 rounded-lg p-4">
-      @if(isAdding()){
-        <form [formGroup]="beerForm" (ngSubmit)="handleAddBeer()" class="flex flex-col gap-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="flex flex-col gap-2">
-              <label for="name" class="font-semibold">Nome da Cerveja *</label>
-              <input pInputText id="name" formControlName="name" />
+    <ng-template pTemplate="content">
+      
+      <!-- ==================== FORMULÁRIO DE ADICIONAR (COLAPSÁVEL) ==================== -->
+      @if(isAdding()) {
+        <div class="add-form-container">
+          <form [formGroup]="beerForm" (ngSubmit)="handleAddBeer()" class="beer-form">
+            
+            <!-- Grid responsivo do formulário -->
+            <div class="form-grid">
+              
+              <!-- Campo: Nome -->
+              <div class="form-field">
+                <label for="name" class="form-label required">
+                  <i class="pi pi-tag"></i>
+                  Nome da Cerveja
+                </label>
+                <input 
+                  pInputText 
+                  id="name" 
+                  formControlName="name"
+                  placeholder="Ex: Weiss, Stout..."
+                  class="form-input" />
+              </div>
+              
+              <!-- Campo: Color Picker -->
+              <div class="form-field">
+                <label for="color" class="form-label">
+                  <i class="pi pi-palette"></i>
+                  Cor da Cerveja
+                </label>
+                <div class="color-picker-wrapper">
+                  <!-- Preview da cor selecionada -->
+                  <div class="color-preview" [style.background-color]="beerForm.get('color')?.value">
+                    <span class="color-preview-label">Preview</span>
+                  </div>
+                  <!-- Color picker com formato correto -->
+                  <p-colorPicker 
+                    formControlName="color"
+                    [inline]="false"
+                    format="hex"
+                    appendTo="body">
+                  </p-colorPicker>
+                </div>
+              </div>
+              
+              <!-- Campo: Descrição (ocupa largura total) -->
+              <div class="form-field form-field-full">
+                <label for="description" class="form-label">
+                  <i class="pi pi-align-left"></i>
+                  Descrição
+                </label>
+                <textarea 
+                  pInputTextarea 
+                  id="description" 
+                  formControlName="description"
+                  [rows]="3"
+                  placeholder="Descreva as características desta cerveja..."
+                  class="form-input">
+                </textarea>
+              </div>
             </div>
-            <div class="flex flex-col gap-2">
-              <label for="color" class="font-semibold">Cor da Cerveja</label>
-              <p-colorPicker formControlName="color"></p-colorPicker>
+            
+            <!-- Botões de Ação (Cancelar + Salvar) -->
+            <div class="form-actions">
+              <p-button 
+                type="button"
+                label="Cancelar" 
+                icon="pi pi-times"
+                iconPos="left"
+                severity="secondary"
+                [outlined]="true"
+                styleClass="cancel-button"
+                (onClick)="toggleAddForm()">
+              </p-button>
+              
+              <p-button 
+                type="submit" 
+                label="Salvar Cerveja" 
+                icon="pi pi-check"
+                iconPos="left"
+                severity="success"
+                styleClass="submit-button"
+                [disabled]="beerForm.invalid">
+              </p-button>
             </div>
-          </div>
-          <div class="flex flex-col gap-2">
-            <label for="description" class="font-semibold">Descrição</label>
-            <textarea pInputTextarea id="description" formControlName="description" [rows]="2"></textarea>
-          </div>
-          <p-button type="submit" label="Salvar Cerveja" icon="pi pi-check" [disabled]="beerForm.invalid"></p-button>
-        </form>
+          </form>
+        </div>
       }
-    </div>
 
-    <p-table [value]="beerTypes()" [tableStyle]="{'min-width': '50rem'}">
-      <ng-template pTemplate="header">
-        <tr>
-          <th style="width: 5%">Cor</th>
-          <th>Nome</th>
-          <th>Descrição</th>
-          <th style="width: 10%">Tipo</th>
-          <th style="width: 10%">Ações</th>
-        </tr>
-      </ng-template>
-      <ng-template pTemplate="body" let-beer>
-        <tr>
-          <td>
-            <div class="w-6 h-6 rounded-full border-2" [style.backgroundColor]="beer.color"></div>
-          </td>
-          <td>{{ beer.name }}</td>
-          <td>{{ beer.description }}</td>
-          <td>
-            <p-tag [value]="isDefaultBeer(beer.id) ? 'Padrão' : 'Custom'"
-                   [severity]="isDefaultBeer(beer.id) ? 'info' : 'success'">
-            </p-tag>
-          </td>
-          <td>
-            <p-button
-              icon="pi pi-trash"
-              severity="danger"
-              [text]="true"
-              [rounded]="true"
-              (click)="confirmDelete(beer)"
-              pTooltip="Remover Cerveja"
-              tooltipPosition="top"
-              [disabled]="isDefaultBeer(beer.id)">
-            </p-button>
-          </td>
-        </tr>
-      </ng-template>
-      <ng-template pTemplate="emptymessage">
-        <tr>
-          <td colspan="5" class="text-center p-4">Nenhum tipo de cerveja encontrado.</td>
-        </tr>
-      </ng-template>
-    </p-table>
+      <!-- ==================== LISTA DESKTOP (TABELA - MD+) ==================== -->
+      <div class="hidden md:block desktop-table">
+        <p-table [value]="beerTypes()" [tableStyle]="{'min-width': '50rem'}">
+          <ng-template pTemplate="header">
+            <tr>
+              <th style="width: 5%">Cor</th>
+              <th>Nome</th>
+              <th>Descrição</th>
+              <th style="width: 10%">Tipo</th>
+              <th style="width: 10%">Ações</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-beer>
+            <tr>
+              <td>
+                <div class="w-6 h-6 rounded-full border-2" [style.backgroundColor]="beer.color"></div>
+              </td>
+              <td>{{ beer.name }}</td>
+              <td>{{ beer.description }}</td>
+              <td>
+                <p-tag [value]="isDefaultBeer(beer.id) ? 'Padrão' : 'Custom'"
+                       [severity]="isDefaultBeer(beer.id) ? 'info' : 'success'">
+                </p-tag>
+              </td>
+              <td>
+                <p-button
+                  icon="pi pi-trash"
+                  severity="danger"
+                  [text]="true"
+                  [rounded]="true"
+                  (click)="confirmDelete(beer)"
+                  pTooltip="Remover Cerveja"
+                  tooltipPosition="top"
+                  [disabled]="isDefaultBeer(beer.id)">
+                </p-button>
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="5" class="text-center p-4">Nenhum tipo de cerveja encontrado.</td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
 
-  </ng-template>
-</p-card>
+      <!-- ==================== LISTA MOBILE (CARDS - <MD) ==================== -->
+      <div class="md:hidden mobile-cards">
+        
+        <!-- Grid de cards -->
+        <div class="cards-grid">
+          @for (beer of beerTypes(); track beer.id) {
+            <article class="beer-card" [class.beer-card-default]="isDefaultBeer(beer.id)">
+              
+              <!-- Header do card -->
+              <div class="beer-card-header">
+                <!-- Cor e nome -->
+                <div class="beer-card-title">
+                  <div class="beer-color-indicator" [style.background-color]="beer.color"></div>
+                  <h3 class="beer-name">{{ beer.name }}</h3>
+                </div>
+                
+                <!-- Badge de tipo -->
+                <p-tag 
+                  [value]="isDefaultBeer(beer.id) ? 'Padrão' : 'Custom'"
+                  [severity]="isDefaultBeer(beer.id) ? 'info' : 'success'"
+                  [rounded]="true"
+                  styleClass="beer-type-badge">
+                </p-tag>
+              </div>
+              
+              <!-- Descrição -->
+              <p class="beer-description">{{ beer.description }}</p>
+              
+              <!-- Footer com ações -->
+              <div class="beer-card-footer">
+                <!-- Info adicional -->
+                <div class="beer-card-info">
+                  <i class="pi pi-palette text-gray-400"></i>
+                  <span class="beer-color-code">{{ beer.color }}</span>
+                </div>
+                
+                <!-- Botão de delete -->
+                <button
+                  type="button"
+                  class="delete-button"
+                  [class.delete-button-disabled]="isDefaultBeer(beer.id)"
+                  [disabled]="isDefaultBeer(beer.id)"
+                  (click)="confirmDelete(beer)"
+                  [attr.aria-label]="'Remover cerveja ' + beer.name">
+                  <i class="pi pi-trash"></i>
+                  <span>Remover</span>
+                </button>
+              </div>
+              
+              <!-- Indicador de cerveja padrão -->
+              @if (isDefaultBeer(beer.id)) {
+                <div class="default-indicator">
+                  <i class="pi pi-lock"></i>
+                  <span>Não pode ser removida</span>
+                </div>
+              }
+            </article>
+          } @empty {
+            <!-- Estado vazio -->
+            <div class="empty-state">
+              <i class="pi pi-inbox"></i>
+              <p class="empty-state-title">Nenhuma cerveja cadastrada</p>
+              <p class="empty-state-text">Clique em "Nova" para adicionar sua primeira cerveja</p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- ==================== INFORMAÇÕES ADICIONAIS ==================== -->
+      <div class="info-section">
+        <div class="info-cards">
+          <!-- Card: Total -->
+          <div class="info-card info-card-primary">
+            <i class="pi pi-list"></i>
+            <div class="info-card-content">
+              <span class="info-card-value">{{ getTotalBeerTypes() }}</span>
+              <span class="info-card-label">Total</span>
+            </div>
+          </div>
+          
+          <!-- Card: Padrão -->
+          <div class="info-card info-card-info">
+            <i class="pi pi-shield"></i>
+            <div class="info-card-content">
+              <span class="info-card-value">{{ getDefaultBeers().length }}</span>
+              <span class="info-card-label">Padrão</span>
+            </div>
+          </div>
+          
+          <!-- Card: Custom -->
+          <div class="info-card info-card-success">
+            <i class="pi pi-star"></i>
+            <div class="info-card-content">
+              <span class="info-card-value">{{ getCustomBeerTypesCount() }}</span>
+              <span class="info-card-label">Custom</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </ng-template>
+  </p-card>
+
+</div>

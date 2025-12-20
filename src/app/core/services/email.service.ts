@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpErrorResponse, HttpEvent, HttpEventType } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpEvent, HttpEventType, HttpResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { catchError, filter, map, tap } from 'rxjs/operators';
 import { EmailRequest, EmailResponse, SendEmailOptions } from '../models/email.model';
 
 /**
@@ -77,33 +77,21 @@ export class EmailService {
         observe: 'events'
       }
     ).pipe(
-      map((event: HttpEvent<EmailResponse>) => {
-        // Tracking do progresso de upload
-        if (event.type === HttpEventType.UploadProgress) {
-          const progress = event.total
-            ? Math.round((100 * event.loaded) / event.total)
-            : 0;
-
+      tap((event: HttpEvent<EmailResponse>) => {
+        // Tracking do progresso de upload usando tap (side effect)
+        if (event.type === HttpEventType.UploadProgress && event.total) {
+          const progress = Math.round((100 * event.loaded) / event.total);
           if (onProgress) {
             onProgress(progress);
           }
         }
-
-        // Retornar apenas a resposta final
-        if (event.type === HttpEventType.Response) {
-          return event.body as EmailResponse;
-        }
-
-        // Retornar objeto vazio para eventos intermediários
-        return {} as EmailResponse;
       }),
-      // Filtrar eventos intermediários
-      map(response => {
-        if (response && response.success !== undefined) {
-          return response;
-        }
-        return {} as EmailResponse;
-      }),
+      // Filtrar APENAS eventos de Response (type guard para TypeScript)
+      filter((event: HttpEvent<EmailResponse>): event is HttpResponse<EmailResponse> =>
+        event.type === HttpEventType.Response
+      ),
+      // Agora temos certeza que é HttpResponse, extrair o body
+      map((response: HttpResponse<EmailResponse>) => response.body as EmailResponse),
       catchError(this.handleError)
     );
   }

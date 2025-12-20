@@ -10,6 +10,7 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { BaseChartDirective } from 'ng2-charts';
 import { Chart, ChartConfiguration, ChartData, registerables } from 'chart.js';
+import { finalize } from 'rxjs/operators';
 import { DatabaseService } from '../../core/services/database';
 import { EmailService } from '../../core/services/email.service';
 import { FullReport } from '../../core/models/report.model';
@@ -555,20 +556,37 @@ export class ReportsSectionComponent implements OnInit {
         onProgress: (progress) => {
           this.uploadProgress.set(progress);
         }
-      }).subscribe({
+      }).pipe(
+        // finalize() garante que o cleanup sempre será executado (sucesso OU erro)
+        finalize(() => {
+          console.log('✅ Cleanup executado (finalize)');
+          this.isSendingEmail.set(false);
+          this.uploadProgress.set(0);
+        })
+      ).subscribe({
         next: (response) => {
-          if (response && response.success) {
+          console.log('📧 Resposta final do email service:', response);
+
+          // Verificar se houve erro (campo 'error' presente)
+          if (response.error) {
+            this.showError(response.error);
+            return;
+          }
+
+          // Verificar sucesso: se tem 'message' E 'recipients' (formato real da API)
+          // OU se tem 'success: true' (formato legado)
+          const isSuccess = (response.message && response.recipients !== undefined) || response.success === true;
+
+          if (isSuccess) {
             this.showSuccess(`Relatório enviado com sucesso para ${recipients.length} destinatário(s)!`);
             this.emailRecipients.set(''); // Limpar campo
+          } else {
+            this.showError(response.message || 'Erro ao enviar relatório por email.');
           }
         },
         error: (error) => {
-          console.error('Erro ao enviar email:', error);
+          console.error('❌ Erro ao enviar email:', error);
           this.showError(error.message || 'Erro ao enviar relatório por email.');
-        },
-        complete: () => {
-          this.isSendingEmail.set(false);
-          this.uploadProgress.set(0);
         }
       });
     } catch (error: any) {

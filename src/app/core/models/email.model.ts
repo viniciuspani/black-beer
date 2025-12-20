@@ -8,10 +8,21 @@ export interface EmailRequest {
 
 /**
  * Resposta da API de envio de email
+ * A API retorna { message, recipients, filename, filesize } em caso de sucesso
+ * ou { error } em caso de falha
  */
 export interface EmailResponse {
-  success: boolean;
-  message: string;
+  // Campos de sucesso
+  message?: string;
+  recipients?: number;
+  filename?: string;
+  filesize?: string;
+
+  // Campo de erro
+  error?: string;
+
+  // Campos legados (mantidos para compatibilidade)
+  success?: boolean;
   data?: {
     emailsSent: number;
     recipients: string[];

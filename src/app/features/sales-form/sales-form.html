@@ -1,108 +1,209 @@
 <p-toast />
 
-<p-card>
-  <ng-template pTemplate="title">
-    <div class="flex items-center justify-center gap-2">
-      <i class="pi pi-shopping-cart text-2xl"></i>
-      <span>Nova Venda</span>
-    </div>
-  </ng-template>
-
-  <ng-template pTemplate="content">
-    <form [formGroup]="saleForm" (ngSubmit)="handleSale()" class="flex flex-col gap-8">
-      
-      <!-- Seleção de Cerveja -->
-      <div class="flex flex-col gap-3">
-        <h3 class="font-semibold text-lg">Selecione a Cerveja</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          @for (beer of beerTypes(); track beer.id) {
-            <button
-              type="button"
-              (click)="selectBeer(beer.id)"
-              class="p-4 flex flex-col items-start gap-2 text-left rounded-lg border transition-all duration-300"
-              [class.bg-amber-600]="beerId.value === beer.id"
-              [class.text-white]="beerId.value === beer.id"
-              [class.shadow-lg]="beerId.value === beer.id"
-              [class.border-amber-700]="beerId.value === beer.id"
-              [class.hover:shadow-md]="beerId.value !== beer.id"
-              [class.hover:border-amber-400]="beerId.value !== beer.id">
-              <div class="flex items-center gap-2 w-full">
-                <div 
-                  class="w-4 h-4 rounded-full border-2 border-current" 
-                  [style.background-color]="beer.color">
-                </div>
-                <span class="font-medium">{{ beer.name }}</span>
-              </div>
-              <span class="text-xs opacity-70">{{ beer.description }}</span>
-            </button>
-          }
+<div class="sales-form-container">
+  
+  <!-- ==================== RESUMO DA VENDA (FIXO NO TOPO - MOBILE) ==================== -->
+  @if (saleSummary(); as summary) {
+    <div class="sticky-summary md:hidden">
+      <div class="summary-card">
+        <div class="summary-header">
+          <i class="pi pi-info-circle"></i>
+          <span>Resumo</span>
         </div>
-      </div>
-
-      <!-- Tamanho do Copo -->
-      <div class="flex flex-col gap-3">
-        <h3 class="font-semibold text-lg">Tamanho do Copo</h3>
-        <div class="flex gap-3">
-          @for (size of cupSizes; track size) {
-            <button
-              type="button"
-              (click)="selectCupSize(size)"
-              class="flex-1 h-16 text-lg font-bold rounded-lg border transition-all duration-300"
-              [class.bg-amber-500]="cupSize.value === size"
-              [class.text-white]="cupSize.value === size"
-              [class.shadow-md]="cupSize.value === size"
-              [class.bg-white]="cupSize.value !== size"
-              [class.text-black]="cupSize.value !== size"
-              [class.hover:shadow-sm]="cupSize.value !== size">
-              {{ size }}ml
-            </button>
-          }
-        </div>
-      </div>
-
-      <!-- Quantidade -->
-      <div class="flex flex-col gap-3">
-        <h3 class="font-semibold text-lg text-center">Quantidade</h3>
-        <div class="flex items-center justify-center gap-4">
-          <p-button 
-            type="button" 
-            icon="pi pi-minus" 
-            class="p-button-outlined p-button-lg" 
-            (onClick)="changeQuantity(-1)" 
-            [disabled]="quantity.value <= 1" />
-          
-          <p-tag 
-            class="px-6 py-3 text-2xl" 
-            severity="secondary" 
-            [value]="quantity.value.toString()" />
-          
-          <p-button 
-            type="button" 
-            icon="pi pi-plus" 
-            class="p-button-outlined p-button-lg" 
-            (onClick)="changeQuantity(1)" />
-        </div>
-      </div>
-
-      <!-- Resumo da Venda -->
-      @if (saleSummary(); as summary) {
-        <div class="bg-amber-50 p-4 rounded-lg border border-amber-200">
-          <h4 class="font-semibold mb-2">Resumo da Venda</h4>
-          <div class="space-y-1 text-sm text-gray-700">
-            <p><strong>Cerveja:</strong> {{ summary.beerName }}</p>
-            <p><strong>Tamanho:</strong> {{ summary.cupSize }}ml</p>
-            <p><strong>Quantidade:</strong> {{ summary.quantity }} copo(s)</p>
-            <p><strong>Volume Total:</strong> {{ summary.totalVolume }}L</p>
+        <div class="summary-content">
+          <div class="summary-item">
+            <span class="label">Cerveja:</span>
+            <span class="value">{{ summary.beerName }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">Tamanho:</span>
+            <span class="value">{{ summary.cupSize }}ml</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">Qtd:</span>
+            <span class="value">{{ summary.quantity }}</span>
+          </div>
+          <div class="summary-item highlight">
+            <span class="label">Total:</span>
+            <span class="value">{{ summary.totalVolume }}L</span>
           </div>
         </div>
-      }
+      </div>
+    </div>
+  }
 
-      <!-- Botão de Submit -->
-      <p-button
-        type="submit"
-        label="Registrar Venda"
-        class="p-button-lg w-full"
-        [disabled]="saleForm.invalid" />
-    </form>
-  </ng-template>
-</p-card>
+  <!-- ==================== CARD PRINCIPAL ==================== -->
+  <p-card styleClass="sales-form-card">
+    <ng-template pTemplate="title">
+      <div class="card-title">
+        <i class="pi pi-shopping-cart"></i>
+        <span>Nova Venda</span>
+      </div>
+    </ng-template>
+
+    <ng-template pTemplate="content">
+      <form [formGroup]="saleForm" (ngSubmit)="handleSale()" class="sales-form">
+        
+        <!-- ==================== SELEÇÃO DE CERVEJA ==================== -->
+        <section class="form-section">
+          <h3 class="section-title">
+            <i class="pi pi-beer text-amber-600"></i>
+            Selecione a Cerveja
+          </h3>
+          
+          <!-- Grid responsivo: 1 col mobile, 2 cols tablet+ -->
+          <div class="beer-grid">
+            @for (beer of beerTypes(); track beer.id) {
+              <button
+                type="button"
+                (click)="selectBeer(beer.id)"
+                class="beer-button"
+                [class.beer-button-active]="beerId.value === beer.id"
+                [attr.aria-pressed]="beerId.value === beer.id"
+                [attr.aria-label]="'Selecionar cerveja ' + beer.name">
+                
+                <!-- Indicador visual de seleção -->
+                <div class="beer-button-indicator">
+                  @if (beerId.value === beer.id) {
+                    <i class="pi pi-check-circle"></i>
+                  } @else {
+                    <div class="beer-color-dot" [style.background-color]="beer.color"></div>
+                  }
+                </div>
+                
+                <!-- Conteúdo do botão -->
+                <div class="beer-button-content">
+                  <span class="beer-name">{{ beer.name }}</span>
+                  <span class="beer-description">{{ beer.description }}</span>
+                </div>
+              </button>
+            }
+          </div>
+        </section>
+
+        <!-- ==================== TAMANHO DO COPO ==================== -->
+        <section class="form-section">
+          <h3 class="section-title">
+            <i class="pi pi-box text-amber-600"></i>
+            Tamanho do Copo
+          </h3>
+          
+          <!-- Layout vertical em mobile, horizontal em desktop -->
+          <div class="cup-size-container">
+            @for (size of cupSizes; track size) {
+              <button
+                type="button"
+                (click)="selectCupSize(size)"
+                class="cup-size-button"
+                [class.cup-size-button-active]="cupSize.value === size"
+                [attr.aria-pressed]="cupSize.value === size"
+                [attr.aria-label]="'Selecionar copo de ' + size + ' mililitros'">
+                
+                <!-- Ícone visual do copo -->
+                <div class="cup-icon">
+                  <i class="pi pi-shopping-bag"
+                     [class.text-3xl]="size === 300"
+                     [class.text-4xl]="size === 500"
+                     [class.text-5xl]="size === 1000"></i>
+                </div>
+                
+                <!-- Label do tamanho -->
+                <div class="cup-size-label">
+                  <span class="cup-size-value">{{ size }}</span>
+                  <span class="cup-size-unit">ml</span>
+                </div>
+                
+                <!-- Badge de seleção -->
+                @if (cupSize.value === size) {
+                  <div class="cup-size-badge">
+                    <i class="pi pi-check"></i>
+                  </div>
+                }
+              </button>
+            }
+          </div>
+        </section>
+
+        <!-- ==================== QUANTIDADE ==================== -->
+        <section class="form-section">
+          <h3 class="section-title">
+            <i class="pi pi-hashtag text-amber-600"></i>
+            Quantidade de Copos
+          </h3>
+          
+          <div class="quantity-container">
+            <!-- Botão Diminuir -->
+            <button 
+              type="button"
+              class="quantity-button quantity-button-minus"
+              (click)="changeQuantity(-1)" 
+              [disabled]="quantity.value <= 1"
+              aria-label="Diminuir quantidade">
+              <i class="pi pi-minus"></i>
+            </button>
+            
+            <!-- Display da Quantidade -->
+            <div class="quantity-display">
+              <span class="quantity-value">{{ quantity.value }}</span>
+              <span class="quantity-label">{{ quantity.value === 1 ? 'copo' : 'copos' }}</span>
+            </div>
+            
+            <!-- Botão Aumentar -->
+            <button 
+              type="button"
+              class="quantity-button quantity-button-plus"
+              (click)="changeQuantity(1)"
+              aria-label="Aumentar quantidade">
+              <i class="pi pi-plus"></i>
+            </button>
+          </div>
+        </section>
+
+        <!-- ==================== RESUMO (DESKTOP) ==================== -->
+        @if (saleSummary(); as summary) {
+          <div class="hidden md:block">
+            <section class="form-section">
+              <div class="desktop-summary">
+                <h4 class="desktop-summary-title">
+                  <i class="pi pi-info-circle"></i>
+                  Resumo da Venda
+                </h4>
+                <div class="desktop-summary-grid">
+                  <div class="desktop-summary-item">
+                    <span class="label">Cerveja:</span>
+                    <span class="value">{{ summary.beerName }}</span>
+                  </div>
+                  <div class="desktop-summary-item">
+                    <span class="label">Tamanho:</span>
+                    <span class="value">{{ summary.cupSize }}ml</span>
+                  </div>
+                  <div class="desktop-summary-item">
+                    <span class="label">Quantidade:</span>
+                    <span class="value">{{ summary.quantity }} copo(s)</span>
+                  </div>
+                  <div class="desktop-summary-item highlight">
+                    <span class="label">Volume Total:</span>
+                    <span class="value font-bold text-lg">{{ summary.totalVolume }}L</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        }
+
+        <!-- ==================== BOTÃO DE SUBMIT (FIXO NO BOTTOM - MOBILE) ==================== -->
+        <div class="submit-container md:relative">
+          <p-button
+            type="submit"
+            label="Registrar Venda"
+            icon="pi pi-check"
+            iconPos="left"
+            styleClass="submit-button"
+            [disabled]="saleForm.invalid"
+            [attr.aria-label]="saleForm.invalid ? 'Formulário incompleto, selecione todos os campos' : 'Registrar venda'" />
+        </div>
+      </form>
+    </ng-template>
+  </p-card>
+
+</div>

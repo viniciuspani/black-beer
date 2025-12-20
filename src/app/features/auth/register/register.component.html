@@ -1,0 +1,216 @@
+<!-- ========================================
+     src/app/features/auth/register/register.component.html
+     Template de Cadastro
+     ======================================== -->
+
+<p-toast></p-toast>
+
+<div class="register-container">
+  <!-- Card de Cadastro -->
+  <p-card styleClass="register-card">
+
+    <!-- Logo/Header -->
+    <ng-template pTemplate="header">
+      <div class="register-header">
+        <div class="logo-container">
+          <i class="pi pi-user-plus text-6xl text-amber-600"></i>
+        </div>
+        <h1 class="app-title">Criar Conta</h1>
+        <p class="app-subtitle">Cadastre-se no Black Beer</p>
+      </div>
+    </ng-template>
+
+    <!-- Formulário -->
+    <ng-template pTemplate="content">
+      <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="register-form">
+
+        <!-- Campo: Nome de Usuário -->
+        <div class="form-field">
+          <label for="username" class="form-label">
+            <i class="pi pi-user"></i>
+            Nome de Usuário
+            <span class="required">*</span>
+          </label>
+          <input
+            pInputText
+            id="username"
+            formControlName="username"
+            placeholder="Ex: joao_silva"
+            [class.ng-invalid]="hasError('username')"
+            [class.ng-dirty]="hasError('username')"
+            class="w-full" />
+
+          @if (hasError('username')) {
+            <small class="error-message">
+              <i class="pi pi-exclamation-circle"></i>
+              {{ getError('username') }}
+            </small>
+          } @else {
+            <small class="help-text">
+              <i class="pi pi-info-circle"></i>
+              Use letras, números, _ e - (mínimo 3 caracteres)
+            </small>
+          }
+        </div>
+
+        <!-- Campo: Email -->
+        <div class="form-field">
+          <label for="email" class="form-label">
+            <i class="pi pi-envelope"></i>
+            Email
+            <span class="required">*</span>
+          </label>
+          <input
+            pInputText
+            id="email"
+            type="email"
+            formControlName="email"
+            placeholder="seu@email.com"
+            [class.ng-invalid]="hasError('email')"
+            [class.ng-dirty]="hasError('email')"
+            class="w-full" />
+
+          @if (hasError('email')) {
+            <small class="error-message">
+              <i class="pi pi-exclamation-circle"></i>
+              {{ getError('email') }}
+            </small>
+          } @else {
+            <small class="help-text">
+              <i class="pi pi-info-circle"></i>
+              Digite um email válido
+            </small>
+          }
+        </div>
+
+        <!-- Campo: Senha -->
+        <div class="form-field">
+          <label for="password" class="form-label">
+            <i class="pi pi-lock"></i>
+            Senha
+            <span class="required">*</span>
+          </label>
+          <p-password
+            id="password"
+            formControlName="password"
+            placeholder="Digite sua senha"
+            [feedback]="true"
+            [toggleMask]="true"
+            [class.ng-invalid]="hasError('password')"
+            [class.ng-dirty]="hasError('password')"
+            styleClass="w-full"
+            inputStyleClass="w-full"
+            promptLabel="Digite uma senha"
+            weakLabel="Fraca"
+            mediumLabel="Média"
+            strongLabel="Forte">
+          </p-password>
+
+          @if (hasError('password')) {
+            <small class="error-message">
+              <i class="pi pi-exclamation-circle"></i>
+              {{ getError('password') }}
+            </small>
+          } @else {
+            <small class="help-text">
+              <i class="pi pi-info-circle"></i>
+              Mínimo de 6 caracteres
+            </small>
+          }
+
+          <!-- Indicador de força (customizado) -->
+          @if (registerForm.get('password')?.value && registerForm.get('password')?.value.length > 0) {
+            <div class="password-strength-container">
+              <div class="password-strength-bar">
+                <div
+                  class="password-strength-fill"
+                  [style.width.%]="getPasswordStrength().percentage"
+                  [style.background-color]="getPasswordStrength().color">
+                </div>
+              </div>
+              <small class="password-strength-text" [style.color]="getPasswordStrength().color">
+                {{ getPasswordStrength().text }}
+              </small>
+            </div>
+          }
+        </div>
+
+        <!-- Campo: Confirmar Senha -->
+        <div class="form-field">
+          <label for="confirmPassword" class="form-label">
+            <i class="pi pi-lock"></i>
+            Confirmar Senha
+            <span class="required">*</span>
+          </label>
+          <p-password
+            id="confirmPassword"
+            formControlName="confirmPassword"
+            placeholder="Digite a senha novamente"
+            [feedback]="false"
+            [toggleMask]="true"
+            [class.ng-invalid]="hasError('confirmPassword')"
+            [class.ng-dirty]="hasError('confirmPassword')"
+            styleClass="w-full"
+            inputStyleClass="w-full">
+          </p-password>
+
+          @if (hasError('confirmPassword')) {
+            <small class="error-message">
+              <i class="pi pi-exclamation-circle"></i>
+              {{ getError('confirmPassword') }}
+            </small>
+          } @else if (registerForm.get('confirmPassword')?.value && !hasError('confirmPassword')) {
+            <small class="success-message">
+              <i class="pi pi-check-circle"></i>
+              As senhas conferem!
+            </small>
+          }
+        </div>
+
+        <!-- Botão de Cadastrar -->
+        <div class="form-actions">
+          <p-button
+            type="submit"
+            label="Criar Conta"
+            icon="pi pi-user-plus"
+            [loading]="isLoading()"
+            [disabled]="registerForm.invalid"
+            styleClass="w-full"
+            severity="success"
+            [raised]="true">
+          </p-button>
+        </div>
+
+        <!-- Divider -->
+        <div class="divider">
+          <span>ou</span>
+        </div>
+
+        <!-- Botão de Voltar ao Login -->
+        <div class="form-actions">
+          <p-button
+            type="button"
+            label="Já tenho uma conta"
+            icon="pi pi-sign-in"
+            (onClick)="goToLogin()"
+            styleClass="w-full"
+            severity="secondary"
+            [outlined]="true">
+          </p-button>
+        </div>
+
+      </form>
+    </ng-template>
+
+    <!-- Footer com info -->
+    <ng-template pTemplate="footer">
+      <div class="register-footer">
+        <p class="footer-text">
+          <i class="pi pi-shield"></i>
+          Suas informações estão seguras e armazenadas localmente
+        </p>
+      </div>
+    </ng-template>
+
+  </p-card>
+</div>

@@ -1,7 +1,9 @@
+import { Routes } from '@angular/router';
 // src/app/features/beer-management/beer-management.ts
 import { Component, OnInit, inject, signal, WritableSignal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+
 
 // PrimeNG Modules
 import { CardModule } from 'primeng/card';
@@ -52,6 +54,7 @@ export class BeerManagementComponent implements OnInit {
   private fb = inject(FormBuilder);
   private confirmationService = inject(ConfirmationService);
   private messageService = inject(MessageService);
+  
 
   // ==================== SIGNALS PARA ESTADO REATIVO ====================
   beerTypes: WritableSignal<BeerType[]> = signal([]);
@@ -68,6 +71,7 @@ export class BeerManagementComponent implements OnInit {
    */
   private readonly DEFAULT_BEER_IDS = [1, 2, 3, 4];  // ← MUDANÇA: numbers
   private readonly DEFAULT_COLOR = '#D4A574';
+  router: any;
 
   // ==================== CONSTRUCTOR ====================
   constructor() {
@@ -369,4 +373,7 @@ export class BeerManagementComponent implements OnInit {
     
     return color.toUpperCase();
   }
+
+
+  
 }

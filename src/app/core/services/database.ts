@@ -5,8 +5,8 @@ import { BeerType, Sale } from '../models/beer.model';
 import { FullReport, SalesSummary, SalesByCupSize, SalesByBeerType } from '../models/report.model';
 import { isPlatformBrowser } from '@angular/common';
 
-const DB_STORAGE_KEY = 'black_beer_sqlite_db_v2'; // v2 para forçar migração
-const DB_VERSION = 2; // Versionamento do schema
+const DB_STORAGE_KEY = 'black_beer_sqlite_db_v3'; // v2 para forçar migração
+const DB_VERSION = 3; // Versionamento do schema
 
 /**
  * Constantes para validação de emails
@@ -25,15 +25,15 @@ declare global {
 
 /**
  * Serviço responsável por gerenciar o banco de dados SQLite da aplicação
- * 
+ *
  * MUDANÇAS NA REFATORAÇÃO:
  * - IDs mudados de TEXT para INTEGER (auto-increment)
  * - Tabela settings reestruturada (id, email, isConfigured)
  * - Foreign key beerId agora é INTEGER
  * - Seed data atualizado com IDs numéricos
  * - Queries tipadas e otimizadas
- * 
- * @version 2.0.0
+ *
+ * @version 3.0.0
  */
 @Injectable({
   providedIn: 'root'
@@ -66,13 +66,13 @@ export class DatabaseService {
 
       // Se não há DB salvo OU versão antiga, cria novo
       if (!savedDb || savedVersion < DB_VERSION) {
-        console.log('🔄 Criando novo banco de dados (versão 2)...');
+        console.log('🔄 Criando novo banco de dados (versão 3)...');
         this.createNewDatabase();
       } else {
         // Carrega banco existente
         const dbArray = this.stringToUint8Array(savedDb);
         this.db = new this.SQL.Database(dbArray);
-        console.log('✅ Banco de dados carregado (versão 2)');
+        console.log('✅ Banco de dados carregado (versão 3)');
       }
 
       this.isDbReady.set(true);
@@ -82,19 +82,19 @@ export class DatabaseService {
   }
 
   /**
-   * Cria um novo banco de dados do zero com schema v2
+   * Cria um novo banco de dados do zero com schema v3
    */
   private createNewDatabase(): void {
     this.db = new this.SQL.Database();
-    this.createSchemaV2();
+    this.createSchemaV3();
     this.seedInitialData();
     this.setStoredVersion(DB_VERSION);
     this.persist();
   }
 
   /**
-   * Cria o schema do banco de dados versão 2
-   * 
+   * Cria o schema do banco de dados versão 3
+   *
    * MUDANÇAS PRINCIPAIS:
    * - beer_types.id: TEXT → INTEGER PRIMARY KEY AUTOINCREMENT
    * - sales.id: TEXT → INTEGER PRIMARY KEY AUTOINCREMENT
@@ -103,11 +103,12 @@ export class DatabaseService {
    * - Tabela de configurações com suporte a múltiplos emails
     * - email: String com emails separados por ; (ex: "a@x.com;b@x.com")
     * - Mínimo: 1 email, Máximo: 10 emails
+   * - client_config: Tabela para white-label (logo e nome da empresa)
    */
-  private createSchemaV2(): void {
+  private createSchemaV3(): void {
     if (!this.db) return;
 
-    const schema = `
+   const schema = `
       -- Tabela de tipos de cerveja com ID INTEGER
       CREATE TABLE IF NOT EXISTS beer_types (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -130,7 +131,7 @@ export class DatabaseService {
 
       -- Índice para melhorar performance em queries por data
       CREATE INDEX IF NOT EXISTS idx_sales_timestamp ON sales(timestamp);
-      
+
       -- Índice para melhorar performance em queries por cerveja
       CREATE INDEX IF NOT EXISTS idx_sales_beerId ON sales(beerId);
 
@@ -141,16 +142,42 @@ export class DatabaseService {
         isConfigured INTEGER NOT NULL DEFAULT 0 CHECK(isConfigured IN (0, 1))
       );
 
+      -- Tabela de usuários (NOVO)
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        email TEXT NOT NULL UNIQUE,
+        passwordHash TEXT NOT NULL,
+        role TEXT NOT NULL CHECK(role IN ('user', 'admin')) DEFAULT 'user',
+        createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        lastLoginAt TEXT
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+      CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+
+      -- Tabela de configurações do cliente (white-label)
+      CREATE TABLE IF NOT EXISTS client_config (
+        id INTEGER PRIMARY KEY CHECK(id = 1),
+        companyName TEXT,
+        logoBase64 TEXT,
+        logoMimeType TEXT,
+        logoFileName TEXT,
+        updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
       -- Tabela de versão do schema
       CREATE TABLE IF NOT EXISTS db_version (
         version INTEGER PRIMARY KEY
       );
-      
+
       INSERT INTO db_version (version) VALUES (${DB_VERSION});
     `;
 
     this.db.exec(schema);
-    console.log('✅ Schema v2 criado com sucesso');
+    console.log('✅ Schema V3 criado com sucesso');
+    // Cria admin padrão
+    this.createDefaultAdmin();
   }
 
   /**
@@ -272,19 +299,19 @@ export class DatabaseService {
   /**
    * Converte Uint8Array para string base64
    */
-  private uint8ArrayToString = (arr: Uint8Array): string => 
+  private uint8ArrayToString = (arr: Uint8Array): string =>
     btoa(String.fromCharCode.apply(null, Array.from(arr)));
 
   /**
    * Converte string base64 para Uint8Array
    */
-  private stringToUint8Array = (str: string): Uint8Array => 
+  private stringToUint8Array = (str: string): Uint8Array =>
     new Uint8Array(atob(str).split('').map(c => c.charCodeAt(0)));
 
   /**
    * Limpa completamente o banco de dados e reinicia ao estado inicial
    * Remove todos os dados mas mantém o schema v2
-   * 
+   *
    * @returns Promise<void>
    */
   public async clearDatabase(): Promise<void> {
@@ -314,16 +341,16 @@ export class DatabaseService {
    * Obtém estatísticas do banco de dados
    * @returns Objeto com contadores de registros
    */
-  public getDatabaseStats(): { 
-    totalSales: number; 
-    totalBeerTypes: number; 
+  public getDatabaseStats(): {
+    totalSales: number;
+    totalBeerTypes: number;
     hasSettings: boolean;
     dbVersion: number;
   } {
     if (!this.db) {
-      return { 
-        totalSales: 0, 
-        totalBeerTypes: 0, 
+      return {
+        totalSales: 0,
+        totalBeerTypes: 0,
         hasSettings: false,
         dbVersion: 0
       };
@@ -343,9 +370,9 @@ export class DatabaseService {
       };
     } catch (error) {
       console.error('❌ Erro ao obter estatísticas:', error);
-      return { 
-        totalSales: 0, 
-        totalBeerTypes: 0, 
+      return {
+        totalSales: 0,
+        totalBeerTypes: 0,
         hasSettings: false,
         dbVersion: 0
       };
@@ -355,7 +382,7 @@ export class DatabaseService {
   /**
    * Gera relatório completo com filtros opcionais de data
    * ATUALIZADO para trabalhar com IDs INTEGER
-   * 
+   *
    * @param startDate Data inicial do filtro (opcional)
    * @param endDate Data final do filtro (opcional)
    * @returns Relatório completo com resumo e dados agregados
@@ -393,9 +420,9 @@ export class DatabaseService {
       FROM sales
       ${whereClause}
     `;
-    const summaryResult = this.executeQuery(summaryQuery, params)[0] || { 
-      totalSales: 0, 
-      totalVolumeLiters: 0 
+    const summaryResult = this.executeQuery(summaryQuery, params)[0] || {
+      totalSales: 0,
+      totalVolumeLiters: 0
     };
 
     // Query por tamanho de copo
@@ -453,7 +480,7 @@ export class DatabaseService {
    */
   public getLastInsertId(): number {
     if (!this.db) return 0;
-    
+
     try {
       const result = this.executeQuery('SELECT last_insert_rowid() as id');
       return result[0]?.id || 0;
@@ -481,5 +508,37 @@ export class DatabaseService {
       console.error('❌ Erro ao verificar tabela:', error);
       return false;
     }
+  }
+
+  private createDefaultAdmin(): void {
+    try {
+      // Verifica se já existe admin
+      const existing = this.executeQuery(
+        "SELECT id FROM users WHERE email = 'admin@blackbeer.com' LIMIT 1"
+      );
+      if (existing.length > 0) {
+        console.log('ℹ️ Admin padrão já existe');
+        return;
+      }
+      // Hash simplificado da senha 'admin123'
+      const salt = 'blackbeer_salt_2025';
+      const password = 'admin123';
+      const combined = salt + password + salt;
+      const adminPassword = btoa(combined);
+      this.executeRun(
+        'INSERT INTO users (username, email, passwordHash, role) VALUES (?, ?, ?, ?)',
+        ['admin', 'admin@blackbeer.com', adminPassword, 'admin']
+      );
+      console.log('✅ Usuário admin padrão criado');
+      console.log('   Email: admin@blackbeer.com');
+      console.log('   Senha: admin123');
+
+    } catch (error) {
+      console.error('❌ Erro ao criar admin padrão:', error);
+    }
+  }
+
+  public getUsuarios(): any[] {
+    return this.executeQuery('SELECT id, username, email, role, createdAt, lastLoginAt FROM users');
   }
 }

@@ -1,0 +1,253 @@
+import { Injectable, inject, signal, effect } from '@angular/core';
+import { DatabaseService } from './database';
+import { ClientConfig } from '../models/client-config.model';
+
+/**
+ * Service para gerenciar configurações do cliente (white-label)
+ * Permite upload, leitura e exclusão de logo da empresa
+ */
+@Injectable({
+  providedIn: 'root'
+})
+export class ClientConfigService {
+  private db = inject(DatabaseService);
+
+  /**
+   * Configuração atual do cliente em signal (reativo)
+   */
+  private clientConfigSignal = signal<ClientConfig | null>(null);
+
+  /**
+   * Signal público read-only para acesso à configuração
+   */
+  public readonly clientConfig = this.clientConfigSignal.asReadonly();
+
+  /**
+   * ID fixo para single-tenant
+   */
+  private readonly CONFIG_ID = 1;
+
+  constructor() {
+    // Aguarda o banco estar pronto antes de carregar
+    effect(() => {
+      if (this.db.isDbReady()) {
+        this.loadConfig();
+      }
+    });
+  }
+
+  /**
+   * Carrega a configuração do SQLite
+   */
+  private loadConfig(): void {
+    try {
+      const config = this.getConfig();
+      this.clientConfigSignal.set(config);
+    } catch (error) {
+      console.error('Erro ao carregar configuração do cliente:', error);
+      this.clientConfigSignal.set(null);
+    }
+  }
+
+  /**
+   * Obtém a configuração do cliente do SQLite
+   */
+  getConfig(): ClientConfig | null {
+    try {
+      const results = this.db.executeQuery(
+        'SELECT * FROM client_config WHERE id = ? LIMIT 1',
+        [this.CONFIG_ID]
+      );
+
+      if (results.length === 0) {
+        return null;
+      }
+
+      const row = results[0];
+      return {
+        id: Number(row.id),
+        companyName: row.companyName || undefined,
+        logoBase64: row.logoBase64 || undefined,
+        logoMimeType: row.logoMimeType || undefined,
+        logoFileName: row.logoFileName || undefined,
+        updatedAt: new Date(row.updatedAt)
+      };
+    } catch (error) {
+      console.error('Erro ao buscar configuração:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Salva ou atualiza a logo da empresa
+   * @param file Arquivo de imagem (JPEG, PNG, SVG)
+   * @param companyName Nome da empresa (opcional)
+   */
+  async uploadLogo(file: File, companyName?: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // Validação de tipo de arquivo
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/svg+xml'];
+      if (!validTypes.includes(file.type)) {
+        reject(new Error('Formato de arquivo inválido. Use JPEG, PNG ou SVG.'));
+        return;
+      }
+
+      // Validação de tamanho (máximo 2MB)
+      const maxSize = 2 * 1024 * 1024; // 2MB
+      if (file.size > maxSize) {
+        reject(new Error('Arquivo muito grande. Tamanho máximo: 2MB.'));
+        return;
+      }
+
+      // Converte imagem para base64
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        try {
+          const base64 = e.target?.result as string;
+
+          const config: ClientConfig = {
+            id: this.CONFIG_ID,
+            companyName: companyName,
+            logoBase64: base64,
+            logoMimeType: file.type,
+            logoFileName: file.name,
+            updatedAt: new Date()
+          };
+
+          this.saveConfig(config);
+          this.clientConfigSignal.set(config);
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      reader.onerror = () => {
+        reject(new Error('Erro ao ler arquivo.'));
+      };
+
+      reader.readAsDataURL(file);
+    });
+  }
+
+  /**
+   * Salva a configuração no SQLite
+   */
+  private saveConfig(config: ClientConfig): void {
+    try {
+      const exists = this.db.executeQuery(
+        'SELECT id FROM client_config WHERE id = ? LIMIT 1',
+        [this.CONFIG_ID]
+      );
+
+      if (exists.length > 0) {
+        // UPDATE
+        this.db.executeRun(
+          `UPDATE client_config
+           SET companyName = ?, logoBase64 = ?, logoMimeType = ?, logoFileName = ?, updatedAt = ?
+           WHERE id = ?`,
+          [
+            config.companyName || null,
+            config.logoBase64 || null,
+            config.logoMimeType || null,
+            config.logoFileName || null,
+            config.updatedAt.toISOString(),
+            this.CONFIG_ID
+          ]
+        );
+      } else {
+        // INSERT
+        this.db.executeRun(
+          `INSERT INTO client_config (id, companyName, logoBase64, logoMimeType, logoFileName, updatedAt)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [
+            this.CONFIG_ID,
+            config.companyName || null,
+            config.logoBase64 || null,
+            config.logoMimeType || null,
+            config.logoFileName || null,
+            config.updatedAt.toISOString()
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('Erro ao salvar configuração:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remove a logo da empresa
+   */
+  removeLogo(): void {
+    try {
+      const currentConfig = this.getConfig();
+
+      if (currentConfig) {
+        const updatedConfig: ClientConfig = {
+          ...currentConfig,
+          logoBase64: undefined,
+          logoMimeType: undefined,
+          logoFileName: undefined,
+          updatedAt: new Date()
+        };
+
+        this.saveConfig(updatedConfig);
+        this.clientConfigSignal.set(updatedConfig);
+      }
+    } catch (error) {
+      console.error('Erro ao remover logo:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Atualiza o nome da empresa
+   */
+  updateCompanyName(companyName: string): void {
+    try {
+      const currentConfig = this.getConfig();
+
+      const updatedConfig: ClientConfig = {
+        id: this.CONFIG_ID,
+        companyName,
+        logoBase64: currentConfig?.logoBase64,
+        logoMimeType: currentConfig?.logoMimeType,
+        logoFileName: currentConfig?.logoFileName,
+        updatedAt: new Date()
+      };
+
+      this.saveConfig(updatedConfig);
+      this.clientConfigSignal.set(updatedConfig);
+    } catch (error) {
+      console.error('Erro ao atualizar nome da empresa:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtém a URL da logo (data URL)
+   */
+  getLogoUrl(): string | null {
+    const config = this.clientConfigSignal();
+    return config?.logoBase64 || null;
+  }
+
+  /**
+   * Verifica se existe uma logo configurada
+   */
+  hasLogo(): boolean {
+    const config = this.clientConfigSignal();
+    return !!config?.logoBase64;
+  }
+
+  /**
+   * Obtém o nome da empresa
+   */
+  getCompanyName(): string | null {
+    const config = this.clientConfigSignal();
+    return config?.companyName || null;
+  }
+}
+

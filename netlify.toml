@@ -8,7 +8,8 @@
   command = "npm run build:netlify"
 
   # Diretório onde o Angular gera os arquivos de produção (SSR)
-  publish = "dist/black-beer"
+  # O plugin @netlify/angular-runtime EXIGE dist/black-beer/browser
+  publish = "dist/black-beer/browser"
 
   # Variáveis de ambiente para build
   [build.environment]

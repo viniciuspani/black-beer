@@ -1,0 +1,27 @@
+# Netlify Headers for WebAssembly and Assets
+
+# Headers para arquivos WebAssembly (.wasm)
+/*.wasm
+  Content-Type: application/wasm
+  Cache-Control: public, max-age=31536000, immutable
+
+# Headers para JavaScript
+/*.js
+  Content-Type: application/javascript; charset=utf-8
+  Cache-Control: public, max-age=31536000, immutable
+
+# Headers para CSS
+/*.css
+  Content-Type: text/css; charset=utf-8
+  Cache-Control: public, max-age=31536000, immutable
+
+# Headers para HTML (sem cache)
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Headers de segurança para todas as páginas
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin

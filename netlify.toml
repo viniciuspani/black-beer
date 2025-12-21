@@ -1,0 +1,115 @@
+# ========================================
+# Configuração Netlify - Black Beer App
+# Angular 20 + sql.js (WebAssembly)
+# ========================================
+
+[build]
+  # Comando de build do Angular para Netlify
+  command = "npm run build:netlify"
+
+  # Diretório onde o Angular gera os arquivos de produção
+  publish = "dist/black-beer/browser"
+
+  # Variáveis de ambiente para build
+  [build.environment]
+    NODE_VERSION = "20"
+    NPM_FLAGS = "--legacy-peer-deps"
+    CI = "true"
+
+# ========================================
+# HEADERS - Configuração para WASM e Assets
+# ========================================
+
+[[headers]]
+  # Aplicar headers para todos os arquivos
+  for = "/*"
+  [headers.values]
+    # Segurança
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+    # Cache para HTML (sem cache para forçar atualização)
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  # Headers específicos para arquivos JavaScript
+  for = "/*.js"
+  [headers.values]
+    Content-Type = "application/javascript; charset=utf-8"
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  # Headers específicos para arquivos CSS
+  for = "/*.css"
+  [headers.values]
+    Content-Type = "text/css; charset=utf-8"
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  # Headers CRÍTICOS para arquivos WebAssembly (.wasm)
+  # sql.js requer que o MIME type esteja correto
+  for = "/*.wasm"
+  [headers.values]
+    Content-Type = "application/wasm"
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  # Headers para assets (imagens, fontes, etc)
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# ========================================
+# REDIRECTS - SPA Routing
+# ========================================
+
+# Redirecionar todas as rotas não encontradas para index.html
+# Isso permite que o Angular Router funcione corretamente
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+  # Força HTTPS em produção
+  force = false
+
+  # Condições: não redirecionar se for um arquivo existente
+  conditions = {Role = ["Not", "File"]}
+
+# Redirect HTTP para HTTPS
+[[redirects]]
+  from = "http://black-beer.netlify.app/*"
+  to = "https://black-beer.netlify.app/:splat"
+  status = 301
+  force = true
+
+# ========================================
+# PLUGINS (opcionais, mas recomendados)
+# ========================================
+
+# Plugin para otimização de imagens
+# [[plugins]]
+#   package = "@netlify/plugin-lighthouse"
+
+# ========================================
+# CONFIGURAÇÕES ADICIONAIS
+# ========================================
+
+[dev]
+  # Configuração para desenvolvimento local com Netlify Dev
+  command = "npm start"
+  port = 4200
+  targetPort = 4200
+  autoLaunch = false
+
+# ========================================
+# TRATAMENTO DE ERROS
+# ========================================
+
+# Página 404 personalizada (opcional)
+# [[redirects]]
+#   from = "/404"
+#   to = "/index.html"
+#   status = 404

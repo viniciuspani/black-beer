@@ -4,17 +4,24 @@
 # ========================================
 
 [build]
-  # Comando de build do Angular para Netlify
+  # Comando de build do Angular para Netlify (SSR)
   command = "npm run build:netlify"
 
-  # Diretório onde o Angular gera os arquivos de produção
-  publish = "dist/black-beer/browser"
+  # Diretório onde o Angular gera os arquivos de produção (SSR)
+  publish = "dist/black-beer"
 
   # Variáveis de ambiente para build
   [build.environment]
     NODE_VERSION = "20"
     NPM_FLAGS = "--legacy-peer-deps"
     CI = "true"
+
+# ========================================
+# PLUGINS - Angular SSR Runtime
+# ========================================
+
+[[plugins]]
+  package = "@netlify/angular-runtime"
 
 # ========================================
 # HEADERS - Configuração para WASM e Assets

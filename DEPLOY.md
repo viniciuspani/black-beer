@@ -12,7 +12,8 @@ Este guia contém instruções detalhadas para fazer deploy da aplicação Black
 
 O projeto já está configurado com:
 
-- ✅ `netlify.toml` - Configuração principal do Netlify
+- ✅ `netlify.toml` - Configuração principal do Netlify com SSR
+- ✅ `@netlify/angular-runtime` v3.0.1 - Plugin para Angular SSR no Netlify
 - ✅ `.nvmrc` - Versão do Node.js (20)
 - ✅ `public/_redirects` - Redirecionamentos para SPA
 - ✅ `public/_headers` - Headers HTTP para WASM e assets

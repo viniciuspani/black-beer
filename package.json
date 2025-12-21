@@ -4,12 +4,13 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build",
+    "build": "ng build --configuration production",
+    "build:netlify": "npm run copy:wasm && ng build --configuration production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "serve:ssr:black-beer": "node dist/black-beer/server/server.mjs",
     "tailwind:init": "tailwindcss init",
-    "copy:wasm": "cp node_modules/sql.js/dist/sql-wasm.wasm src/asset",
+    "copy:wasm": "node scripts/copy-wasm.js",
     "postinstall": "npm run copy:wasm"
   },
   "prettier": {

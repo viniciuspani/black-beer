@@ -3,6 +3,7 @@ import { HttpClient, HttpErrorResponse, HttpEvent, HttpEventType, HttpResponse }
 import { Observable, throwError } from 'rxjs';
 import { catchError, filter, map, tap } from 'rxjs/operators';
 import { EmailRequest, EmailResponse, SendEmailOptions } from '../models/email.model';
+import { DatabaseService } from './database';
 
 /**
  * Serviço para envio de emails via API externa
@@ -15,7 +16,10 @@ export class EmailService {
   private readonly API_BASE_URL = 'https://email-service-api-y7ye.onrender.com';
   private readonly MAX_RECIPIENTS = 10;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private dbService: DatabaseService
+  ) {}
 
   /**
    * Envia email com arquivo CSV anexado
@@ -113,6 +117,14 @@ export class EmailService {
       valid: invalidEmails.length === 0,
       invalidEmails
     };
+  }
+
+  /**
+   * Busca emails configurados do banco de dados
+   * @returns Array de strings com emails configurados
+   */
+  getConfiguredEmailsFromDatabase(): string[] {
+    return this.dbService.getConfiguredEmails();
   }
 
   /**

@@ -541,4 +541,33 @@ export class DatabaseService {
   public getUsuarios(): any[] {
     return this.executeQuery('SELECT id, username, email, role, createdAt, lastLoginAt FROM users');
   }
+
+  /**
+   * Busca emails configurados para relatórios no banco de dados
+   * @returns Array de strings com emails configurados
+   */
+  public getConfiguredEmails(): string[] {
+    try {
+      const result = this.executeQuery('SELECT email FROM settings LIMIT 1');
+
+      if (result && result.length > 0) {
+        const emailString = result[0].email;
+
+        // Converter string do banco para array
+        // Formato no banco: "email1@example.com,email2@example.com"
+        const emails = emailString
+          ? emailString.split(',').map((e: string) => e.trim()).filter((e: string) => e.length > 0)
+          : [];
+
+        console.log('✅ Emails configurados recuperados do banco:', emails);
+        return emails;
+      }
+
+      console.log('⚠️ Nenhuma configuração de email encontrada no banco');
+      return [];
+    } catch (error) {
+      console.error('❌ Erro ao buscar emails configurados:', error);
+      return [];
+    }
+  }
 }

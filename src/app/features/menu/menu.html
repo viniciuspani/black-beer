@@ -32,10 +32,11 @@
           <button
             type="button"
             class="logout-button"
-            (click)="logout()"
+            (click)="handleLogout($event)"
             pTooltip="Sair do sistema"
             tooltipPosition="bottom"
-            aria-label="Logout">
+            aria-label="Logout"
+            tabindex="0">
             <i class="pi pi-sign-out"></i>
             <span class="logout-text">Sair</span>
           </button>

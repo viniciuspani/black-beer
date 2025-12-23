@@ -103,6 +103,19 @@ export class Menu {
   // ==================== MÉTODOS DE AUTENTICAÇÃO ====================
 
   /**
+   * Handler de logout que previne comportamento padrão e garante execução em mobile
+   * @param event Evento de click/touch
+   */
+  protected handleLogout(event: Event): void {
+    // Prevenir comportamento padrão
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Executar logout
+    this.logout();
+  }
+
+  /**
    * Realiza logout do usuário e redireciona para tela de login
    */
   protected logout(): void {

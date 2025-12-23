@@ -257,16 +257,19 @@ export class SalesFormComponent implements OnInit {
   private saveSale(sale: Omit<Sale, 'id'>): void {
     try {
       this.insertSaleIntoDatabase(sale);
-      
+
       // Obtém o ID gerado pelo banco
       const insertedId = this.dbService.getLastInsertId();
       console.log('✅ Venda registrada com ID:', insertedId);
-      
+
+      // Subtrai do estoque do evento (se configurado)
+      this.updateEventStock(sale);
+
       this.showSuccessMessage({
         ...sale,
         id: insertedId
       } as Sale);
-      
+
       this.resetForm();
     } catch (error) {
       this.handleSaleError(error);
@@ -280,10 +283,10 @@ export class SalesFormComponent implements OnInit {
    */
   private insertSaleIntoDatabase(sale: Omit<Sale, 'id'>): void {
     const query = `
-      INSERT INTO sales (beerId, beerName, cupSize, quantity, timestamp, totalVolume) 
+      INSERT INTO sales (beerId, beerName, cupSize, quantity, timestamp, totalVolume)
       VALUES (?, ?, ?, ?, ?, ?)
     `;
-    
+
     // MUDANÇA: Removemos o ID da inserção
     // O banco gera automaticamente via AUTOINCREMENT
     this.dbService.executeRun(query, [
@@ -294,6 +297,65 @@ export class SalesFormComponent implements OnInit {
       sale.timestamp,
       sale.totalVolume
     ]);
+  }
+
+  /**
+   * Atualiza o estoque do evento (se configurado)
+   * Converte volume de ml para litros e subtrai do estoque
+   */
+  private updateEventStock(sale: Omit<Sale, 'id'>): void {
+    try {
+      // Converte totalVolume (ml) para litros
+      const litersToSubtract = sale.totalVolume / this.ML_TO_LITERS;
+
+      // Tenta subtrair do estoque (retorna false se não há estoque configurado)
+      const wasSubtracted = this.dbService.subtractFromEventStock(
+        sale.beerId,
+        litersToSubtract
+      );
+
+      if (wasSubtracted) {
+        console.log(`📦 Estoque atualizado: -${litersToSubtract}L de ${sale.beerName}`);
+
+        // Verifica se está abaixo do limite de alerta
+        this.checkStockAlert(sale.beerId, sale.beerName);
+      } else {
+        console.log(`ℹ️ Sem controle de estoque para ${sale.beerName}`);
+      }
+    } catch (error) {
+      // Não propaga o erro - venda já foi registrada com sucesso
+      console.error('⚠️ Erro ao atualizar estoque do evento (venda registrada):', error);
+    }
+  }
+
+  /**
+   * Verifica se o estoque de uma cerveja está abaixo do limite e exibe alerta
+   */
+  private checkStockAlert(beerId: number, beerName: string): void {
+    try {
+      const stock = this.dbService.getEventStockByBeerId(beerId);
+      if (!stock) return;
+
+      const config = this.dbService.getStockAlertConfig();
+      const minLiters = config?.minLiters || 5.0;
+
+      // Se estoque está acima do limite, não há alerta
+      if (stock.quantidadeLitros >= minLiters) return;
+
+      // Estoque baixo - exibe aviso
+      const remainingLiters = stock.quantidadeLitros.toFixed(1);
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Estoque Baixo!',
+        detail: `${beerName}: apenas ${remainingLiters}L restantes (limite: ${minLiters}L)`,
+        life: 6000,
+        sticky: false
+      });
+
+      console.log(`⚠️ ALERTA: ${beerName} com estoque baixo (${remainingLiters}L)`);
+    } catch (error) {
+      console.error('⚠️ Erro ao verificar alerta de estoque:', error);
+    }
   }
 
   /**

@@ -5,8 +5,8 @@ import { BeerType, Sale } from '../models/beer.model';
 import { FullReport, SalesSummary, SalesByCupSize, SalesByBeerType } from '../models/report.model';
 import { isPlatformBrowser } from '@angular/common';
 
-const DB_STORAGE_KEY = 'black_beer_sqlite_db_v3'; // v2 para forçar migração
-const DB_VERSION = 3; // Versionamento do schema
+const DB_STORAGE_KEY = 'black_beer_sqlite_db_v4'; // v4 para forçar migração com event_sale
+const DB_VERSION = 4; // Versionamento do schema
 
 /**
  * Constantes para validação de emails
@@ -66,13 +66,13 @@ export class DatabaseService {
 
       // Se não há DB salvo OU versão antiga, cria novo
       if (!savedDb || savedVersion < DB_VERSION) {
-        console.log('🔄 Criando novo banco de dados (versão 3)...');
+        console.log('🔄 Criando novo banco de dados (versão 4)...');
         this.createNewDatabase();
       } else {
         // Carrega banco existente
         const dbArray = this.stringToUint8Array(savedDb);
         this.db = new this.SQL.Database(dbArray);
-        console.log('✅ Banco de dados carregado (versão 3)');
+        console.log('✅ Banco de dados carregado (versão 4)');
       }
 
       this.isDbReady.set(true);
@@ -82,20 +82,24 @@ export class DatabaseService {
   }
 
   /**
-   * Cria um novo banco de dados do zero com schema v3
+   * Cria um novo banco de dados do zero com schema v4
    */
   private createNewDatabase(): void {
     this.db = new this.SQL.Database();
-    this.createSchemaV3();
+    this.createSchemaV4();
     this.seedInitialData();
     this.setStoredVersion(DB_VERSION);
     this.persist();
   }
 
   /**
-   * Cria o schema do banco de dados versão 3
+   * Cria o schema do banco de dados versão 4
    *
-   * MUDANÇAS PRINCIPAIS:
+   * MUDANÇAS V4:
+   * - event_sale: Nova tabela para controle de estoque por evento
+   * - stock_alert_config: Nova tabela para configuração de alertas de estoque baixo
+   *
+   * MUDANÇAS V3:
    * - beer_types.id: TEXT → INTEGER PRIMARY KEY AUTOINCREMENT
    * - sales.id: TEXT → INTEGER PRIMARY KEY AUTOINCREMENT
    * - sales.beerId: TEXT → INTEGER (FK mantida)
@@ -105,7 +109,7 @@ export class DatabaseService {
     * - Mínimo: 1 email, Máximo: 10 emails
    * - client_config: Tabela para white-label (logo e nome da empresa)
    */
-  private createSchemaV3(): void {
+  private createSchemaV4(): void {
     if (!this.db) return;
 
    const schema = `
@@ -166,6 +170,33 @@ export class DatabaseService {
         updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
 
+      -- Tabela de estoque por evento (V4)
+      -- Armazena a quantidade de litros disponível de cada cerveja no evento atual
+      CREATE TABLE IF NOT EXISTS event_sale (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        beerId INTEGER NOT NULL,
+        beerName TEXT NOT NULL,
+        quantidadeLitros REAL NOT NULL DEFAULT 0 CHECK(quantidadeLitros >= 0),
+        createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (beerId) REFERENCES beer_types(id) ON DELETE CASCADE,
+        UNIQUE(beerId)
+      );
+
+      -- Índice para melhorar performance em queries por cerveja
+      CREATE INDEX IF NOT EXISTS idx_event_sale_beerId ON event_sale(beerId);
+
+      -- Tabela de configuração de alertas de estoque (V4)
+      -- Armazena o limite mínimo de litros para emitir alerta
+      CREATE TABLE IF NOT EXISTS stock_alert_config (
+        id INTEGER PRIMARY KEY CHECK(id = 1),
+        minLiters REAL NOT NULL DEFAULT 5.0 CHECK(minLiters >= 0),
+        updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Insere configuração padrão de alerta (5 litros)
+      INSERT OR IGNORE INTO stock_alert_config (id, minLiters) VALUES (1, 5.0);
+
       -- Tabela de versão do schema
       CREATE TABLE IF NOT EXISTS db_version (
         version INTEGER PRIMARY KEY
@@ -175,7 +206,7 @@ export class DatabaseService {
     `;
 
     this.db.exec(schema);
-    console.log('✅ Schema V3 criado com sucesso');
+    console.log('✅ Schema V4 criado com sucesso');
     // Cria admin padrão
     this.createDefaultAdmin();
   }
@@ -540,5 +571,230 @@ export class DatabaseService {
 
   public getUsuarios(): any[] {
     return this.executeQuery('SELECT id, username, email, role, createdAt, lastLoginAt FROM users');
+  }
+
+  /**
+   * Busca emails configurados para relatórios no banco de dados
+   * @returns Array de strings com emails configurados
+   */
+  public getConfiguredEmails(): string[] {
+    try {
+      const result = this.executeQuery('SELECT email FROM settings LIMIT 1');
+
+      if (result && result.length > 0) {
+        const emailString = result[0].email;
+
+        // Converter string do banco para array
+        // Formato no banco: "email1@example.com,email2@example.com"
+        const emails = emailString
+          ? emailString.split(',').map((e: string) => e.trim()).filter((e: string) => e.length > 0)
+          : [];
+
+        console.log('✅ Emails configurados recuperados do banco:', emails);
+        return emails;
+      }
+
+      console.log('⚠️ Nenhuma configuração de email encontrada no banco');
+      return [];
+    } catch (error) {
+      console.error('❌ Erro ao buscar emails configurados:', error);
+      return [];
+    }
+  }
+
+  // ==================== MÉTODOS PARA GERENCIAR ESTOQUE DE EVENTOS (V4) ====================
+
+  /**
+   * Busca todos os registros de estoque do evento atual
+   * @returns Array com estoque de todas as cervejas
+   */
+  public getEventStock(): any[] {
+    try {
+      const result = this.executeQuery(`
+        SELECT
+          es.id,
+          es.beerId,
+          es.beerName,
+          es.quantidadeLitros,
+          bt.color,
+          es.createdAt,
+          es.updatedAt
+        FROM event_sale es
+        INNER JOIN beer_types bt ON es.beerId = bt.id
+        ORDER BY es.beerName
+      `);
+      return result;
+    } catch (error) {
+      console.error('❌ Erro ao buscar estoque do evento:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Busca estoque de uma cerveja específica
+   * @param beerId ID da cerveja
+   * @returns Objeto com dados do estoque ou null
+   */
+  public getEventStockByBeerId(beerId: number): any | null {
+    try {
+      const result = this.executeQuery(
+        'SELECT * FROM event_sale WHERE beerId = ?',
+        [beerId]
+      );
+      return result.length > 0 ? result[0] : null;
+    } catch (error) {
+      console.error('❌ Erro ao buscar estoque da cerveja:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Define ou atualiza a quantidade de litros disponível para uma cerveja no evento
+   * @param beerId ID da cerveja
+   * @param beerName Nome da cerveja
+   * @param quantidadeLitros Quantidade em litros
+   */
+  public setEventStock(beerId: number, beerName: string, quantidadeLitros: number): void {
+    try {
+      // Verifica se já existe registro para esta cerveja
+      const existing = this.getEventStockByBeerId(beerId);
+
+      if (existing) {
+        // Atualiza registro existente
+        this.executeRun(
+          `UPDATE event_sale
+           SET quantidadeLitros = ?,
+               updatedAt = CURRENT_TIMESTAMP
+           WHERE beerId = ?`,
+          [quantidadeLitros, beerId]
+        );
+        console.log(`✅ Estoque atualizado: ${beerName} = ${quantidadeLitros}L`);
+      } else {
+        // Insere novo registro
+        this.executeRun(
+          `INSERT INTO event_sale (beerId, beerName, quantidadeLitros)
+           VALUES (?, ?, ?)`,
+          [beerId, beerName, quantidadeLitros]
+        );
+        console.log(`✅ Estoque criado: ${beerName} = ${quantidadeLitros}L`);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao definir estoque do evento:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Subtrai quantidade vendida do estoque do evento
+   * @param beerId ID da cerveja
+   * @param litersToSubtract Quantidade em litros a subtrair
+   * @returns true se subtraiu com sucesso, false se não havia estoque configurado
+   */
+  public subtractFromEventStock(beerId: number, litersToSubtract: number): boolean {
+    try {
+      const stock = this.getEventStockByBeerId(beerId);
+
+      // Se não há estoque configurado, retorna false (modo normal)
+      if (!stock || stock.quantidadeLitros === 0) {
+        return false;
+      }
+
+      // Calcula novo estoque (não permite negativo)
+      const newQuantity = Math.max(0, stock.quantidadeLitros - litersToSubtract);
+
+      this.executeRun(
+        `UPDATE event_sale
+         SET quantidadeLitros = ?,
+             updatedAt = CURRENT_TIMESTAMP
+         WHERE beerId = ?`,
+        [newQuantity, beerId]
+      );
+
+      console.log(`✅ Estoque subtraído: ${stock.beerName} -${litersToSubtract}L = ${newQuantity}L`);
+      return true;
+    } catch (error) {
+      console.error('❌ Erro ao subtrair do estoque:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Remove registro de estoque de uma cerveja (volta ao modo normal)
+   * @param beerId ID da cerveja
+   */
+  public removeEventStock(beerId: number): void {
+    try {
+      this.executeRun('DELETE FROM event_sale WHERE beerId = ?', [beerId]);
+      console.log('✅ Estoque removido para beerId:', beerId);
+    } catch (error) {
+      console.error('❌ Erro ao remover estoque:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verifica se alguma cerveja está com estoque abaixo do limite configurado
+   * @returns Array com cervejas em alerta
+   */
+  public getStockAlerts(): any[] {
+    try {
+      const config = this.getStockAlertConfig();
+      const minLiters = config?.minLiters || 5.0;
+
+      const result = this.executeQuery(
+        `SELECT
+          es.beerId,
+          es.beerName,
+          es.quantidadeLitros,
+          bt.color
+         FROM event_sale es
+         INNER JOIN beer_types bt ON es.beerId = bt.id
+         WHERE es.quantidadeLitros > 0
+           AND es.quantidadeLitros < ?
+         ORDER BY es.quantidadeLitros ASC`,
+        [minLiters]
+      );
+
+      return result;
+    } catch (error) {
+      console.error('❌ Erro ao buscar alertas de estoque:', error);
+      return [];
+    }
+  }
+
+  // ==================== MÉTODOS PARA CONFIGURAÇÃO DE ALERTAS ====================
+
+  /**
+   * Busca a configuração de alerta de estoque
+   * @returns Objeto com minLiters ou null
+   */
+  public getStockAlertConfig(): any | null {
+    try {
+      const result = this.executeQuery('SELECT * FROM stock_alert_config WHERE id = 1');
+      return result.length > 0 ? result[0] : null;
+    } catch (error) {
+      console.error('❌ Erro ao buscar configuração de alerta:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Atualiza o limite mínimo de litros para alerta
+   * @param minLiters Quantidade mínima em litros
+   */
+  public setStockAlertConfig(minLiters: number): void {
+    try {
+      this.executeRun(
+        `UPDATE stock_alert_config
+         SET minLiters = ?,
+             updatedAt = CURRENT_TIMESTAMP
+         WHERE id = 1`,
+        [minLiters]
+      );
+      console.log('✅ Configuração de alerta atualizada:', minLiters, 'litros');
+    } catch (error) {
+      console.error('❌ Erro ao atualizar configuração de alerta:', error);
+      throw error;
+    }
   }
 }

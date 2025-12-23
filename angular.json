@@ -36,11 +36,6 @@
               "node_modules/primeicons/primeicons.css",
               "src/styles.scss"
             ],
-            "externalDependencies": [
-              "fs",
-              "path",
-              "crypto"
-            ],
             "server": "src/main.server.ts",
             "outputMode": "server",
             "ssr": {
@@ -62,7 +57,12 @@
                 }
               ],
               "outputHashing": "all",
-              "serviceWorker": "ngsw-config.json"
+              "serviceWorker": "ngsw-config.json",
+              "externalDependencies": [
+                "fs",
+                "path",
+                "crypto"
+              ]
             },
             "development": {
               "optimization": false,

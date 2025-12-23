@@ -7,6 +7,7 @@ import { TableModule } from 'primeng/table';
 import { DatePickerModule } from 'primeng/datepicker';
 import { ButtonModule } from 'primeng/button';
 import { ToastModule } from 'primeng/toast';
+import { SelectModule } from 'primeng/select';
 import { MessageService } from 'primeng/api';
 import { BaseChartDirective } from 'ng2-charts';
 import { Chart, ChartConfiguration, ChartData, registerables } from 'chart.js';
@@ -29,6 +30,7 @@ Chart.register(...registerables);
     DatePickerModule,
     ButtonModule,
     ToastModule,
+    SelectModule,
     BaseChartDirective
   ],
   providers: [MessageService],
@@ -73,6 +75,16 @@ export class ReportsSectionComponent implements OnInit {
    * Progresso do upload (0-100)
    */
   protected uploadProgress = signal<number>(0);
+
+  /**
+   * Lista de emails salvos carregados do banco (para o dropdown)
+   */
+  protected savedEmails = signal<Array<{ label: string; value: string }>>([]);
+
+  /**
+   * Email selecionado do dropdown
+   */
+  protected selectedSavedEmail = signal<string | null>(null);
 
   /**
    * Relatório completo carregado do banco de dados
@@ -640,5 +652,71 @@ export class ReportsSectionComponent implements OnInit {
       detail: message,
       life: 5000
     });
+  }
+
+  // ==================== MÉTODOS PARA EMAILS SALVOS ====================
+
+  /**
+   * Carrega emails salvos do banco de dados (configurados no settings-user)
+   * Chamado quando o dropdown é aberto
+   */
+  protected loadSavedEmails(): void {
+    try {
+      // Buscar emails configurados do banco via email service
+      const emails = this.emailService.getConfiguredEmailsFromDatabase();
+
+      if (emails.length > 0) {
+        // Converter array de strings para formato do dropdown
+        const emailOptions = emails.map((email: string, index: number) => ({
+          label: `${index + 1}. ${email}`,
+          value: email
+        }));
+
+        this.savedEmails.set(emailOptions);
+        console.log('✅ Emails salvos carregados:', emailOptions);
+      } else {
+        this.savedEmails.set([]);
+        console.log('⚠️ Nenhum email configurado no banco');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar emails salvos:', error);
+      this.savedEmails.set([]);
+      this.showError('Erro ao carregar emails salvos');
+    }
+  }
+
+  /**
+   * Adiciona o email selecionado do dropdown ao campo de destinatários
+   * Chamado quando o usuário seleciona um email no dropdown
+   */
+  protected addSavedEmailToRecipients(): void {
+    const selected = this.selectedSavedEmail();
+
+    if (!selected) {
+      return;
+    }
+
+    const currentRecipients = this.emailRecipients().trim();
+
+    // Se já existe o email, não adicionar duplicado
+    if (currentRecipients.includes(selected)) {
+      this.showError(`O email "${selected}" já está na lista de destinatários`);
+      this.selectedSavedEmail.set(null); // Limpar seleção
+      return;
+    }
+
+    // Adicionar ao campo de destinatários
+    if (currentRecipients === '') {
+      // Se vazio, apenas adicionar
+      this.emailRecipients.set(selected);
+    } else {
+      // Se já tem emails, adicionar com vírgula
+      this.emailRecipients.set(`${currentRecipients}, ${selected}`);
+    }
+
+    // Limpar seleção do dropdown
+    this.selectedSavedEmail.set(null);
+
+    console.log('✅ Email adicionado aos destinatários:', selected);
   }
 }

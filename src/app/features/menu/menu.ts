@@ -7,6 +7,7 @@ import { SalesFormComponent } from '../sales-form/sales-form';
 import { ReportsSectionComponent } from '../reports-section/reports-section';
 import { BeerManagementComponent } from '../beer-management/beer-management';
 import { SettingsUserComponent } from '../settings-user/settings-user';
+import { SettingsSalesComponent } from '../settings-sales/settings-sales';
 import { SettingsAdminComponent } from '../settings-admin/settings-admin';
 import { HelpComponent } from '../help/help';
 import { ClientConfigService } from '../../core/services/client-config.service';
@@ -25,6 +26,7 @@ import { AuthService } from '../../core/services/auth.service';
     BeerManagementComponent,
     ReportsSectionComponent,
     SettingsUserComponent,
+    SettingsSalesComponent,
     SettingsAdminComponent,
     HelpComponent,
   ],
@@ -50,8 +52,9 @@ export class Menu {
   /**
    * Controla qual sub-aba de configurações está ativa
    * 0 = Usuário
-   * 1 = Admin
-   * 2 = Ajuda
+   * 1 = Vendas/Estoque
+   * 2 = Admin
+   * 3 = Ajuda
    */
   protected readonly activeSettingsTab = signal<number>(0);
 

@@ -1,0 +1,426 @@
+// src/app/features/settings-sales/settings-sales.scss
+.settings-sales-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
+}
+
+// ==================== PAGE HEADER ====================
+.page-header {
+  margin-bottom: 2rem;
+
+  h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0 0 0.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+
+    i {
+      color: #f97316;
+    }
+
+    // Mobile: texto escuro
+    @media (max-width: 768px) {
+      color: #1e293b;
+    }
+  }
+
+  .header-description {
+    color: #ffffff;
+    font-size: 1rem;
+    margin: 0;
+    line-height: 1.6;
+
+    // Mobile: texto escuro
+    @media (max-width: 768px) {
+      color: #64748b;
+    }
+  }
+}
+
+// ==================== CARD HEADERS ====================
+.card-header-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #ffffff;
+
+  i {
+    color: #f97316;
+    font-size: 1.5rem;
+  }
+
+  // Mobile: texto escuro
+  @media (max-width: 768px) {
+    color: #ffffff;
+  }
+}
+
+.card-header-with-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem;
+
+  @media (max-width: 640px) {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+}
+
+// ==================== ALERTS CARD ====================
+.alerts-card {
+  margin-bottom: 2rem;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border: 2px solid #fca5a5;
+
+  ::ng-deep .p-card-header {
+    background: #dc2626;
+    color: white;
+
+    i {
+      color: white;
+    }
+  }
+
+  ::ng-deep .p-card-body {
+    padding: 0;
+  }
+
+  ::ng-deep .p-card-content {
+    padding: 1.5rem;
+  }
+}
+
+.alerts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.alert-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #fca5a5;
+
+  @media (max-width: 640px) {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+}
+
+.alert-beer-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+
+  .beer-name {
+    font-weight: 600;
+    color: #ffffff;
+
+    // Mobile: texto escuro
+    @media (max-width: 768px) {
+      color: #ffffff;
+    }
+  }
+}
+
+.alert-quantity {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #dc2626;
+  font-weight: 600;
+
+  i {
+    font-size: 1.2rem;
+  }
+}
+
+// ==================== ALERT CONFIG CARD ====================
+.alert-config-card {
+  margin-bottom: 2rem;
+
+  ::ng-deep .p-card-content {
+    padding: 1.5rem;
+  }
+}
+
+.alert-config-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.config-description {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #f1f5f9;
+  border-radius: 8px;
+  border-left: 4px solid #f97316;
+
+  i {
+    color: #f97316;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  p {
+    margin: 0;
+    color: #475569;
+    line-height: 1.6;
+  }
+}
+
+.config-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 400px;
+
+  label {
+    font-weight: 600;
+    color: #ffffff;
+    font-size: 0.95rem;
+
+    // Mobile: texto escuro
+    @media (max-width: 768px) {
+      color: #ffffff;
+    }
+  }
+
+  ::ng-deep p-inputnumber {
+    width: 100%;
+  }
+
+  ::ng-deep .p-inputnumber {
+    width: 100%;
+  }
+}
+
+// ==================== STOCKS CARD ====================
+.stocks-card {
+  margin-bottom: 2rem;
+
+  ::ng-deep .p-card-content {
+    padding: 1.5rem;
+  }
+}
+
+.stocks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.stock-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: #f97316;
+    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.1);
+  }
+}
+
+.stock-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.beer-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+
+  h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1e293b;
+  }
+}
+
+.beer-color-indicator {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+
+.stock-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  label {
+    font-weight: 600;
+    color: #475569;
+    font-size: 0.9rem;
+  }
+
+  ::ng-deep p-inputnumber {
+    width: 100%;
+  }
+
+  ::ng-deep .p-inputnumber {
+    width: 100%;
+  }
+}
+
+.info-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #ffffff;
+  margin-top: 0.25rem;
+
+  i {
+    font-size: 0.9rem;
+  }
+
+  // Mobile: texto escuro
+  @media (max-width: 768px) {
+    color: #64748b;
+  }
+
+  &.success {
+    color: #16a34a;
+
+    i {
+      color: #16a34a;
+    }
+  }
+}
+
+.stock-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+
+  ::ng-deep p-button {
+    flex: 1;
+    min-width: 140px;
+  }
+}
+
+// ==================== HELP CARD ====================
+.help-card {
+  ::ng-deep .p-card-content {
+    padding: 1.5rem;
+  }
+}
+
+.help-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.help-item {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+
+  i {
+    color: #f97316;
+    font-size: 1rem;
+    margin-top: 0.25rem;
+    flex-shrink: 0;
+  }
+
+  strong {
+    display: block;
+    color: #ffffff;
+    margin-bottom: 0.25rem;
+
+    // Mobile: texto escuro
+    @media (max-width: 768px) {
+      color: #ffffff;
+    }
+  }
+
+  p {
+    margin: 0;
+    color: #ffffff;
+    line-height: 1.5;
+
+    // Mobile: texto escuro
+    @media (max-width: 768px) {
+      color: #ffffff;
+    }
+  }
+}
+
+// ==================== EMPTY STATE ====================
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  color: #94a3b8;
+
+  i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+  }
+
+  p {
+    font-size: 1.1rem;
+    margin: 0 0 0.5rem 0;
+  }
+
+  small {
+    color: #cbd5e1;
+  }
+}
+
+// ==================== RESPONSIVIDADE ====================
+@media (max-width: 640px) {
+  .stocks-grid {
+    gap: 1rem;
+  }
+
+  .stock-item {
+    padding: 1rem;
+  }
+
+  .stock-actions {
+    ::ng-deep p-button {
+      min-width: 100%;
+    }
+  }
+}

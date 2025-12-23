@@ -512,12 +512,21 @@ nav button:focus:not(:focus-visible) {
   font-size: 0.875rem;
   cursor: pointer;
   transition: all 0.3s ease;
-  -webkit-tap-highlight-color: transparent;
+
+  // Otimizações para touch em mobile
+  -webkit-tap-highlight-color: rgba(194, 65, 12, 0.3);
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
   user-select: none;
 
   i {
     font-size: 1rem;
     transition: transform 0.3s ease;
+    pointer-events: none; // Garante que o evento sempre chegue ao botão
+  }
+
+  .logout-text {
+    pointer-events: none; // Garante que o evento sempre chegue ao botão
   }
 
   /* Hover - cor secundária (amber-700 / orange-700) */
@@ -532,9 +541,10 @@ nav button:focus:not(:focus-visible) {
     }
   }
 
-  /* Active state */
+  /* Active state - IMPORTANTE para feedback visual em mobile */
   &:active {
-    transform: translateY(0);
+    background-color: rgba(194, 65, 12, 0.95);
+    transform: scale(0.95);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
   }
 
@@ -544,12 +554,12 @@ nav button:focus:not(:focus-visible) {
     outline-offset: 2px;
   }
 
-  /* Mobile - esconde texto, mostra apenas ícone */
+  /* Mobile - esconde texto, mostra apenas ícone e aumenta área de toque */
   @media (max-width: 640px) {
-    padding: 0.5rem;
+    padding: 0.75rem; // Aumentado para melhor área de toque
     gap: 0;
-    min-width: 2.5rem;
-    min-height: 2.5rem;
+    min-width: 44px;  // Tamanho mínimo recomendado para touch (44x44px)
+    min-height: 44px; // Tamanho mínimo recomendado para touch
     justify-content: center;
 
     .logout-text {
@@ -558,6 +568,7 @@ nav button:focus:not(:focus-visible) {
 
     i {
       margin: 0;
+      font-size: 1.25rem; // Ícone maior em mobile
     }
   }
 

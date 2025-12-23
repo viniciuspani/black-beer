@@ -1,0 +1,255 @@
+<!-- src/app/features/settings-sales/settings-sales.html -->
+<div class="settings-sales-container">
+  <p-toast />
+
+  <!-- Header -->
+  <div class="page-header">
+    <h2>
+      <i class="pi pi-shopping-cart"></i>
+      Controle de Estoque por Evento
+    </h2>
+    <p class="header-description">
+      Configure a quantidade de litros disponível para cada cerveja no evento.
+      Quando configurado, o sistema automaticamente subtrai as vendas do estoque.
+    </p>
+  </div>
+
+  <!-- Alertas de Estoque Baixo -->
+  @if (stockAlerts().length > 0) {
+    <p-card class="alerts-card" styleClass="alert-card">
+      <ng-template #header>
+        <div class="card-header-with-icon">
+          <i class="pi pi-exclamation-triangle"></i>
+          <span>Alertas de Estoque Baixo</span>
+        </div>
+      </ng-template>
+
+      <div class="alerts-list">
+        @for (alert of stockAlerts(); track alert.beerId) {
+          <div class="alert-item">
+            <div class="alert-beer-info">
+              <div
+                class="beer-color-indicator"
+                [style.background-color]="alert.color">
+              </div>
+              <span class="beer-name">{{ alert.beerName }}</span>
+            </div>
+            <div class="alert-quantity">
+              <i class="pi pi-exclamation-circle"></i>
+              <span>{{ alert.quantidadeLitros }}L restantes</span>
+            </div>
+          </div>
+        }
+      </div>
+    </p-card>
+  }
+
+  <!-- Card de Configuração de Alertas -->
+  <p-card class="alert-config-card">
+    <ng-template #header>
+      <div class="card-header-with-icon">
+        <i class="pi pi-bell"></i>
+        <span>Configuração de Alertas</span>
+      </div>
+    </ng-template>
+
+    <div class="alert-config-content">
+      <div class="config-description">
+        <i class="pi pi-info-circle"></i>
+        <p>
+          Defina o limite mínimo de litros para receber alertas de estoque baixo.
+          O sistema irá notificar quando qualquer cerveja atingir esse limite.
+        </p>
+      </div>
+
+      <div class="config-input-group">
+        <label for="min-liters">
+          <i class="pi pi-bell"></i>
+          Limite Mínimo de Alerta
+        </label>
+        <p-inputnumber
+          id="min-liters"
+          [(ngModel)]="minLitersAlert"
+          [min]="0"
+          [max]="1000"
+          suffix=" litros"
+          [showButtons]="true"
+          [step]="1"
+          mode="decimal"
+          [minFractionDigits]="1"
+          [maxFractionDigits]="1"
+          class="w-full"
+        />
+
+        @if (isAlertConfigModified()) {
+          <p-button
+            label="Salvar Alerta"
+            icon="pi pi-save"
+            (onClick)="saveAlertConfig()"
+            severity="success"
+            [outlined]="true"
+            styleClass="mt-2"
+          />
+        }
+      </div>
+    </div>
+  </p-card>
+
+  <!-- Lista de Cervejas com Controle de Estoque -->
+  <p-card class="stocks-card">
+    <ng-template #header>
+      <div class="card-header-with-actions">
+        <div class="card-header-with-icon">
+          <i class="pi pi-box"></i>
+          <span>Estoque de Cervejas</span>
+        </div>
+        @if (hasModifications()) {
+          <p-button
+            label="Salvar Todos"
+            icon="pi pi-save"
+            (onClick)="saveAllStocks()"
+            [loading]="isSaving()"
+            severity="success"
+          />
+        }
+      </div>
+    </ng-template>
+
+    <div class="stocks-grid">
+      @for (stock of beerStocks(); track stock.beerId) {
+        <div class="stock-item">
+          <!-- Header do Item -->
+          <div class="stock-header">
+            <div class="beer-info">
+              <div
+                class="beer-color-indicator"
+                [style.background-color]="stock.color">
+              </div>
+              <h3>{{ stock.beerName }}</h3>
+            </div>
+            <p-tag
+              [value]="getStatusText(getBeerStatus(stock))"
+              [severity]="getStatusSeverity(getBeerStatus(stock))"
+            />
+          </div>
+
+          <!-- Input de Quantidade -->
+          <div class="stock-input-group">
+            <label [for]="'stock-' + stock.beerId">
+              <i class="pi pi-box"></i>
+              Quantidade Disponível
+            </label>
+            <p-inputnumber
+              [id]="'stock-' + stock.beerId"
+              [(ngModel)]="stock.quantidadeLitros"
+              [min]="0"
+              [max]="10000"
+              suffix=" litros"
+              [showButtons]="true"
+              [step]="1"
+              mode="decimal"
+              [minFractionDigits]="1"
+              [maxFractionDigits]="1"
+              class="w-full"
+              placeholder="0 = sem controle"
+              pTooltip="0 litros = sem controle de estoque"
+              tooltipPosition="top"
+            />
+
+            <!-- Informação sobre o modo -->
+            @if (stock.quantidadeLitros === 0) {
+              <small class="info-text">
+                <i class="pi pi-info-circle"></i>
+                Sem controle de estoque. Vendas não serão subtraídas.
+              </small>
+            } @else {
+              <small class="info-text success">
+                <i class="pi pi-check-circle"></i>
+                Controle ativo. Vendas serão subtraídas automaticamente.
+              </small>
+            }
+          </div>
+
+          <!-- Ações -->
+          <div class="stock-actions">
+            @if (isStockModified(stock)) {
+              <p-button
+                label="Salvar"
+                icon="pi pi-check"
+                (onClick)="saveStockForBeer(stock)"
+                severity="success"
+                [outlined]="true"
+                size="small"
+              />
+            }
+
+            @if (stock.originalQuantity > 0) {
+              <p-button
+                label="Remover Controle"
+                icon="pi pi-times"
+                (onClick)="resetStockForBeer(stock)"
+                severity="danger"
+                [outlined]="true"
+                size="small"
+                pTooltip="Remove o controle de estoque (volta ao modo normal)"
+                tooltipPosition="top"
+              />
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    @if (beerStocks().length === 0) {
+      <div class="empty-state">
+        <i class="pi pi-inbox"></i>
+        <p>Nenhuma cerveja cadastrada</p>
+        <small>Cadastre cervejas em Configurações > Cervejas</small>
+      </div>
+    }
+  </p-card>
+
+  <!-- Card de Ajuda -->
+  <p-card class="help-card">
+    <ng-template #header>
+      <div class="card-header-with-icon">
+        <i class="pi pi-question-circle"></i>
+        <span>Como Funciona</span>
+      </div>
+    </ng-template>
+
+    <div class="help-content">
+      <div class="help-item">
+        <i class="pi pi-arrow-right"></i>
+        <div>
+          <strong>Modo Normal (0 litros)</strong>
+          <p>Sem controle de estoque. O sistema não subtrai vendas.</p>
+        </div>
+      </div>
+
+      <div class="help-item">
+        <i class="pi pi-arrow-right"></i>
+        <div>
+          <strong>Controle Ativo (> 0 litros)</strong>
+          <p>Sistema subtrai automaticamente as vendas do estoque configurado.</p>
+        </div>
+      </div>
+
+      <div class="help-item">
+        <i class="pi pi-arrow-right"></i>
+        <div>
+          <strong>Alertas</strong>
+          <p>Notificação quando estoque ficar abaixo do limite configurado.</p>
+        </div>
+      </div>
+
+      <div class="help-item">
+        <i class="pi pi-arrow-right"></i>
+        <div>
+          <strong>Exemplo</strong>
+          <p>Configure 50L de IPA. Ao vender 5L (10 copos de 500ml), o estoque cai para 45L automaticamente.</p>
+        </div>
+      </div>
+    </div>
+  </p-card>
+</div>

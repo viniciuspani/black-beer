@@ -404,6 +404,38 @@
                 <p class="option-description">Envie o relatório para até 10 destinatários (separados por vírgula)</p>
 
                 <div class="email-form">
+                  <!-- Dropdown de Emails Salvos -->
+                  <div class="form-group">
+                    <label for="saved-emails" class="form-label">
+                      <i class="pi pi-bookmark"></i>
+                      Emails Salvos
+                    </label>
+                    <p-select
+                      id="saved-emails"
+                      [options]="savedEmails()"
+                      [(ngModel)]="selectedSavedEmail"
+                      (onShow)="loadSavedEmails()"
+                      (onChange)="addSavedEmailToRecipients()"
+                      placeholder="Clique para carregar emails salvos"
+                      optionLabel="label"
+                      optionValue="value"
+                      [showClear]="true"
+                      styleClass="w-full"
+                      [disabled]="isSendingEmail()">
+                      <ng-template #empty>
+                        <div class="p-3 text-center text-gray-500">
+                          <i class="pi pi-inbox text-2xl block mb-2"></i>
+                          <p class="text-sm">Nenhum email configurado</p>
+                          <p class="text-xs mt-1">Configure emails em Configurações > Usuário</p>
+                        </div>
+                      </ng-template>
+                    </p-select>
+                    <small class="form-hint">
+                      <i class="pi pi-info-circle"></i>
+                      Selecione um email salvo para adicionar aos destinatários
+                    </small>
+                  </div>
+
                   <div class="form-group">
                     <label for="email-recipients" class="form-label">
                       <i class="pi pi-users"></i>

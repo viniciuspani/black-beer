@@ -32,10 +32,11 @@
           <button
             type="button"
             class="logout-button"
-            (click)="logout()"
+            (click)="handleLogout($event)"
             pTooltip="Sair do sistema"
             tooltipPosition="bottom"
-            aria-label="Logout">
+            aria-label="Logout"
+            tabindex="0">
             <i class="pi pi-sign-out"></i>
             <span class="logout-text">Sair</span>
           </button>
@@ -100,10 +101,14 @@
                     <span> Usuário</span>
                   </p-tab>
                   <p-tab value="1">
+                    <i class="pi pi-shopping-cart"></i>
+                    <span> Vendas</span>
+                  </p-tab>
+                  <p-tab value="2">
                     <i class="pi pi-shield"></i>
                     <span> Admin</span>
                   </p-tab>
-                  <p-tab value="2">
+                  <p-tab value="3">
                     <i class="pi pi-question-circle"></i>
                     <span> Ajuda</span>
                   </p-tab>
@@ -114,9 +119,12 @@
                     <app-settings-user></app-settings-user>
                   </p-tabpanel>
                   <p-tabpanel value="1">
-                    <app-settings-admin></app-settings-admin>
+                    <app-settings-sales></app-settings-sales>
                   </p-tabpanel>
                   <p-tabpanel value="2">
+                    <app-settings-admin></app-settings-admin>
+                  </p-tabpanel>
+                  <p-tabpanel value="3">
                     <app-help></app-help>
                   </p-tabpanel>
                 </p-tabpanels>
@@ -144,11 +152,11 @@
           <!-- Sub-abas de Configurações para Mobile -->
           <div class="flex flex-col gap-3">
             <!-- Botões de Sub-navegação -->
-            <div class="bg-white rounded-lg shadow-sm p-2 flex gap-2">
+            <div class="bg-white rounded-lg shadow-sm p-2 flex gap-2 overflow-x-auto">
               <button
                 type="button"
                 (click)="setActiveSettingsTab(0)"
-                class="flex-1 py-2 px-3 rounded-md transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium"
+                class="flex-1 py-2 px-3 rounded-md transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium whitespace-nowrap"
                 [class.bg-amber-600]="activeSettingsTab() === 0"
                 [class.text-white]="activeSettingsTab() === 0"
                 [class.bg-gray-100]="activeSettingsTab() !== 0"
@@ -159,22 +167,33 @@
               <button
                 type="button"
                 (click)="setActiveSettingsTab(1)"
-                class="flex-1 py-2 px-3 rounded-md transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium"
+                class="flex-1 py-2 px-3 rounded-md transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium whitespace-nowrap"
                 [class.bg-amber-600]="activeSettingsTab() === 1"
                 [class.text-white]="activeSettingsTab() === 1"
                 [class.bg-gray-100]="activeSettingsTab() !== 1"
                 [class.text-gray-700]="activeSettingsTab() !== 1">
+                <i class="pi pi-shopping-cart"></i>
+                <span>Vendas</span>
+              </button>
+              <button
+                type="button"
+                (click)="setActiveSettingsTab(2)"
+                class="flex-1 py-2 px-3 rounded-md transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium whitespace-nowrap"
+                [class.bg-amber-600]="activeSettingsTab() === 2"
+                [class.text-white]="activeSettingsTab() === 2"
+                [class.bg-gray-100]="activeSettingsTab() !== 2"
+                [class.text-gray-700]="activeSettingsTab() !== 2">
                 <i class="pi pi-shield"></i>
                 <span>Admin</span>
               </button>
               <button
                 type="button"
-                (click)="setActiveSettingsTab(2)"
-                class="flex-1 py-2 px-3 rounded-md transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium"
-                [class.bg-amber-600]="activeSettingsTab() === 2"
-                [class.text-white]="activeSettingsTab() === 2"
-                [class.bg-gray-100]="activeSettingsTab() !== 2"
-                [class.text-gray-700]="activeSettingsTab() !== 2">
+                (click)="setActiveSettingsTab(3)"
+                class="flex-1 py-2 px-3 rounded-md transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium whitespace-nowrap"
+                [class.bg-amber-600]="activeSettingsTab() === 3"
+                [class.text-white]="activeSettingsTab() === 3"
+                [class.bg-gray-100]="activeSettingsTab() !== 3"
+                [class.text-gray-700]="activeSettingsTab() !== 3">
                 <i class="pi pi-question-circle"></i>
                 <span>Ajuda</span>
               </button>
@@ -186,9 +205,12 @@
                 <app-settings-user></app-settings-user>
               }
               @case (1) {
-                <app-settings-admin></app-settings-admin>
+                <app-settings-sales></app-settings-sales>
               }
               @case (2) {
+                <app-settings-admin></app-settings-admin>
+              }
+              @case (3) {
                 <app-help></app-help>
               }
             }

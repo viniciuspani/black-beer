@@ -15,6 +15,7 @@ import { finalize } from 'rxjs/operators';
 import { DatabaseService } from '../../core/services/database';
 import { EmailService } from '../../core/services/email.service';
 import { FullReport } from '../../core/models/report.model';
+import { TabRefreshService, MainTab } from '../../core/services/tab-refresh.service';
 
 // Registrar componentes do Chart.js ANTES de usar
 Chart.register(...registerables);
@@ -38,11 +39,12 @@ Chart.register(...registerables);
   styleUrl: './reports-section.scss'
 })
 export class ReportsSectionComponent implements OnInit {
-  
+
   // ==================== SERVIÇOS ====================
   private readonly dbService = inject(DatabaseService);
   private readonly emailService = inject(EmailService);
   private readonly messageService = inject(MessageService);
+  private readonly tabRefreshService = inject(TabRefreshService);
 
   // ==================== SIGNALS ====================
   
@@ -87,10 +89,19 @@ export class ReportsSectionComponent implements OnInit {
   protected selectedSavedEmail = signal<string | null>(null);
 
   /**
+   * Signal para forçar refresh do relatório
+   * Incrementado toda vez que precisamos forçar recálculo
+   */
+  private readonly refreshTrigger = signal<number>(0);
+
+  /**
    * Relatório completo carregado do banco de dados
-   * Computed que reage a mudanças de filtro
+   * Computed que reage a mudanças de filtro E ao refreshTrigger
    */
   protected readonly report = computed<FullReport>(() => {
+    // Observa refreshTrigger para forçar recálculo quando necessário
+    this.refreshTrigger();
+
     if (!this.dbService.isDbReady()) {
       return {
         summary: { totalSales: 0, totalVolumeLiters: 0 },
@@ -253,8 +264,11 @@ export class ReportsSectionComponent implements OnInit {
   });
   
   ngOnInit(): void {
-    // Nada a fazer aqui - o computed 'report' já carrega os dados automaticamente
-    // quando dbService.isDbReady() muda para true
+    // Subscription para escutar quando a aba de Relatórios é ativada
+    this.tabRefreshService.onMainTabActivated(MainTab.REPORTS).subscribe(() => {
+      console.log('🔔 Reports: Aba ativada, atualizando dados...');
+      this.refreshData();
+    });
   }
   
   // ==================== MÉTODOS DE FILTRO ====================
@@ -718,5 +732,25 @@ export class ReportsSectionComponent implements OnInit {
     this.selectedSavedEmail.set(null);
 
     console.log('✅ Email adicionado aos destinatários:', selected);
+  }
+
+  // ==================== MÉTODO DE REFRESH ====================
+
+  /**
+   * Atualiza os dados do relatório
+   * Força re-computação do signal computed 'report'
+   * Chamado quando a aba de relatórios é ativada
+   */
+  public refreshData(): void {
+    console.log('🔄 Atualizando dados de relatórios...');
+
+    // Incrementa o trigger para forçar recálculo do computed signal
+    // O computed 'report' observa este signal, então vai recalcular
+    this.refreshTrigger.update(n => n + 1);
+
+    // Recarrega emails salvos
+    this.loadSavedEmails();
+
+    console.log('✅ Refresh trigger ativado:', this.refreshTrigger());
   }
 }

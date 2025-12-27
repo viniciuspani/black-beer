@@ -133,6 +133,22 @@
             />
           </div>
 
+          <!-- Display de Quantidade Atual (quando controle ativo) -->
+          @if (stock.originalQuantity > 0) {
+            <div class="current-stock-display" [class.low-stock]="getBeerStatus(stock) === 'alert'">
+              <div class="stock-icon">
+                <i class="pi pi-database"></i>
+              </div>
+              <div class="stock-info">
+                <span class="stock-label">Estoque Atual</span>
+                <span class="stock-value">{{ stock.originalQuantity.toFixed(1) }}L</span>
+              </div>
+              @if (getBeerStatus(stock) === 'alert') {
+                <i class="pi pi-exclamation-triangle warning-icon"></i>
+              }
+            </div>
+          }
+
           <!-- Input de Quantidade -->
           <div class="stock-input-group">
             <label [for]="'stock-' + stock.beerId">

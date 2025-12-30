@@ -37,7 +37,8 @@
             placeholder="Digite seu email ou usuário"
             [class.ng-invalid]="hasError('emailOrUsername')"
             [class.ng-dirty]="hasError('emailOrUsername')"
-            class="w-full" />
+            class="w-full"
+            #emailOrUsernameInput />
 
           @if (hasError('emailOrUsername')) {
             <small class="error-message">

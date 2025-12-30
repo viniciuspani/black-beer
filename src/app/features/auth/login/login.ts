@@ -3,7 +3,7 @@
 // Componente de Login (Angular 20 otimizado)
 // ========================================
 
-import { Component, OnInit, inject, signal, effect } from '@angular/core';
+import { Component, OnInit, AfterViewInit, inject, signal, effect, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -38,7 +38,7 @@ import { DatabaseService } from '../../../core/services/database';
   templateUrl: './login.html',
   styleUrls: ['./login.scss'],
 })
-export class LoginComponent implements OnInit {
+export class LoginComponent implements OnInit, AfterViewInit {
   private readonly authService = inject(AuthService);
   private readonly dbService = inject(DatabaseService);
   private readonly fb = inject(FormBuilder);
@@ -46,6 +46,9 @@ export class LoginComponent implements OnInit {
   private readonly messageService = inject(MessageService);
 
   readonly isLoading = signal(false);
+
+  // ViewChild para acessar o input de usuário
+  @ViewChild('emailOrUsernameInput') emailOrUsernameInput?: ElementRef<HTMLInputElement>;
 
   readonly loginForm: FormGroup = this.fb.group({
     emailOrUsername: ['', [Validators.required]],
@@ -68,6 +71,13 @@ export class LoginComponent implements OnInit {
   }
 
   ngOnInit(): void {}
+
+  ngAfterViewInit(): void {
+    // Adiciona pequeno delay para garantir que o DOM está pronto
+    setTimeout(() => {
+      this.emailOrUsernameInput?.nativeElement?.focus();
+    }, 100);
+  }
 
   async onSubmit(): Promise<void> {
     if (this.loginForm.invalid) {

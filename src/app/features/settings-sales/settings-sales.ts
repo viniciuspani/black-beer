@@ -1,5 +1,5 @@
 // src/app/features/settings-sales/settings-sales.ts
-import { Component, OnInit, inject, signal, effect } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -15,6 +15,7 @@ import { TooltipModule } from 'primeng/tooltip';
 // App
 import { BeerType } from '../../core/models/beer.model';
 import { DatabaseService } from '../../core/services/database';
+import { TabRefreshService, SettingsSubTab } from '../../core/services/tab-refresh.service';
 
 interface BeerStock {
   beerId: number;
@@ -45,10 +46,11 @@ interface BeerStock {
   templateUrl: './settings-sales.html',
   styleUrls: ['./settings-sales.scss']
 })
-export class SettingsSalesComponent implements OnInit {
+export class SettingsSalesComponent implements OnInit, OnDestroy {
   // ==================== INJEÇÃO DE DEPENDÊNCIAS ====================
   private readonly dbService = inject(DatabaseService);
   private readonly messageService = inject(MessageService);
+  private readonly tabRefreshService = inject(TabRefreshService);
 
   // ==================== SIGNALS PARA ESTADO REATIVO ====================
   readonly beerTypes = signal<BeerType[]>([]);
@@ -60,7 +62,6 @@ export class SettingsSalesComponent implements OnInit {
 
   // ==================== CONSTANTES ====================
   private readonly DEFAULT_MIN_LITERS = 5.0;
-  private readonly ML_TO_LITERS = 1000;
 
   // ==================== CONSTRUCTOR ====================
   constructor() {
@@ -70,6 +71,12 @@ export class SettingsSalesComponent implements OnInit {
         this.loadData();
       }
     });
+
+    // Subscription para escutar quando a aba de Settings-Sales é ativada
+    this.tabRefreshService.onSettingsSubTabActivated(SettingsSubTab.SALES).subscribe(() => {
+      console.log('🔔 Settings-Sales: Aba ativada, atualizando dados...');
+      this.refreshData();
+    });
   }
 
   // ==================== LIFECYCLE HOOKS ====================
@@ -77,6 +84,19 @@ export class SettingsSalesComponent implements OnInit {
     if (this.dbService.isDbReady()) {
       this.loadData();
     }
+  }
+
+  ngOnDestroy(): void {
+    // Cleanup se necessário
+  }
+
+  /**
+   * Método público para forçar atualização dos dados
+   * Chamado pelo componente Menu quando a aba é ativada
+   */
+  public refreshData(): void {
+    console.log('🔄 Atualizando dados de settings-sales...');
+    this.loadData();
   }
 
   // ==================== CARREGAMENTO DE DADOS ====================

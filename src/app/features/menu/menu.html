@@ -52,21 +52,21 @@
 
     <!-- ==================== DESKTOP TABS (visível apenas em MD+) ==================== -->
     <div class="hidden md:block">
-      <p-tabs class="w-full">
+      <p-tabs [(value)]="activeTabDesktop" (onChange)="onTabChange($event)" class="w-full">
         <p-tablist class="w-full">
-          <p-tab value="0">
+          <p-tab value="0" (click)="onTabClick(0)">
             <i class="pi pi-shopping-cart"></i>
             <span> Nova Venda</span>
           </p-tab>
-          <p-tab value="1">
+          <p-tab value="1" (click)="onTabClick(1)">
             <i class="pi pi-chart-bar"></i>
             <span> Relatórios</span>
           </p-tab>
-          <p-tab value="2">
+          <p-tab value="2" (click)="onTabClick(2)">
             <i class="pi pi-moon"></i>
             <span> Cervejas</span>
           </p-tab>
-          <p-tab value="3">
+          <p-tab value="3" (click)="onTabClick(3)">
             <i class="pi pi-cog"></i>
             <span> Configurações</span>
           </p-tab>
@@ -94,21 +94,21 @@
           <p-tabpanel value="3">
             <div class="overflow-auto">
               <!-- Sub-abas de Configurações -->
-              <p-tabs class="w-full">
+              <p-tabs [(value)]="activeSettingsTabDesktop" (onChange)="onSettingsTabChange($event)" class="w-full">
                 <p-tablist class="w-full">
-                  <p-tab value="0">
+                  <p-tab value="0" (click)="onSettingsTabClick(0)">
                     <i class="pi pi-user"></i>
                     <span> Usuário</span>
                   </p-tab>
-                  <p-tab value="1">
+                  <p-tab value="1" (click)="onSettingsTabClick(1)">
                     <i class="pi pi-shopping-cart"></i>
                     <span> Vendas</span>
                   </p-tab>
-                  <p-tab value="2">
+                  <p-tab value="2" (click)="onSettingsTabClick(2)">
                     <i class="pi pi-shield"></i>
                     <span> Admin</span>
                   </p-tab>
-                  <p-tab value="3">
+                  <p-tab value="3" (click)="onSettingsTabClick(3)">
                     <i class="pi pi-question-circle"></i>
                     <span> Ajuda</span>
                   </p-tab>

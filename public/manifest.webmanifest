@@ -1,9 +1,17 @@
 {
-  "name": "black-beer",
-  "short_name": "black-beer",
+  "name": "Black Beer - Gestão de Vendas",
+  "short_name": "Black Beer",
+  "description": "Sistema completo de gestão de vendas de cerveja artesanal com controle de estoque por evento",
+  "theme_color": "#d97706",
+  "background_color": "#1e293b",
   "display": "standalone",
-  "scope": "./",
-  "start_url": "./",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["business", "productivity"],
+  "screenshots": [],
   "icons": [
     {
       "src": "icons/icon-72x72.png",

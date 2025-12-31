@@ -14,6 +14,7 @@ import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ToastModule } from 'primeng/toast';
+import { DialogModule } from 'primeng/dialog';
 import { ConfirmationService, MessageService } from 'primeng/api';
 
 // App Services and Models
@@ -42,7 +43,8 @@ import { DatabaseService } from '../../core/services/database';
     TableModule,
     TagModule,
     ConfirmDialogModule,
-    ToastModule
+    ToastModule,
+    DialogModule
   ],
   providers: [ConfirmationService, MessageService],
   templateUrl: './beer-management.html',
@@ -59,7 +61,10 @@ export class BeerManagementComponent implements OnInit {
   // ==================== SIGNALS PARA ESTADO REATIVO ====================
   beerTypes: WritableSignal<BeerType[]> = signal([]);
   isAdding = signal(false);
+  isEditing = signal(false);
   beerForm: FormGroup;
+  editForm: FormGroup;
+  currentEditingBeer: BeerType | null = null;
 
   // ==================== CONSTANTES ====================
   /**
@@ -75,8 +80,15 @@ export class BeerManagementComponent implements OnInit {
 
   // ==================== CONSTRUCTOR ====================
   constructor() {
-    // Inicialização do formulário reativo
+    // Inicialização do formulário reativo para adicionar
     this.beerForm = this.fb.group({
+      name: ['', [Validators.required, Validators.minLength(3)]],
+      description: [''],
+      color: [this.DEFAULT_COLOR, Validators.required]
+    });
+
+    // Inicialização do formulário reativo para editar
+    this.editForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]],
       description: [''],
       color: [this.DEFAULT_COLOR, Validators.required]
@@ -208,6 +220,72 @@ export class BeerManagementComponent implements OnInit {
     } catch (error) {
       console.error('❌ Erro ao verificar nome da cerveja:', error);
       return false;
+    }
+  }
+
+  // ==================== EDITAR CERVEJA ====================
+  /**
+   * Abre modal de edição para uma cerveja
+   * @param beer Cerveja a ser editada
+   */
+  openEditDialog(beer: BeerType): void {
+    this.currentEditingBeer = beer;
+    this.editForm.patchValue({
+      name: beer.name,
+      description: beer.description,
+      color: beer.color
+    });
+    this.isEditing.set(true);
+  }
+
+  /**
+   * Fecha o modal de edição
+   */
+  closeEditDialog(): void {
+    this.isEditing.set(false);
+    this.currentEditingBeer = null;
+    this.editForm.reset({ color: this.DEFAULT_COLOR });
+  }
+
+  /**
+   * Salva a edição da cerveja no banco de dados
+   */
+  handleUpdateBeer(): void {
+    if (this.editForm.invalid || !this.currentEditingBeer) {
+      this.showWarning('Por favor, preencha todos os campos obrigatórios.');
+      return;
+    }
+
+    const formValue = this.editForm.value;
+    const beerName = formValue.name.trim();
+
+    // Validação: verifica se já existe outra cerveja com este nome
+    if (beerName.toLowerCase() !== this.currentEditingBeer.name.toLowerCase() && this.beerNameExists(beerName)) {
+      this.showError('Uma cerveja com este nome já existe.');
+      return;
+    }
+
+    const updatedBeer = {
+      name: beerName,
+      description: formValue.description?.trim() || `Cerveja ${beerName}`,
+      color: formValue.color
+    };
+
+    try {
+      // UPDATE no banco de dados
+      this.dbService.executeRun(
+        'UPDATE beer_types SET name = ?, description = ?, color = ? WHERE id = ?',
+        [updatedBeer.name, updatedBeer.description, updatedBeer.color, this.currentEditingBeer.id]
+      );
+
+      console.log('✅ Cerveja atualizada:', updatedBeer.name, '(ID:', this.currentEditingBeer.id, ')');
+
+      this.showSuccess(`${updatedBeer.name} foi atualizada com sucesso!`);
+      this.loadBeerTypes();
+      this.closeEditDialog();
+    } catch (error) {
+      this.showError('Não foi possível atualizar a cerveja.');
+      console.error('❌ Erro ao atualizar cerveja:', error);
     }
   }
 

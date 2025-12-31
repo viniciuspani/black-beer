@@ -225,6 +225,127 @@
     }
   </p-card>
 
+  <!-- Card de Configuração de Preços -->
+  <p-card class="prices-card">
+    <ng-template #header>
+      <div class="card-header-with-icon">
+        <i class="pi pi-dollar"></i>
+        <span>Configuração de Preços</span>
+      </div>
+    </ng-template>
+
+    <div class="prices-description">
+      <i class="pi pi-info-circle"></i>
+      <p>
+        Defina os preços para cada tamanho de copo (300ml, 500ml e 1000ml) de cada cerveja.
+      </p>
+    </div>
+
+    <div class="beer-prices-grid">
+      @for (price of beerPrices(); track price.beerId) {
+        <div class="beer-price-card">
+          <!-- Header do card -->
+          <div class="beer-price-header">
+            <div class="beer-info">
+              <div class="beer-color-indicator" [style.background-color]="price.color"></div>
+              <h4>{{ price.beerName }}</h4>
+            </div>
+          </div>
+
+          <!-- Grid de inputs de preços -->
+          <div class="price-inputs-grid">
+            <!-- Preço 300ml -->
+            <div class="price-input-group">
+              <label>
+                <i class="pi pi-shopping-cart"></i>
+                300ml
+              </label>
+              <p-inputnumber
+                [(ngModel)]="price.price300ml"
+                mode="currency"
+                currency="BRL"
+                locale="pt-BR"
+                [min]="0"
+                [minFractionDigits]="2"
+                [maxFractionDigits]="2"
+                placeholder="R$ 0,00"
+              />
+            </div>
+
+            <!-- Preço 500ml -->
+            <div class="price-input-group">
+              <label>
+                <i class="pi pi-shopping-cart"></i>
+                500ml
+              </label>
+              <p-inputnumber
+                [(ngModel)]="price.price500ml"
+                mode="currency"
+                currency="BRL"
+                locale="pt-BR"
+                [min]="0"
+                [minFractionDigits]="2"
+                [maxFractionDigits]="2"
+                placeholder="R$ 0,00"
+              />
+            </div>
+
+            <!-- Preço 1000ml -->
+            <div class="price-input-group">
+              <label>
+                <i class="pi pi-shopping-cart"></i>
+                1000ml
+              </label>
+              <p-inputnumber
+                [(ngModel)]="price.price1000ml"
+                mode="currency"
+                currency="BRL"
+                locale="pt-BR"
+                [min]="0"
+                [minFractionDigits]="2"
+                [maxFractionDigits]="2"
+                placeholder="R$ 0,00"
+              />
+            </div>
+          </div>
+
+          <!-- Botão de salvar -->
+          <div class="beer-price-actions">
+            <p-button
+              label="Salvar Preços"
+              icon="pi pi-check"
+              (onClick)="savePriceForBeer(price)"
+              severity="success"
+              size="small"
+              [disabled]="!hasPriceChanges(price)"
+            />
+          </div>
+        </div>
+      }
+    </div>
+
+    @if (beerPrices().length === 0) {
+      <div class="empty-state">
+        <i class="pi pi-inbox"></i>
+        <p>Nenhuma cerveja cadastrada</p>
+        <small>Cadastre cervejas em Configurações > Cervejas</small>
+      </div>
+    }
+
+    <!-- Botão de salvar todos -->
+    @if (beerPrices().length > 0) {
+      <div class="save-all-prices-section">
+        <p-button
+          label="Salvar Todos os Preços"
+          icon="pi pi-save"
+          (onClick)="saveAllPrices()"
+          severity="primary"
+          [loading]="isSaving()"
+        />
+      </div>
+    }
+  </p-card>
+
   <!-- Card de Ajuda -->
   <p-card class="help-card">
     <ng-template #header>

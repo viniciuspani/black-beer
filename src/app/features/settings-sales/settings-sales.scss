@@ -515,6 +515,157 @@
   }
 }
 
+// ==================== CARD DE PREÇOS ====================
+.prices-card {
+  margin-bottom: 2rem;
+  animation: slideIn 0.4s ease;
+}
+
+.prices-description {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(250, 204, 21, 0.1);
+  border-left: 4px solid #fbbf24;
+  border-radius: 0.5rem;
+  margin-bottom: 1.5rem;
+
+  i {
+    color: #fbbf24;
+    font-size: 1.25rem;
+    margin-top: 0.125rem;
+  }
+
+  p {
+    margin: 0;
+    color: #d1d5db;
+    line-height: 1.6;
+  }
+}
+
+.beer-prices-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.beer-price-card {
+  background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+  border: 2px solid #334155;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+
+  &:hover {
+    border-color: #d97706;
+    box-shadow: 0 4px 20px rgba(217, 119, 6, 0.2);
+    transform: translateY(-2px);
+  }
+}
+
+.beer-price-header {
+  margin-bottom: 1.5rem;
+
+  .beer-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+
+    .beer-color-indicator {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.5rem;
+      border: 2px solid #475569;
+      flex-shrink: 0;
+    }
+
+    h4 {
+      margin: 0;
+      color: #f1f5f9;
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+  }
+}
+
+.price-inputs-grid {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.price-input-group {
+  label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #cbd5e1;
+    margin-bottom: 0.5rem;
+
+    i {
+      color: #d97706;
+      font-size: 0.875rem;
+    }
+  }
+
+  ::ng-deep {
+    .p-inputnumber {
+      width: 100%;
+    }
+
+    .p-inputnumber-input {
+      width: 100%;
+      background: #0f172a;
+      border: 2px solid #334155;
+      color: #f1f5f9;
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      transition: all 0.2s ease;
+
+      &:focus {
+        border-color: #d97706;
+        box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.2);
+      }
+
+      &:hover {
+        border-color: #475569;
+      }
+    }
+  }
+}
+
+.beer-price-actions {
+  margin-top: 1rem;
+
+  ::ng-deep p-button {
+    width: 100%;
+
+    .p-button {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}
+
+.save-all-prices-section {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 1.5rem;
+  border-top: 2px solid #334155;
+
+  ::ng-deep {
+    .p-button {
+      min-width: 200px;
+      padding: 0.75rem 1.5rem;
+      font-weight: 600;
+    }
+  }
+}
+
 // ==================== RESPONSIVIDADE ====================
 @media (max-width: 640px) {
   .stocks-grid {
@@ -528,6 +679,18 @@
   .stock-actions {
     ::ng-deep p-button {
       min-width: 100%;
+    }
+  }
+
+  .beer-prices-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .save-all-prices-section {
+    justify-content: center;
+
+    ::ng-deep .p-button {
+      width: 100%;
     }
   }
 }

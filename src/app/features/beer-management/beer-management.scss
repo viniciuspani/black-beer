@@ -398,6 +398,12 @@
   }
 }
 
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
 /* ========================================
    CARDS MOBILE
    ======================================== */
@@ -537,8 +543,49 @@
 }
 
 /* ========================================
-   BOTÃO DELETE (MOBILE)
+   BOTÕES DE AÇÃO (MOBILE)
    ======================================== */
+
+.beer-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.edit-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: $white;
+  border: 2px solid $info-500;
+  border-radius: 0.5rem;
+  color: $info-500;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+
+  /* Área de toque adequada */
+  min-height: 44px;
+
+  i {
+    font-size: 1rem;
+  }
+
+  &:hover {
+    background: $info-500;
+    color: $white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0) scale(0.98);
+  }
+}
 
 .delete-button {
   display: flex;
@@ -740,8 +787,36 @@
 }
 
 /* ========================================
-   DIALOG DE CONFIRMAÇÃO (RESPONSIVO)
+   DIALOG DE EDIÇÃO/CONFIRMAÇÃO (RESPONSIVO)
    ======================================== */
+
+.edit-beer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
+  .form-label {
+    color: #ffffff;
+
+    i {
+      color: $primary;
+    }
+  }
+}
+
+.dialog-footer {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+
+  @media (max-width: 640px) {
+    flex-direction: column-reverse;
+
+    ::ng-deep .p-button {
+      width: 100%;
+    }
+  }
+}
 
 ::ng-deep {
   .p-dialog {
@@ -749,30 +824,30 @@
       width: 90vw !important;
       max-width: none !important;
     }
-    
+
     .p-dialog-header {
       padding: 1.25rem;
-      
+
       @media (max-width: 640px) {
         padding: 1rem;
       }
     }
-    
+
     .p-dialog-content {
       padding: 1.25rem;
-      
+
       @media (max-width: 640px) {
         padding: 1rem;
         font-size: 0.875rem;
       }
     }
-    
+
     .p-dialog-footer {
       padding: 1rem 1.25rem;
-      
+
       @media (max-width: 640px) {
         padding: 1rem;
-        
+
         .p-button {
           font-size: 0.875rem;
         }

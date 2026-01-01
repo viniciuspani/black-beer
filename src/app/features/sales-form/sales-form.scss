@@ -645,7 +645,14 @@
    ======================================== */
 
 .submit-container {
-  /* Mobile: fixo no bottom */
+  /* Desktop: centralizado com largura controlada */
+  @media (min-width: 768px) {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.5rem;
+  }
+
+  /* Mobile: fixo no bottom e centralizado */
   @media (max-width: 767px) {
     position: fixed;
     bottom: 72px; /* Altura da bottom nav */
@@ -656,8 +663,10 @@
     backdrop-filter: blur(10px);
     z-index: 20;
     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: center;
   }
-  
+
   /* Safe area para iOS */
   @supports (padding-bottom: env(safe-area-inset-bottom)) {
     @media (max-width: 767px) {
@@ -667,6 +676,13 @@
 }
 
 .submit-button {
+  /* Desktop: largura igual ao card de 500ml (1/3 do grid) */
+  @media (min-width: 768px) {
+    width: 100%;
+    /* Calcula 1/3 do espaço disponível, ajustando para o gap entre cards */
+    max-width: calc((100% - 1.5rem) / 3); /* 100% menos 2 gaps de 0.75rem, dividido por 3 colunas */
+  }
+
   ::ng-deep {
     .p-button {
       width: 100%;
@@ -674,21 +690,21 @@
       font-size: 1.125rem;
       font-weight: 600;
       border-radius: 0.75rem;
-      
-      @media (min-width: 640px) {
-        height: 4rem;
+
+      @media (min-width: 768px) {
+        height: 6rem; /* Aumentado de 4rem para 6rem (+2rem) */
         font-size: 1.25rem;
       }
-      
+
       &:not(:disabled):hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 16px rgba(217, 119, 6, 0.4);
       }
-      
+
       &:not(:disabled):active {
         transform: translateY(0) scale(0.98);
       }
-      
+
       &:disabled {
         opacity: 0.5;
         cursor: not-allowed;

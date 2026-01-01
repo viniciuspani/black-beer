@@ -1,6 +1,100 @@
 <p-toast></p-toast>
 <p-confirmDialog [style]="{width: '90vw', maxWidth: '30rem'}"></p-confirmDialog>
 
+<!-- ==================== MODAL DE EDIÇÃO ==================== -->
+<p-dialog
+  [(visible)]="isEditing"
+  [modal]="true"
+  [closable]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{width: '90vw', maxWidth: '35rem'}"
+  header="Editar Cerveja"
+  (onHide)="closeEditDialog()">
+
+  <form [formGroup]="editForm" (ngSubmit)="handleUpdateBeer()" class="edit-beer-form">
+
+    <!-- Grid do formulário -->
+    <div class="form-grid">
+
+      <!-- Campo: Nome -->
+      <div class="form-field">
+        <label for="edit-name" class="form-label required">
+          <i class="pi pi-tag"></i>
+          Nome da Cerveja
+        </label>
+        <input
+          pInputText
+          id="edit-name"
+          formControlName="name"
+          placeholder="Ex: Pilsen, IPA..."
+          class="form-input" />
+      </div>
+
+      <!-- Campo: Color Picker -->
+      <div class="form-field">
+        <label for="edit-color" class="form-label">
+          <i class="pi pi-palette"></i>
+          Cor da Cerveja
+        </label>
+        <div class="color-picker-wrapper">
+          <!-- Preview da cor selecionada -->
+          <div class="color-preview" [style.background-color]="editForm.get('color')?.value">
+            <span class="color-preview-label">Preview</span>
+          </div>
+          <!-- Color picker -->
+          <p-colorPicker
+            formControlName="color"
+            [inline]="false"
+            format="hex"
+            appendTo="body">
+          </p-colorPicker>
+        </div>
+      </div>
+
+      <!-- Campo: Descrição (ocupa largura total) -->
+      <div class="form-field form-field-full">
+        <label for="edit-description" class="form-label">
+          <i class="pi pi-align-left"></i>
+          Descrição
+        </label>
+        <textarea
+          pInputTextarea
+          id="edit-description"
+          formControlName="description"
+          [rows]="3"
+          placeholder="Descreva as características desta cerveja..."
+          class="form-input">
+        </textarea>
+      </div>
+    </div>
+
+  </form>
+
+  <!-- Footer com botões -->
+  <ng-template pTemplate="footer">
+    <div class="dialog-footer">
+      <p-button
+        type="button"
+        label="Cancelar"
+        icon="pi pi-times"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="closeEditDialog()">
+      </p-button>
+
+      <p-button
+        type="button"
+        label="Salvar Alterações"
+        icon="pi pi-check"
+        severity="success"
+        [disabled]="editForm.invalid"
+        (onClick)="handleUpdateBeer()">
+      </p-button>
+    </div>
+  </ng-template>
+</p-dialog>
+
 <div class="beer-management-container">
   
   <!-- ==================== CARD PRINCIPAL ==================== -->
@@ -143,16 +237,27 @@
                 </p-tag>
               </td>
               <td>
-                <p-button
-                  icon="pi pi-trash"
-                  severity="danger"
-                  [text]="true"
-                  [rounded]="true"
-                  (click)="confirmDelete(beer)"
-                  pTooltip="Remover Cerveja"
-                  tooltipPosition="top"
-                  [disabled]="isDefaultBeer(beer.id)">
-                </p-button>
+                <div class="action-buttons">
+                  <p-button
+                    icon="pi pi-pencil"
+                    severity="info"
+                    [text]="true"
+                    [rounded]="true"
+                    (click)="openEditDialog(beer)"
+                    pTooltip="Editar Cerveja"
+                    tooltipPosition="top">
+                  </p-button>
+                  <p-button
+                    icon="pi pi-trash"
+                    severity="danger"
+                    [text]="true"
+                    [rounded]="true"
+                    (click)="confirmDelete(beer)"
+                    pTooltip="Remover Cerveja"
+                    tooltipPosition="top"
+                    [disabled]="isDefaultBeer(beer.id)">
+                  </p-button>
+                </div>
               </td>
             </tr>
           </ng-template>
@@ -199,18 +304,29 @@
                   <i class="pi pi-palette text-gray-400"></i>
                   <span class="beer-color-code">{{ beer.color }}</span>
                 </div>
-                
-                <!-- Botão de delete -->
-                <button
-                  type="button"
-                  class="delete-button"
-                  [class.delete-button-disabled]="isDefaultBeer(beer.id)"
-                  [disabled]="isDefaultBeer(beer.id)"
-                  (click)="confirmDelete(beer)"
-                  [attr.aria-label]="'Remover cerveja ' + beer.name">
-                  <i class="pi pi-trash"></i>
-                  <span>Remover</span>
-                </button>
+
+                <!-- Botões de ação -->
+                <div class="beer-card-actions">
+                  <button
+                    type="button"
+                    class="edit-button"
+                    (click)="openEditDialog(beer)"
+                    [attr.aria-label]="'Editar cerveja ' + beer.name">
+                    <i class="pi pi-pencil"></i>
+                    <span>Editar</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="delete-button"
+                    [class.delete-button-disabled]="isDefaultBeer(beer.id)"
+                    [disabled]="isDefaultBeer(beer.id)"
+                    (click)="confirmDelete(beer)"
+                    [attr.aria-label]="'Remover cerveja ' + beer.name">
+                    <i class="pi pi-trash"></i>
+                    <span>Remover</span>
+                  </button>
+                </div>
               </div>
               
               <!-- Indicador de cerveja padrão -->

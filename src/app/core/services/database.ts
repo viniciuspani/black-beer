@@ -5,8 +5,8 @@ import { BeerType, Sale } from '../models/beer.model';
 import { FullReport, SalesSummary, SalesByCupSize, SalesByBeerType } from '../models/report.model';
 import { isPlatformBrowser } from '@angular/common';
 
-const DB_STORAGE_KEY = 'black_beer_sqlite_db_v4'; // v4 para forçar migração com event_sale
-const DB_VERSION = 4; // Versionamento do schema
+const DB_STORAGE_KEY = 'black_beer_sqlite_db_v5'; // v5 para forçar migração com sales_config
+const DB_VERSION = 5; // Versionamento do schema
 
 /**
  * Constantes para validação de emails
@@ -82,18 +82,21 @@ export class DatabaseService {
   }
 
   /**
-   * Cria um novo banco de dados do zero com schema v4
+   * Cria um novo banco de dados do zero com schema v5
    */
   private createNewDatabase(): void {
     this.db = new this.SQL.Database();
-    this.createSchemaV4();
+    this.createSchemaV5();
     this.seedInitialData();
     this.setStoredVersion(DB_VERSION);
     this.persist();
   }
 
   /**
-   * Cria o schema do banco de dados versão 4
+   * Cria o schema do banco de dados versão 5
+   *
+   * MUDANÇAS V5:
+   * - sales_config: Nova tabela para configuração de preços por cerveja e tamanho de copo
    *
    * MUDANÇAS V4:
    * - event_sale: Nova tabela para controle de estoque por evento
@@ -109,7 +112,7 @@ export class DatabaseService {
     * - Mínimo: 1 email, Máximo: 10 emails
    * - client_config: Tabela para white-label (logo e nome da empresa)
    */
-  private createSchemaV4(): void {
+  private createSchemaV5(): void {
     if (!this.db) return;
 
    const schema = `
@@ -197,6 +200,24 @@ export class DatabaseService {
       -- Insere configuração padrão de alerta (5 litros)
       INSERT OR IGNORE INTO stock_alert_config (id, minLiters) VALUES (1, 5.0);
 
+      -- Tabela de configuração de preços por cerveja (V5)
+      -- Armazena o preço de cada cerveja por tamanho de copo (300ml, 500ml, 1000ml)
+      CREATE TABLE IF NOT EXISTS sales_config (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        beerId INTEGER NOT NULL,
+        beerName TEXT NOT NULL,
+        price300ml REAL NOT NULL DEFAULT 0 CHECK(price300ml >= 0),
+        price500ml REAL NOT NULL DEFAULT 0 CHECK(price500ml >= 0),
+        price1000ml REAL NOT NULL DEFAULT 0 CHECK(price1000ml >= 0),
+        createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (beerId) REFERENCES beer_types(id) ON DELETE CASCADE,
+        UNIQUE(beerId)
+      );
+
+      -- Índice para melhorar performance em queries por cerveja
+      CREATE INDEX IF NOT EXISTS idx_sales_config_beerId ON sales_config(beerId);
+
       -- Tabela de versão do schema
       CREATE TABLE IF NOT EXISTS db_version (
         version INTEGER PRIMARY KEY
@@ -206,7 +227,7 @@ export class DatabaseService {
     `;
 
     this.db.exec(schema);
-    console.log('✅ Schema V4 criado com sucesso');
+    console.log('✅ Schema V5 criado com sucesso');
     // Cria admin padrão
     this.createDefaultAdmin();
   }
@@ -469,6 +490,7 @@ export class DatabaseService {
     const salesByCupSize = this.executeQuery(byCupSizeQuery, params);
 
     // Query por tipo de cerveja (JOIN com beer_types usando INTEGER)
+    // Inclui cálculo de receita (totalRevenue) com base nos preços configurados
     const byBeerTypeQuery = `
       SELECT
         bt.id as beerId,
@@ -476,13 +498,23 @@ export class DatabaseService {
         bt.color,
         bt.description,
         SUM(s.quantity) as totalCups,
-        COALESCE(SUM(s.totalVolume) / 1000.0, 0) as totalLiters
+        COALESCE(SUM(s.totalVolume) / 1000.0, 0) as totalLiters,
+        COALESCE(SUM(
+          CASE
+            WHEN s.cupSize = 300 THEN s.quantity * COALESCE(sc.price300ml, 0)
+            WHEN s.cupSize = 500 THEN s.quantity * COALESCE(sc.price500ml, 0)
+            WHEN s.cupSize = 1000 THEN s.quantity * COALESCE(sc.price1000ml, 0)
+            ELSE 0
+          END
+        ), 0) as totalRevenue
       FROM sales s
       INNER JOIN beer_types bt ON s.beerId = bt.id
+      LEFT JOIN sales_config sc ON s.beerId = sc.beerId
       ${whereClause}
       GROUP BY bt.id, bt.name, bt.color, bt.description
       ORDER BY totalLiters DESC
     `;
+
     const salesByBeerType = this.executeQuery(byBeerTypeQuery, params);
 
     return {
@@ -500,7 +532,8 @@ export class DatabaseService {
         color: item.color,
         description: item.description,
         totalCups: Number(item.totalCups),
-        totalLiters: Number(item.totalLiters)
+        totalLiters: Number(item.totalLiters),
+        totalRevenue: Number(item.totalRevenue) || 0
       }))
     };
   }
@@ -795,6 +828,150 @@ export class DatabaseService {
     } catch (error) {
       console.error('❌ Erro ao atualizar configuração de alerta:', error);
       throw error;
+    }
+  }
+
+  // ==================== MÉTODOS DE CONFIGURAÇÃO DE PREÇOS (V5) ====================
+
+  /**
+   * Busca a configuração de preços de uma cerveja
+   * @param beerId ID da cerveja
+   * @returns Objeto com preços ou null
+   */
+  public getSalesConfigByBeerId(beerId: number): any | null {
+    try {
+      const result = this.executeQuery(
+        'SELECT * FROM sales_config WHERE beerId = ?',
+        [beerId]
+      );
+      return result.length > 0 ? result[0] : null;
+    } catch (error) {
+      console.error('❌ Erro ao buscar configuração de preços:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Busca todas as configurações de preços
+   * @returns Array com todas as configurações de preços
+   */
+  public getAllSalesConfig(): any[] {
+    try {
+      return this.executeQuery('SELECT * FROM sales_config ORDER BY beerName');
+    } catch (error) {
+      console.error('❌ Erro ao buscar todas as configurações de preços:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Define ou atualiza a configuração de preços de uma cerveja
+   * @param beerId ID da cerveja
+   * @param beerName Nome da cerveja
+   * @param price300ml Preço do copo de 300ml
+   * @param price500ml Preço do copo de 500ml
+   * @param price1000ml Preço do copo de 1000ml
+   */
+  public setSalesConfig(
+    beerId: number,
+    beerName: string,
+    price300ml: number,
+    price500ml: number,
+    price1000ml: number
+  ): void {
+    try {
+      // Verifica se já existe configuração para esta cerveja
+      const existing = this.getSalesConfigByBeerId(beerId);
+
+      if (existing) {
+        // Atualiza configuração existente
+        this.executeRun(
+          `UPDATE sales_config
+           SET beerName = ?,
+               price300ml = ?,
+               price500ml = ?,
+               price1000ml = ?,
+               updatedAt = CURRENT_TIMESTAMP
+           WHERE beerId = ?`,
+          [beerName, price300ml, price500ml, price1000ml, beerId]
+        );
+        console.log('✅ Configuração de preços atualizada:', beerName);
+      } else {
+        // Insere nova configuração
+        this.executeRun(
+          `INSERT INTO sales_config (beerId, beerName, price300ml, price500ml, price1000ml)
+           VALUES (?, ?, ?, ?, ?)`,
+          [beerId, beerName, price300ml, price500ml, price1000ml]
+        );
+        console.log('✅ Configuração de preços criada:', beerName);
+      }
+
+      this.persist();
+    } catch (error) {
+      console.error('❌ Erro ao salvar configuração de preços:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remove a configuração de preços de uma cerveja
+   * @param beerId ID da cerveja
+   */
+  public removeSalesConfig(beerId: number): void {
+    try {
+      this.executeRun('DELETE FROM sales_config WHERE beerId = ?', [beerId]);
+      console.log('✅ Configuração de preços removida para beerId:', beerId);
+      this.persist();
+    } catch (error) {
+      console.error('❌ Erro ao remover configuração de preços:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Calcula o valor total de vendas (receita) em R$
+   * @param startDate Data inicial do filtro (opcional)
+   * @param endDate Data final do filtro (opcional)
+   * @returns Valor total em reais
+   */
+  public getTotalRevenue(startDate?: Date, endDate?: Date): number {
+    if (!this.db) {
+      return 0;
+    }
+
+    try {
+      let sql = `
+        SELECT
+          SUM(
+            CASE
+              WHEN s.cupSize = 300 THEN s.quantity * COALESCE(sc.price300ml, 0)
+              WHEN s.cupSize = 500 THEN s.quantity * COALESCE(sc.price500ml, 0)
+              WHEN s.cupSize = 1000 THEN s.quantity * COALESCE(sc.price1000ml, 0)
+              ELSE 0
+            END
+          ) as totalRevenue
+        FROM sales s
+        LEFT JOIN sales_config sc ON s.beerId = sc.beerId
+      `;
+
+      const params: any[] = [];
+
+      // Aplicar filtros de data se houver
+      if (startDate && endDate) {
+        sql += ' WHERE s.timestamp BETWEEN ? AND ?';
+        params.push(startDate.toISOString(), endDate.toISOString());
+      }
+
+      const result = this.executeQuery(sql, params);
+
+      if (result.length > 0 && result[0].totalRevenue !== null) {
+        return Number(result[0].totalRevenue);
+      }
+
+      return 0;
+    } catch (error) {
+      console.error('❌ Erro ao calcular valor total:', error);
+      return 0;
     }
   }
 }

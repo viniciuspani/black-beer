@@ -197,6 +197,18 @@
               <span class="metric-subtitle">mais escolhido</span>
             </div>
           </div>
+
+          <!-- Card: Valor Total em R$ -->
+          <div class="metric-card metric-card-revenue">
+            <div class="metric-icon">
+              <i class="pi pi-dollar"></i>
+            </div>
+            <div class="metric-content">
+              <span class="metric-label">Valor Total</span>
+              <span class="metric-value">{{ getTotalRevenue() | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+              <span class="metric-subtitle">em vendas</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -281,6 +293,7 @@
                   <div class="data-row-right">
                     <span class="data-row-value">{{ beer.totalCups }} copos</span>
                     <span class="data-row-subvalue">{{ beer.totalLiters.toFixed(2) }}L</span>
+                    <span class="data-row-revenue">{{ beer.totalRevenue | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
                   </div>
                 </div>
               } @empty {
@@ -331,6 +344,7 @@
                   <div class="data-row-right">
                     <span class="data-row-value">{{ beer.totalCups }} copos</span>
                     <span class="data-row-subvalue">{{ beer.totalLiters.toFixed(2) }}L</span>
+                    <span class="data-row-revenue">{{ beer.totalRevenue | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
                   </div>
                 </div>
               } @empty {

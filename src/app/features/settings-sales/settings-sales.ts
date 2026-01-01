@@ -25,6 +25,18 @@ interface BeerStock {
   originalQuantity: number; // Para controlar mudanças
 }
 
+interface BeerPrice {
+  beerId: number;
+  beerName: string;
+  color: string;
+  price300ml: number;
+  price500ml: number;
+  price1000ml: number;
+  originalPrice300ml: number; // Para controlar mudanças
+  originalPrice500ml: number;
+  originalPrice1000ml: number;
+}
+
 /**
  * Componente para gerenciar estoque de cervejas por evento
  * Permite configurar quantidade inicial de litros e alertas de estoque baixo
@@ -55,6 +67,7 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
   // ==================== SIGNALS PARA ESTADO REATIVO ====================
   readonly beerTypes = signal<BeerType[]>([]);
   readonly beerStocks = signal<BeerStock[]>([]);
+  readonly beerPrices = signal<BeerPrice[]>([]);
   readonly minLitersAlert = signal<number>(5.0);
   readonly originalMinLiters = signal<number>(5.0);
   readonly stockAlerts = signal<any[]>([]);
@@ -127,6 +140,7 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
 
       this.beerTypes.set(typedBeers);
       this.loadBeerStocks(typedBeers);
+      this.loadBeerPrices(typedBeers);
     } catch (error) {
       console.error('❌ Erro ao carregar tipos de cerveja:', error);
       this.showError('Não foi possível carregar os tipos de cerveja.');
@@ -156,6 +170,38 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('❌ Erro ao carregar estoques:', error);
       this.showError('Não foi possível carregar os estoques.');
+    }
+  }
+
+  /**
+   * Carrega preços configurados para cada cerveja
+   */
+  private loadBeerPrices(beers: BeerType[]): void {
+    try {
+      const prices: BeerPrice[] = beers.map(beer => {
+        const salesConfig = this.dbService.getSalesConfigByBeerId(beer.id);
+        const price300ml = salesConfig?.price300ml || 0;
+        const price500ml = salesConfig?.price500ml || 0;
+        const price1000ml = salesConfig?.price1000ml || 0;
+
+        return {
+          beerId: beer.id,
+          beerName: beer.name,
+          color: beer.color,
+          price300ml,
+          price500ml,
+          price1000ml,
+          originalPrice300ml: price300ml,
+          originalPrice500ml: price500ml,
+          originalPrice1000ml: price1000ml
+        };
+      });
+
+      this.beerPrices.set(prices);
+      console.log('✅ Preços carregados:', prices);
+    } catch (error) {
+      console.error('❌ Erro ao carregar preços:', error);
+      this.showError('Não foi possível carregar os preços.');
     }
   }
 
@@ -279,6 +325,98 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
       console.error('❌ Erro ao salvar configuração de alerta:', error);
       this.showError('Não foi possível salvar a configuração de alerta.');
     }
+  }
+
+  /**
+   * Salva a configuração de preços de uma cerveja
+   */
+  savePriceForBeer(price: BeerPrice): void {
+    try {
+      this.dbService.setSalesConfig(
+        price.beerId,
+        price.beerName,
+        price.price300ml,
+        price.price500ml,
+        price.price1000ml
+      );
+
+      // Atualiza valor original
+      const updatedPrices = this.beerPrices().map(p =>
+        p.beerId === price.beerId
+          ? {
+              ...p,
+              originalPrice300ml: price.price300ml,
+              originalPrice500ml: price.price500ml,
+              originalPrice1000ml: price.price1000ml
+            }
+          : p
+      );
+      this.beerPrices.set(updatedPrices);
+
+      this.showSuccess(`Preços de ${price.beerName} salvos com sucesso!`);
+    } catch (error) {
+      console.error('❌ Erro ao salvar preços:', error);
+      this.showError(`Não foi possível salvar os preços de ${price.beerName}`);
+    }
+  }
+
+  /**
+   * Salva todos os preços de uma vez
+   */
+  saveAllPrices(): void {
+    this.isSaving.set(true);
+    let savedCount = 0;
+
+    try {
+      this.beerPrices().forEach(price => {
+        const hasChanges =
+          price.price300ml !== price.originalPrice300ml ||
+          price.price500ml !== price.originalPrice500ml ||
+          price.price1000ml !== price.originalPrice1000ml;
+
+        if (hasChanges) {
+          this.dbService.setSalesConfig(
+            price.beerId,
+            price.beerName,
+            price.price300ml,
+            price.price500ml,
+            price.price1000ml
+          );
+          savedCount++;
+        }
+      });
+
+      // Atualiza valores originais
+      const updatedPrices = this.beerPrices().map(p => ({
+        ...p,
+        originalPrice300ml: p.price300ml,
+        originalPrice500ml: p.price500ml,
+        originalPrice1000ml: p.price1000ml
+      }));
+      this.beerPrices.set(updatedPrices);
+
+      if (savedCount > 0) {
+        this.showSuccess(`${savedCount} preço(s) salvo(s) com sucesso!`);
+      } else {
+        this.showInfo('Nenhuma alteração detectada.');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao salvar preços:', error);
+      this.showError('Erro ao salvar preços.');
+    } finally {
+      this.isSaving.set(false);
+    }
+  }
+
+  /**
+   * Verifica se uma cerveja tem alterações nos preços
+   */
+  hasPriceChanges(price: BeerPrice): boolean {
+    return (
+      price.price300ml !== price.originalPrice300ml ||
+      price.price500ml !== price.originalPrice500ml ||
+      price.price1000ml !== price.originalPrice1000ml
+    );
   }
 
   /**

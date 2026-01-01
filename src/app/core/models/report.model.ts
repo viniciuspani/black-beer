@@ -23,6 +23,7 @@ export interface SalesByCupSize {
 /**
  * Vendas agrupadas por tipo de cerveja
  * MUDANÇA: beerId agora é number (INTEGER)
+ * MUDANÇA V5: Adicionado totalRevenue para valor monetário
  */
 export interface SalesByBeerType {
   beerId: number;          // ← MUDANÇA: number em vez de string
@@ -31,6 +32,7 @@ export interface SalesByBeerType {
   description: string;
   totalLiters: number;
   totalCups: number;
+  totalRevenue: number;    // ← NOVO: valor total em R$ deste tipo de cerveja
 }
 
 /**

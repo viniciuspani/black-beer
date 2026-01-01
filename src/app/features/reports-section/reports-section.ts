@@ -14,6 +14,7 @@ import { Chart, ChartConfiguration, ChartData, registerables } from 'chart.js';
 import { finalize } from 'rxjs/operators';
 import { DatabaseService } from '../../core/services/database';
 import { EmailService } from '../../core/services/email.service';
+import { SalesService } from '../../core/services/sales.service';
 import { FullReport } from '../../core/models/report.model';
 import { TabRefreshService, MainTab } from '../../core/services/tab-refresh.service';
 
@@ -43,6 +44,7 @@ export class ReportsSectionComponent implements OnInit {
   // ==================== SERVIÇOS ====================
   private readonly dbService = inject(DatabaseService);
   private readonly emailService = inject(EmailService);
+  private readonly salesService = inject(SalesService);
   private readonly messageService = inject(MessageService);
   private readonly tabRefreshService = inject(TabRefreshService);
 
@@ -109,10 +111,10 @@ export class ReportsSectionComponent implements OnInit {
         salesByBeerType: []
       };
     }
-    
+
     const start = this.startDate();
     const end = this.endDate();
-    
+
     // DatabaseService.getFullReport já faz a filtragem no SQL
     return this.dbService.getFullReport(
       start ?? undefined,
@@ -385,21 +387,35 @@ export class ReportsSectionComponent implements OnInit {
    */
   protected getPreferredSize(): number {
     const salesBySize = this.report().salesByCupSize;
-    
+
     if (salesBySize.length === 0) {
       return 0;
     }
-    
+
     // Encontra o tamanho com maior quantidade
     let preferredSize = salesBySize[0];
-    
+
     for (const sizeData of salesBySize) {
       if (sizeData.count > preferredSize.count) {
         preferredSize = sizeData;
       }
     }
-    
+
     return preferredSize.cupSize;
+  }
+
+  /**
+   * Retorna o valor total de vendas em Reais (R$)
+   * Delega para o SalesService que encapsula a lógica de negócio
+   */
+  protected getTotalRevenue(): number {
+    const start = this.startDate();
+    const end = this.endDate();
+
+    return this.salesService.getTotalRevenue(
+      start ?? undefined,
+      end ?? undefined
+    );
   }
   
   /**

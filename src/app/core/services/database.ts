@@ -490,6 +490,7 @@ export class DatabaseService {
     const salesByCupSize = this.executeQuery(byCupSizeQuery, params);
 
     // Query por tipo de cerveja (JOIN com beer_types usando INTEGER)
+    // Inclui cálculo de receita (totalRevenue) com base nos preços configurados
     const byBeerTypeQuery = `
       SELECT
         bt.id as beerId,
@@ -497,13 +498,23 @@ export class DatabaseService {
         bt.color,
         bt.description,
         SUM(s.quantity) as totalCups,
-        COALESCE(SUM(s.totalVolume) / 1000.0, 0) as totalLiters
+        COALESCE(SUM(s.totalVolume) / 1000.0, 0) as totalLiters,
+        COALESCE(SUM(
+          CASE
+            WHEN s.cupSize = 300 THEN s.quantity * COALESCE(sc.price300ml, 0)
+            WHEN s.cupSize = 500 THEN s.quantity * COALESCE(sc.price500ml, 0)
+            WHEN s.cupSize = 1000 THEN s.quantity * COALESCE(sc.price1000ml, 0)
+            ELSE 0
+          END
+        ), 0) as totalRevenue
       FROM sales s
       INNER JOIN beer_types bt ON s.beerId = bt.id
+      LEFT JOIN sales_config sc ON s.beerId = sc.beerId
       ${whereClause}
       GROUP BY bt.id, bt.name, bt.color, bt.description
       ORDER BY totalLiters DESC
     `;
+
     const salesByBeerType = this.executeQuery(byBeerTypeQuery, params);
 
     return {
@@ -521,7 +532,8 @@ export class DatabaseService {
         color: item.color,
         description: item.description,
         totalCups: Number(item.totalCups),
-        totalLiters: Number(item.totalLiters)
+        totalLiters: Number(item.totalLiters),
+        totalRevenue: Number(item.totalRevenue) || 0
       }))
     };
   }
@@ -913,6 +925,53 @@ export class DatabaseService {
     } catch (error) {
       console.error('❌ Erro ao remover configuração de preços:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Calcula o valor total de vendas (receita) em R$
+   * @param startDate Data inicial do filtro (opcional)
+   * @param endDate Data final do filtro (opcional)
+   * @returns Valor total em reais
+   */
+  public getTotalRevenue(startDate?: Date, endDate?: Date): number {
+    if (!this.db) {
+      return 0;
+    }
+
+    try {
+      let sql = `
+        SELECT
+          SUM(
+            CASE
+              WHEN s.cupSize = 300 THEN s.quantity * COALESCE(sc.price300ml, 0)
+              WHEN s.cupSize = 500 THEN s.quantity * COALESCE(sc.price500ml, 0)
+              WHEN s.cupSize = 1000 THEN s.quantity * COALESCE(sc.price1000ml, 0)
+              ELSE 0
+            END
+          ) as totalRevenue
+        FROM sales s
+        LEFT JOIN sales_config sc ON s.beerId = sc.beerId
+      `;
+
+      const params: any[] = [];
+
+      // Aplicar filtros de data se houver
+      if (startDate && endDate) {
+        sql += ' WHERE s.timestamp BETWEEN ? AND ?';
+        params.push(startDate.toISOString(), endDate.toISOString());
+      }
+
+      const result = this.executeQuery(sql, params);
+
+      if (result.length > 0 && result[0].totalRevenue !== null) {
+        return Number(result[0].totalRevenue);
+      }
+
+      return 0;
+    } catch (error) {
+      console.error('❌ Erro ao calcular valor total:', error);
+      return 0;
     }
   }
 }

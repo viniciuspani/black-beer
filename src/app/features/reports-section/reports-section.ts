@@ -467,23 +467,24 @@ export class ReportsSectionComponent implements OnInit {
     // ===========================================
     // RESUMO GERAL (formato tabular)
     // ===========================================
+    const totalRevenue = this.getTotalRevenue();
     csvLines.push('=== RESUMO GERAL ===');
-    csvLines.push('Total vendas;Volume Total(Litros)');
-    csvLines.push(`="${report.summary.totalSales}";"${report.summary.totalVolumeLiters.toFixed(2)}"`);
+    csvLines.push('Total vendas;Volume Total(Litros);Valor Total(R$)');
+    csvLines.push(`="${report.summary.totalSales}";"${report.summary.totalVolumeLiters.toFixed(2)}";"${totalRevenue.toFixed(2)}"`);
     csvLines.push(''); // Linha em branco
 
     // ===========================================
     // VENDAS POR TIPO DE CERVEJA (formato tabular)
     // ===========================================
     csvLines.push('=== VENDAS POR TIPO DE CERVEJA ===');
-    csvLines.push('Cerveja;Quantidade;Volume');
+    csvLines.push('Cerveja;Quantidade;Volume(Litros);Valor(R$)');
 
     if (report.salesByBeerType.length > 0) {
       report.salesByBeerType.forEach(beer => {
-        csvLines.push(`${beer.name};"${beer.totalCups}";"${beer.totalLiters.toFixed(2)}"`);
+        csvLines.push(`${beer.name};"${beer.totalCups}";"${beer.totalLiters.toFixed(2)}";"${beer.totalRevenue.toFixed(2)}"`);
       });
     } else {
-      csvLines.push('Nenhuma venda registrada;;');
+      csvLines.push('Nenhuma venda registrada;;;');
     }
 
     csvLines.push(''); // Linha em branco

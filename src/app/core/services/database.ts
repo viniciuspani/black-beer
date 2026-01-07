@@ -5,8 +5,8 @@ import { BeerType, Sale } from '../models/beer.model';
 import { FullReport, SalesSummary, SalesByCupSize, SalesByBeerType } from '../models/report.model';
 import { isPlatformBrowser } from '@angular/common';
 
-const DB_STORAGE_KEY = 'black_beer_sqlite_db_v5'; // v5 para forçar migração com sales_config
-const DB_VERSION = 5; // Versionamento do schema
+const DB_STORAGE_KEY = 'black_beer_sqlite_db_v7'; // v7 para minLitersAlert individual
+const DB_VERSION = 7; // Versionamento do schema
 
 /**
  * Constantes para validação de emails
@@ -61,18 +61,32 @@ export class DatabaseService {
         locateFile: (file: string) => `assets/${file}`
       });
 
-      const savedDb = localStorage.getItem(DB_STORAGE_KEY);
-      const savedVersion = this.getStoredVersion();
+      // Tentar carregar de v6 primeiro
+      let savedDb = localStorage.getItem(DB_STORAGE_KEY);
 
-      // Se não há DB salvo OU versão antiga, cria novo
-      if (!savedDb || savedVersion < DB_VERSION) {
-        console.log('🔄 Criando novo banco de dados (versão 4)...');
-        this.createNewDatabase();
+      // Se não encontrou v7, tentar v6 para migração
+      if (!savedDb) {
+        const oldDbKeyV6 = 'black_beer_sqlite_db_v6';
+        savedDb = localStorage.getItem(oldDbKeyV6);
+
+        if (savedDb) {
+          console.log('🔄 Migrando banco de dados de V6 para V7...');
+          const dbArray = this.stringToUint8Array(savedDb);
+          this.db = new this.SQL.Database(dbArray);
+          this.migrateFromV6ToV7();
+          localStorage.removeItem(oldDbKeyV6);
+          this.persist();
+          console.log('✅ Migração V6 → V7 concluída');
+        } else {
+          // Não há DB, criar novo
+          console.log('🔄 Criando novo banco de dados (versão 7)...');
+          this.createNewDatabase();
+        }
       } else {
-        // Carrega banco existente
+        // Carrega banco existente V7
         const dbArray = this.stringToUint8Array(savedDb);
         this.db = new this.SQL.Database(dbArray);
-        console.log('✅ Banco de dados carregado (versão 4)');
+        console.log('✅ Banco de dados V7 carregado');
       }
 
       this.isDbReady.set(true);
@@ -82,18 +96,22 @@ export class DatabaseService {
   }
 
   /**
-   * Cria um novo banco de dados do zero com schema v5
+   * Cria um novo banco de dados do zero com schema v6
    */
   private createNewDatabase(): void {
     this.db = new this.SQL.Database();
-    this.createSchemaV5();
+    this.createSchemaV6();
     this.seedInitialData();
     this.setStoredVersion(DB_VERSION);
     this.persist();
   }
 
   /**
-   * Cria o schema do banco de dados versão 5
+   * Cria o schema do banco de dados versão 6
+   *
+   * MUDANÇAS V6:
+   * - comandas: Nova tabela para gerenciamento de comandas (tabs)
+   * - sales.comandaId: Nova coluna opcional para vincular vendas a comandas
    *
    * MUDANÇAS V5:
    * - sales_config: Nova tabela para configuração de preços por cerveja e tamanho de copo
@@ -112,7 +130,7 @@ export class DatabaseService {
     * - Mínimo: 1 email, Máximo: 10 emails
    * - client_config: Tabela para white-label (logo e nome da empresa)
    */
-  private createSchemaV5(): void {
+  private createSchemaV6(): void {
     if (!this.db) return;
 
    const schema = `
@@ -133,7 +151,9 @@ export class DatabaseService {
         quantity INTEGER NOT NULL CHECK(quantity > 0),
         timestamp TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         totalVolume REAL NOT NULL CHECK(totalVolume > 0),
-        FOREIGN KEY (beerId) REFERENCES beer_types(id) ON DELETE CASCADE
+        comandaId INTEGER,
+        FOREIGN KEY (beerId) REFERENCES beer_types(id) ON DELETE CASCADE,
+        FOREIGN KEY (comandaId) REFERENCES comandas(id) ON DELETE SET NULL
       );
 
       -- Índice para melhorar performance em queries por data
@@ -141,6 +161,9 @@ export class DatabaseService {
 
       -- Índice para melhorar performance em queries por cerveja
       CREATE INDEX IF NOT EXISTS idx_sales_beerId ON sales(beerId);
+
+      -- Índice para melhorar performance em queries por comanda
+      CREATE INDEX IF NOT EXISTS idx_sales_comandaId ON sales(comandaId);
 
       -- Tabela de configurações reestruturada
       CREATE TABLE IF NOT EXISTS settings (
@@ -173,13 +196,15 @@ export class DatabaseService {
         updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- Tabela de estoque por evento (V4)
+      -- Tabela de estoque por evento (V4 - atualizada V7)
       -- Armazena a quantidade de litros disponível de cada cerveja no evento atual
+      -- V7: Adicionado minLitersAlert para limite individual por cerveja
       CREATE TABLE IF NOT EXISTS event_sale (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         beerId INTEGER NOT NULL,
         beerName TEXT NOT NULL,
         quantidadeLitros REAL NOT NULL DEFAULT 0 CHECK(quantidadeLitros >= 0),
+        minLitersAlert REAL DEFAULT 5.0 CHECK(minLitersAlert >= 0),
         createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (beerId) REFERENCES beer_types(id) ON DELETE CASCADE,
@@ -218,6 +243,24 @@ export class DatabaseService {
       -- Índice para melhorar performance em queries por cerveja
       CREATE INDEX IF NOT EXISTS idx_sales_config_beerId ON sales_config(beerId);
 
+      -- Tabela de comandas (V6)
+      -- Armazena o estado de cada comanda (disponível, em uso, aguardando pagamento)
+      CREATE TABLE IF NOT EXISTS comandas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        numero INTEGER NOT NULL UNIQUE,
+        status TEXT NOT NULL CHECK(status IN ('disponivel', 'em_uso', 'aguardando_pagamento')) DEFAULT 'disponivel',
+        totalValue REAL DEFAULT 0,
+        openedAt TEXT,
+        closedAt TEXT,
+        paidAt TEXT,
+        createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Índices para melhorar performance em queries por status e número
+      CREATE INDEX IF NOT EXISTS idx_comandas_status ON comandas(status);
+      CREATE INDEX IF NOT EXISTS idx_comandas_numero ON comandas(numero);
+
       -- Tabela de versão do schema
       CREATE TABLE IF NOT EXISTS db_version (
         version INTEGER PRIMARY KEY
@@ -227,7 +270,9 @@ export class DatabaseService {
     `;
 
     this.db.exec(schema);
-    console.log('✅ Schema V5 criado com sucesso');
+    console.log('✅ Schema V6 criado com sucesso');
+    // Seed de comandas iniciais
+    this.seedInitialComandas(10);
     // Cria admin padrão
     this.createDefaultAdmin();
   }
@@ -258,6 +303,110 @@ export class DatabaseService {
     insertBeerStmt.free();
     console.log('✅ Dados iniciais inseridos (4 tipos de cerveja)');
     this.persist();
+  }
+
+  /**
+   * Cria comandas iniciais (V6)
+   * @param count Número de comandas a criar (padrão: 10)
+   */
+  private seedInitialComandas(count: number = 10): void {
+    if (!this.db) return;
+
+    console.log(`🔄 Criando ${count} comandas iniciais...`);
+
+    for (let i = 1; i <= count; i++) {
+      this.executeRun(
+        `INSERT INTO comandas (numero, status) VALUES (?, ?)`,
+        [i, 'disponivel']
+      );
+    }
+
+    console.log(`✅ ${count} comandas criadas com sucesso`);
+    this.persist();
+  }
+
+  /**
+   * Migra banco de dados de V5 para V6
+   * Adiciona tabela comandas e coluna comandaId em sales
+   */
+  private migrateFromV5ToV6(): void {
+    if (!this.db) return;
+
+    console.log('🔄 Iniciando migração V5 → V6...');
+
+    try {
+      // Criar tabela comandas
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS comandas (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          numero INTEGER NOT NULL UNIQUE,
+          status TEXT NOT NULL CHECK(status IN ('disponivel', 'em_uso', 'aguardando_pagamento')) DEFAULT 'disponivel',
+          totalValue REAL DEFAULT 0,
+          openedAt TEXT,
+          closedAt TEXT,
+          paidAt TEXT,
+          createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_comandas_status ON comandas(status);
+        CREATE INDEX IF NOT EXISTS idx_comandas_numero ON comandas(numero);
+      `);
+
+      console.log('✅ Tabela comandas criada');
+
+      // Adicionar coluna comandaId na tabela sales
+      try {
+        this.db.exec('ALTER TABLE sales ADD COLUMN comandaId INTEGER REFERENCES comandas(id) ON DELETE SET NULL');
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_sales_comandaId ON sales(comandaId)');
+        console.log('✅ Coluna comandaId adicionada à tabela sales');
+      } catch (error) {
+        // Coluna já existe, ignorar erro
+        console.log('ℹ️ Coluna comandaId já existe');
+      }
+
+      // Criar 10 comandas iniciais
+      this.seedInitialComandas(10);
+
+      // Atualizar versão do banco
+      this.db.exec('DELETE FROM db_version');
+      this.db.exec(`INSERT INTO db_version (version) VALUES (${DB_VERSION})`);
+
+      console.log('✅ Migração V5 → V6 concluída com sucesso');
+    } catch (error) {
+      console.error('❌ Erro na migração V5 → V6:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Migração V6 → V7
+   * Adiciona coluna minLitersAlert individual para cada cerveja na tabela event_sale
+   */
+  private migrateFromV6ToV7(): void {
+    if (!this.db) return;
+
+    console.log('🔄 Iniciando migração V6 → V7...');
+
+    try {
+      // Adicionar coluna minLitersAlert na tabela event_sale
+      try {
+        this.db.exec('ALTER TABLE event_sale ADD COLUMN minLitersAlert REAL DEFAULT 5.0 CHECK(minLitersAlert >= 0)');
+        console.log('✅ Coluna minLitersAlert adicionada à tabela event_sale');
+      } catch (error) {
+        // Coluna já existe, ignorar erro
+        console.log('ℹ️ Coluna minLitersAlert já existe');
+      }
+
+      // Atualizar versão do banco
+      this.db.exec('DELETE FROM db_version');
+      this.db.exec(`INSERT INTO db_version (version) VALUES (${DB_VERSION})`);
+
+      console.log('✅ Migração V6 → V7 concluída com sucesso');
+    } catch (error) {
+      console.error('❌ Erro na migração V6 → V7:', error);
+      throw error;
+    }
   }
 
   /**
@@ -686,8 +835,9 @@ export class DatabaseService {
    * @param beerId ID da cerveja
    * @param beerName Nome da cerveja
    * @param quantidadeLitros Quantidade em litros
+   * @param minLitersAlert Limite mínimo em litros para alerta (opcional, padrão 5.0)
    */
-  public setEventStock(beerId: number, beerName: string, quantidadeLitros: number): void {
+  public setEventStock(beerId: number, beerName: string, quantidadeLitros: number, minLitersAlert: number = 5.0): void {
     try {
       // Verifica se já existe registro para esta cerveja
       const existing = this.getEventStockByBeerId(beerId);
@@ -697,22 +847,44 @@ export class DatabaseService {
         this.executeRun(
           `UPDATE event_sale
            SET quantidadeLitros = ?,
+               minLitersAlert = ?,
                updatedAt = CURRENT_TIMESTAMP
            WHERE beerId = ?`,
-          [quantidadeLitros, beerId]
+          [quantidadeLitros, minLitersAlert, beerId]
         );
-        console.log(`✅ Estoque atualizado: ${beerName} = ${quantidadeLitros}L`);
+        console.log(`✅ Estoque atualizado: ${beerName} = ${quantidadeLitros}L (alerta: ${minLitersAlert}L)`);
       } else {
         // Insere novo registro
         this.executeRun(
-          `INSERT INTO event_sale (beerId, beerName, quantidadeLitros)
-           VALUES (?, ?, ?)`,
-          [beerId, beerName, quantidadeLitros]
+          `INSERT INTO event_sale (beerId, beerName, quantidadeLitros, minLitersAlert)
+           VALUES (?, ?, ?, ?)`,
+          [beerId, beerName, quantidadeLitros, minLitersAlert]
         );
-        console.log(`✅ Estoque criado: ${beerName} = ${quantidadeLitros}L`);
+        console.log(`✅ Estoque criado: ${beerName} = ${quantidadeLitros}L (alerta: ${minLitersAlert}L)`);
       }
     } catch (error) {
       console.error('❌ Erro ao definir estoque do evento:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Atualiza apenas o limite de alerta de uma cerveja
+   * @param beerId ID da cerveja
+   * @param minLitersAlert Novo limite mínimo para alerta
+   */
+  public updateMinLitersAlert(beerId: number, minLitersAlert: number): void {
+    try {
+      this.executeRun(
+        `UPDATE event_sale
+         SET minLitersAlert = ?,
+             updatedAt = CURRENT_TIMESTAMP
+         WHERE beerId = ?`,
+        [minLitersAlert, beerId]
+      );
+      console.log(`✅ Limite de alerta atualizado: beerId ${beerId} = ${minLitersAlert}L`);
+    } catch (error) {
+      console.error('❌ Erro ao atualizar limite de alerta:', error);
       throw error;
     }
   }
@@ -973,5 +1145,180 @@ export class DatabaseService {
       console.error('❌ Erro ao calcular valor total:', error);
       return 0;
     }
+  }
+
+  // ==================== COMANDAS CRUD ====================
+
+  /**
+   * Busca todas as comandas ordenadas por número
+   * @returns Array de comandas
+   */
+  public getAllComandas(): any[] {
+    const query = 'SELECT * FROM comandas ORDER BY numero ASC';
+    return this.executeQuery(query);
+  }
+
+  /**
+   * Busca comandas por status
+   * @param status Status da comanda (disponivel, em_uso, aguardando_pagamento)
+   * @returns Array de comandas com o status especificado
+   */
+  public getComandasByStatus(status: string): any[] {
+    const query = 'SELECT * FROM comandas WHERE status = ? ORDER BY numero ASC';
+    return this.executeQuery(query, [status]);
+  }
+
+  /**
+   * Busca comanda por número
+   * @param numero Número da comanda
+   * @returns Comanda ou null se não encontrada
+   */
+  public getComandaByNumero(numero: number): any | null {
+    const query = 'SELECT * FROM comandas WHERE numero = ? LIMIT 1';
+    const result = this.executeQuery(query, [numero]);
+    return result.length > 0 ? result[0] : null;
+  }
+
+  /**
+   * Busca comanda por ID
+   * @param id ID da comanda
+   * @returns Comanda ou null se não encontrada
+   */
+  public getComandaById(id: number): any | null {
+    const query = 'SELECT * FROM comandas WHERE id = ? LIMIT 1';
+    const result = this.executeQuery(query, [id]);
+    return result.length > 0 ? result[0] : null;
+  }
+
+  /**
+   * Abre uma comanda (muda status de disponivel para em_uso)
+   * @param numero Número da comanda a ser aberta
+   */
+  public openComanda(numero: number): void {
+    const now = new Date().toISOString();
+    this.executeRun(
+      `UPDATE comandas
+       SET status = ?, openedAt = ?, updatedAt = ?
+       WHERE numero = ? AND status = ?`,
+      ['em_uso', now, now, numero, 'disponivel']
+    );
+    this.persist();
+  }
+
+  /**
+   * Fecha uma comanda (muda status para aguardando_pagamento e calcula total)
+   * @param comandaId ID da comanda a ser fechada
+   */
+  public closeComanda(comandaId: number): void {
+    const now = new Date().toISOString();
+    const total = this.calculateComandaTotal(comandaId);
+
+    this.executeRun(
+      `UPDATE comandas
+       SET status = ?, closedAt = ?, totalValue = ?, updatedAt = ?
+       WHERE id = ?`,
+      ['aguardando_pagamento', now, total, now, comandaId]
+    );
+    this.persist();
+  }
+
+  /**
+   * Confirma pagamento de uma comanda (libera comanda para reutilização)
+   * @param comandaId ID da comanda
+   */
+  public confirmPayment(comandaId: number): void {
+    const now = new Date().toISOString();
+
+    this.executeRun(
+      `UPDATE comandas
+       SET status = ?, paidAt = ?, totalValue = 0, openedAt = NULL, closedAt = NULL, updatedAt = ?
+       WHERE id = ?`,
+      ['disponivel', now, now, comandaId]
+    );
+
+    // Remover vínculo das vendas desta comanda (vendas ficam no histórico)
+    this.executeRun(
+      'UPDATE sales SET comandaId = NULL WHERE comandaId = ?',
+      [comandaId]
+    );
+
+    this.persist();
+  }
+
+  /**
+   * Calcula o valor total de uma comanda baseado em suas vendas
+   * @param comandaId ID da comanda
+   * @returns Valor total em reais
+   */
+  public calculateComandaTotal(comandaId: number): number {
+    const query = `
+      SELECT
+        COALESCE(SUM(
+          CASE
+            WHEN s.cupSize = 300 THEN s.quantity * COALESCE(sc.price300ml, 0)
+            WHEN s.cupSize = 500 THEN s.quantity * COALESCE(sc.price500ml, 0)
+            WHEN s.cupSize = 1000 THEN s.quantity * COALESCE(sc.price1000ml, 0)
+            ELSE 0
+          END
+        ), 0) as total
+      FROM sales s
+      LEFT JOIN sales_config sc ON s.beerId = sc.beerId
+      WHERE s.comandaId = ?
+    `;
+
+    const result = this.executeQuery(query, [comandaId]);
+    return result.length > 0 ? Number(result[0].total) : 0;
+  }
+
+  /**
+   * Busca todos os itens (vendas) de uma comanda
+   * @param comandaId ID da comanda
+   * @returns Array de itens da comanda com preços calculados
+   */
+  public getComandaItems(comandaId: number): any[] {
+    const query = `
+      SELECT
+        s.id as saleId,
+        s.beerId,
+        s.beerName,
+        s.cupSize,
+        s.quantity,
+        s.timestamp,
+        CASE
+          WHEN s.cupSize = 300 THEN COALESCE(sc.price300ml, 0)
+          WHEN s.cupSize = 500 THEN COALESCE(sc.price500ml, 0)
+          WHEN s.cupSize = 1000 THEN COALESCE(sc.price1000ml, 0)
+          ELSE 0
+        END as unitPrice,
+        CASE
+          WHEN s.cupSize = 300 THEN s.quantity * COALESCE(sc.price300ml, 0)
+          WHEN s.cupSize = 500 THEN s.quantity * COALESCE(sc.price500ml, 0)
+          WHEN s.cupSize = 1000 THEN s.quantity * COALESCE(sc.price1000ml, 0)
+          ELSE 0
+        END as totalPrice
+      FROM sales s
+      LEFT JOIN sales_config sc ON s.beerId = sc.beerId
+      WHERE s.comandaId = ?
+      ORDER BY s.timestamp DESC
+    `;
+
+    return this.executeQuery(query, [comandaId]);
+  }
+
+  /**
+   * Busca comanda completa com seus itens
+   * @param comandaId ID da comanda
+   * @returns Comanda com array de itens ou null se não encontrada
+   */
+  public getComandaWithItems(comandaId: number): any | null {
+    const comanda = this.getComandaById(comandaId);
+    if (!comanda) return null;
+
+    const items = this.getComandaItems(comandaId);
+
+    return {
+      ...comanda,
+      items
+    };
   }
 }

@@ -1,9 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, signal, inject, effect } from '@angular/core';
+import { Component, signal, inject, effect, computed } from '@angular/core';
 import { TabsModule } from 'primeng/tabs';
 import { TooltipModule } from 'primeng/tooltip';
 import { ButtonModule } from 'primeng/button';
+import { MenuModule } from 'primeng/menu';
+import { AvatarModule } from 'primeng/avatar';
 import { SalesFormComponent } from '../sales-form/sales-form';
+import { AcompanhamentoComandosComponent } from '../acompanhamento-comandas/acompanhamento-comandas';
 import { ReportsSectionComponent } from '../reports-section/reports-section';
 import { BeerManagementComponent } from '../beer-management/beer-management';
 import { SettingsUserComponent } from '../settings-user/settings-user';
@@ -13,6 +16,7 @@ import { HelpComponent } from '../help/help';
 import { ClientConfigService } from '../../core/services/client-config.service';
 import { AuthService } from '../../core/services/auth.service';
 import { TabRefreshService, MainTab, SettingsSubTab } from '../../core/services/tab-refresh.service';
+import { MenuItem } from 'primeng/api';
 
 
 @Component({
@@ -23,7 +27,10 @@ import { TabRefreshService, MainTab, SettingsSubTab } from '../../core/services/
     TabsModule,
     TooltipModule,
     ButtonModule,
+    MenuModule,
+    AvatarModule,
     SalesFormComponent,
+    AcompanhamentoComandosComponent,
     BeerManagementComponent,
     ReportsSectionComponent,
     SettingsUserComponent,
@@ -45,9 +52,10 @@ export class Menu {
   /**
    * Controla qual aba está ativa no mobile
    * 0 = Nova Venda
-   * 1 = Relatórios
-   * 2 = Cervejas
-   * 3 = Configurações
+   * 1 = Comandas
+   * 2 = Relatórios
+   * 3 = Cervejas
+   * 4 = Configurações
    */
   protected readonly activeTabMobile = signal<number>(0);
 
@@ -103,7 +111,7 @@ export class Menu {
       this.notifyTabChange(index);
 
       // Se estiver na aba de Configurações, notifica a sub-aba ativa também
-      if (index === 3) {
+      if (index === 4) {
         this.notifySettingsSubTabChange(this.activeSettingsTab());
       }
     }
@@ -156,6 +164,59 @@ export class Menu {
     return this.clientConfigService.getCompanyName();
   }
 
+  // ==================== INFORMAÇÕES DO USUÁRIO ====================
+
+  /**
+   * Retorna o usuário logado
+   */
+  protected readonly currentUser = computed(() => this.authService.getCurrentUser());
+
+  /**
+   * Retorna as iniciais do nome do usuário para o avatar
+   */
+  protected getUserInitials(): string {
+    const user = this.currentUser();
+    if (!user) return '?';
+
+    const username = user.username || user.email;
+    const parts = username.split(' ');
+
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+
+    return username.substring(0, 2).toUpperCase();
+  }
+
+  /**
+   * Retorna o nome de exibição do usuário
+   */
+  protected getUserDisplayName(): string {
+    const user = this.currentUser();
+    if (!user) return 'Usuário';
+    return user.username || user.email;
+  }
+
+  /**
+   * Retorna a tradução do perfil do usuário
+   */
+  protected getUserRoleLabel(): string {
+    const user = this.currentUser();
+    if (!user) return '';
+    return user.role === 'admin' ? 'Administrador' : 'Usuário';
+  }
+
+  /**
+   * Itens do menu dropdown do usuário
+   */
+  protected readonly userMenuItems: MenuItem[] = [
+    {
+      label: 'Sair',
+      icon: 'pi pi-sign-out',
+      command: () => this.logout()
+    }
+  ];
+
   // ==================== MÉTODOS DE AUTENTICAÇÃO ====================
 
   /**
@@ -182,14 +243,15 @@ export class Menu {
 
   /**
    * Notifica mudança de aba principal via serviço
-   * @param tabIndex Índice da aba (0=Vendas, 1=Relatórios, 2=Cervejas, 3=Configurações)
+   * @param tabIndex Índice da aba (0=Vendas, 1=Comandas, 2=Relatórios, 3=Cervejas, 4=Configurações)
    */
   private notifyTabChange(tabIndex: number): void {
     const tabMap: { [key: number]: MainTab } = {
       0: MainTab.SALES,
-      1: MainTab.REPORTS,
-      2: MainTab.BEERS,
-      3: MainTab.SETTINGS
+      1: MainTab.COMMANDS,
+      2: MainTab.REPORTS,
+      3: MainTab.BEERS,
+      4: MainTab.SETTINGS
     };
 
     const tab = tabMap[tabIndex];
@@ -229,7 +291,7 @@ export class Menu {
     this.notifyTabChange(tabIndex);
 
     // Se for aba de Configurações, notifica sub-aba ativa também
-    if (tabIndex === 3) {
+    if (tabIndex === 4) {
       const activeSubTab = parseInt(this.activeSettingsTabDesktop());
       this.notifySettingsSubTabChange(activeSubTab);
     }

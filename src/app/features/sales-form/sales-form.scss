@@ -5,13 +5,63 @@
 // Importa a paleta de cores do Black Beer
 @use '../../../assets/styles/color-palette' as *;
 
+/* ========================================
+   MODAL DE ERRO DE ESTOQUE (DESKTOP)
+   ======================================== */
+
+.stock-error-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1rem 0;
+  text-align: center;
+}
+
+.stock-error-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.15) 100%);
+  border: 2px solid rgba(239, 68, 68, 0.3);
+  border-radius: 50%;
+
+  i {
+    font-size: 2rem;
+    color: #dc2626;
+    animation: pulse 2s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.stock-error-message {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #ffffff;
+  white-space: pre-line; /* Respeita \n no texto */
+  margin: 0;
+  max-width: 100%;
+}
+
 .sales-form-container {
   position: relative;
   width: 100%;
 
   /* Padding bottom para compensar botão fixo em mobile */
   @media (max-width: 767px) {
-    padding-bottom: 80px;
+    padding-bottom: 160px;
   }
 }
 
@@ -25,7 +75,7 @@
   z-index: 30;
   margin-bottom: 1rem;
   padding: 0 0.5rem;
-  
+
   @media (min-width: 640px) {
     top: 104px;
   }
@@ -114,7 +164,7 @@
 .sales-form-card {
   ::ng-deep .p-card-body {
     padding: 1rem;
-    
+
     @media (min-width: 640px) {
       padding: 1.5rem;
     }
@@ -150,7 +200,7 @@
   display: flex;
   flex-direction: column;
   gap: 2rem;
-  
+
   @media (min-width: 640px) {
     gap: 2.5rem;
   }
@@ -168,7 +218,7 @@
   gap: 0.5rem;
   font-size: 1rem;
   font-weight: 600;
-  color: $text-primary;
+  color: $text-inverse;
 
   @media (min-width: 640px) {
     font-size: 1.125rem;
@@ -186,10 +236,10 @@
 .beer-grid {
   display: grid;
   gap: 0.75rem;
-  
+
   /* Mobile: 1 coluna */
   grid-template-columns: 1fr;
-  
+
   /* Tablet: 2 colunas */
   @media (min-width: 640px) {
     grid-template-columns: repeat(2, 1fr);
@@ -316,6 +366,112 @@
   }
 }
 
+.stock-low-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.5rem;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #f59e0b;
+  border-radius: 0.5rem;
+  animation: pulse-warning 2s ease-in-out infinite;
+
+  i {
+    font-size: 1rem;
+    color: #d97706;
+  }
+
+  span {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #92400e;
+  }
+}
+
+.stock-depleted-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.5rem;
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border: 2px solid #ef4444;
+  border-radius: 0.5rem;
+  animation: pulse-alert 2s ease-in-out infinite;
+
+  i {
+    font-size: 1rem;
+    color: #dc2626;
+  }
+
+  span {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #dc2626;
+  }
+}
+
+@keyframes pulse-warning {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.01);
+  }
+}
+
+@keyframes pulse-alert {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.02);
+  }
+}
+
+.stock-insufficient-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  margin-top: 1rem;
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border: 2px solid #ef4444;
+  border-left: 4px solid #dc2626;
+  border-radius: 0.5rem;
+  animation: pulse-alert 2s ease-in-out infinite;
+
+  i {
+    font-size: 1.25rem;
+    color: #dc2626;
+    margin-top: 0.125rem;
+  }
+
+  .alert-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+  }
+
+  .alert-title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #991b1b;
+  }
+
+  .alert-message {
+    font-size: 0.813rem;
+    color: #dc2626;
+    font-weight: 500;
+  }
+}
+
 /* ========================================
    TAMANHOS DE COPO - LAYOUT RESPONSIVO
    ======================================== */
@@ -323,10 +479,10 @@
 .cup-size-container {
   display: grid;
   gap: 0.75rem;
-  
+
   /* Mobile: stack vertical */
   grid-template-columns: 1fr;
-  
+
   /* Tablet+: horizontal */
   @media (min-width: 640px) {
     grid-template-columns: repeat(3, 1fr);
@@ -411,10 +567,10 @@
   display: flex;
   align-items: baseline;
   gap: 0.25rem;
-  
+
   /* Mobile: alinhado à esquerda */
   flex-direction: row;
-  
+
   /* Tablet+: centralizado */
   @media (min-width: 640px) {
     justify-content: center;
@@ -479,7 +635,7 @@
   justify-content: center;
   gap: 1.5rem;
   padding: 1rem;
-  
+
   @media (min-width: 640px) {
     gap: 2rem;
   }
@@ -720,7 +876,7 @@
 /* Fade in para elementos ao aparecer */
 .form-section {
   animation: fadeInUp 0.4s ease-out backwards;
-  
+
   @for $i from 1 through 5 {
     &:nth-child(#{$i}) {
       animation-delay: #{$i * 0.1}s;
@@ -785,4 +941,110 @@
   to {
     transform: translate(-50%, -50%) rotate(360deg);
   }
+}
+
+/* ========================================
+   MODAL DE COMANDAS
+   ======================================== */
+
+.submit-buttons-wrapper {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+  justify-content: center;
+
+  @media (max-width: 767px) {
+    flex-direction: column;
+  }
+
+  .submit-button {
+    flex: 1;
+    max-width: 100%;
+  }
+}
+
+.comandas-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.75rem;
+  padding: 1rem 0;
+
+  @media (max-width: 640px) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.comanda-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  gap: 0.25rem;
+
+  &:hover {
+    border-color: #fb923c;
+    background: #fff7ed;
+    transform: translateY(-2px);
+  }
+
+  &.comanda-button-active {
+    border-color: #fb923c;
+    background: #fed7aa;
+    box-shadow: 0 4px 12px rgba(251, 146, 60, 0.3);
+  }
+
+  // Comandas em uso - borda laranja e fundo levemente colorido
+  &.comanda-button-em-uso {
+    border-color: #ea580c;
+    background: #fff7ed;
+
+    &:hover {
+      background: #ffedd5;
+    }
+
+    &.comanda-button-active {
+      border-color: #ea580c;
+      background: #fed7aa;
+      box-shadow: 0 4px 12px rgba(234, 88, 12, 0.4);
+    }
+  }
+}
+
+.comanda-numero {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.comanda-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+}
+
+.comanda-status-badge {
+  margin-top: 0.5rem;
+  font-size: 0.65rem !important;
+  padding: 0.15rem 0.4rem !important;
+}
+
+.no-comandas-message {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 2rem;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
 }

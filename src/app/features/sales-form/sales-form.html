@@ -1,7 +1,34 @@
 <p-toast />
 
+<!-- ==================== MODAL: ERRO DE ESTOQUE (DESKTOP) ==================== -->
+<p-dialog
+  [(visible)]="showStockErrorModal"
+  [modal]="true"
+  [closable]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{width: '90vw', maxWidth: '28rem'}"
+  [header]="stockErrorTitle()"
+  (onHide)="closeStockErrorModal()">
+
+  <div class="stock-error-content">
+    <div class="stock-error-icon">
+      <i class="pi pi-exclamation-triangle"></i>
+    </div>
+    <p class="stock-error-message">{{ stockErrorMessage() }}</p>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <p-button
+      label="Entendi"
+      icon="pi pi-check"
+      severity="danger"
+      (onClick)="closeStockErrorModal()" />
+  </ng-template>
+</p-dialog>
+
 <div class="sales-form-container">
-  
+
   <!-- ==================== RESUMO DA VENDA (FIXO NO TOPO - MOBILE) ==================== -->
   @if (saleSummary(); as summary) {
     <div class="sticky-summary md:hidden">
@@ -43,14 +70,14 @@
 
     <ng-template pTemplate="content">
       <form [formGroup]="saleForm" (ngSubmit)="handleSale()" class="sales-form">
-        
+
         <!-- ==================== SELEÇÃO DE CERVEJA ==================== -->
         <section class="form-section">
           <h3 class="section-title">
             <i class="pi pi-beer text-amber-600"></i>
             Selecione a Cerveja
           </h3>
-          
+
           <!-- Grid responsivo: 1 col mobile, 2 cols tablet+ -->
           <div class="beer-grid">
             @for (beer of beerTypes(); track beer.id) {
@@ -61,7 +88,7 @@
                 [class.beer-button-active]="beerId.value === beer.id"
                 [attr.aria-pressed]="beerId.value === beer.id"
                 [attr.aria-label]="'Selecionar cerveja ' + beer.name">
-                
+
                 <!-- Indicador visual de seleção -->
                 <div class="beer-button-indicator">
                   @if (beerId.value === beer.id) {
@@ -70,11 +97,27 @@
                     <div class="beer-color-dot" [style.background-color]="beer.color"></div>
                   }
                 </div>
-                
+
                 <!-- Conteúdo do botão -->
                 <div class="beer-button-content">
                   <span class="beer-name">{{ beer.name }}</span>
                   <span class="beer-description">{{ beer.description }}</span>
+
+                  <!-- Alerta de Estoque Baixo -->
+                  @if (checkLowStockForBeer(beer.id)) {
+                    <div class="stock-low-alert">
+                      <i class="pi pi-exclamation-circle"></i>
+                      <span>Estoque Baixo ({{ getStockForBeer(beer.id) }}L restantes)</span>
+                    </div>
+                  }
+
+                  <!-- Alerta de Estoque Esgotado -->
+                  @if (checkDepletedStockForBeer(beer.id)) {
+                    <div class="stock-depleted-alert">
+                      <i class="pi pi-exclamation-triangle"></i>
+                      <span>Estoque Esgotado</span>
+                    </div>
+                  }
                 </div>
               </button>
             }
@@ -87,7 +130,7 @@
             <i class="pi pi-box text-amber-600"></i>
             Tamanho do Copo
           </h3>
-          
+
           <!-- Layout vertical em mobile, horizontal em desktop -->
           <div class="cup-size-container">
             @for (size of cupSizes; track size) {
@@ -98,7 +141,7 @@
                 [class.cup-size-button-active]="cupSize.value === size"
                 [attr.aria-pressed]="cupSize.value === size"
                 [attr.aria-label]="'Selecionar copo de ' + size + ' mililitros'">
-                
+
                 <!-- Ícone visual do copo -->
                 <div class="cup-icon">
                   <i class="pi pi-shopping-bag"
@@ -106,13 +149,13 @@
                      [class.text-4xl]="size === 500"
                      [class.text-5xl]="size === 1000"></i>
                 </div>
-                
+
                 <!-- Label do tamanho -->
                 <div class="cup-size-label">
                   <span class="cup-size-value">{{ size }}</span>
                   <span class="cup-size-unit">ml</span>
                 </div>
-                
+
                 <!-- Badge de seleção -->
                 @if (cupSize.value === size) {
                   <div class="cup-size-badge">
@@ -130,26 +173,26 @@
             <i class="pi pi-hashtag text-amber-600"></i>
             Quantidade de Copos
           </h3>
-          
+
           <div class="quantity-container">
             <!-- Botão Diminuir -->
-            <button 
+            <button
               type="button"
               class="quantity-button quantity-button-minus"
-              (click)="changeQuantity(-1)" 
+              (click)="changeQuantity(-1)"
               [disabled]="quantity.value <= 1"
               aria-label="Diminuir quantidade">
               <i class="pi pi-minus"></i>
             </button>
-            
+
             <!-- Display da Quantidade -->
             <div class="quantity-display">
               <span class="quantity-value">{{ quantity.value }}</span>
               <span class="quantity-label">{{ quantity.value === 1 ? 'copo' : 'copos' }}</span>
             </div>
-            
+
             <!-- Botão Aumentar -->
-            <button 
+            <button
               type="button"
               class="quantity-button quantity-button-plus"
               (click)="changeQuantity(1)"
@@ -186,24 +229,107 @@
                     <span class="value font-bold text-lg">{{ summary.totalVolume }}L</span>
                   </div>
                 </div>
+
+                <!-- Alerta de Estoque Insuficiente -->
+                @if (hasInsufficientStock()) {
+                  <div class="stock-insufficient-alert">
+                    <i class="pi pi-exclamation-triangle"></i>
+                    <div class="alert-content">
+                      <span class="alert-title">Estoque Insuficiente!</span>
+                      <span class="alert-message">
+                        Necessário: {{ summary.totalVolume }}L | Disponível: {{ currentStock() }}L
+                      </span>
+                    </div>
+                  </div>
+                }
               </div>
             </section>
           </div>
         }
 
-        <!-- ==================== BOTÃO DE SUBMIT (FIXO NO BOTTOM - MOBILE) ==================== -->
+        <!-- ==================== BOTÕES DE AÇÃO (FIXO NO BOTTOM - MOBILE) ==================== -->
         <div class="submit-container md:relative">
-          <p-button
-            type="submit"
-            label="Registrar Venda"
-            icon="pi pi-check"
-            iconPos="left"
-            styleClass="submit-button"
-            [disabled]="saleForm.invalid"
-            [attr.aria-label]="saleForm.invalid ? 'Formulário incompleto, selecione todos os campos' : 'Registrar venda'" />
+          <div class="submit-buttons-wrapper">
+            <!-- Botão: Abrir Comanda -->
+            <div class="submit-button">
+              <p-button
+                type="button"
+                label="Abrir Comanda"
+                icon="pi pi-book"
+                iconPos="left"
+                styleClass="submit-button"
+                (onClick)="openComandaDialog()"
+                [disabled]="saleForm.invalid"
+                [attr.aria-label]="'Abrir comanda para registrar venda'" />
+            </div>
+
+            <!-- Botão: Registrar Venda -->
+            <div class="submit-button">
+              <p-button
+                type="submit"
+                label="Registrar Venda"
+                icon="pi pi-check"
+                iconPos="left"
+                styleClass="submit-button"
+                [disabled]="saleForm.invalid || hasStockDepleted() || hasInsufficientStock()"
+                [attr.aria-label]="hasStockDepleted() ? 'Estoque esgotado, não é possível registrar venda' : (hasInsufficientStock() ? 'Estoque insuficiente para a quantidade solicitada' : (saleForm.invalid ? 'Formulário incompleto, selecione todos os campos' : 'Registrar venda'))" />
+            </div>
+          </div>
         </div>
       </form>
     </ng-template>
   </p-card>
+
+  <!-- ==================== MODAL: SELECIONAR COMANDA ==================== -->
+  <p-dialog
+    [(visible)]="isOpeningComanda"
+    [modal]="true"
+    [closable]="true"
+    [draggable]="false"
+    [resizable]="false"
+    [style]="{width: '90vw', maxWidth: '35rem'}"
+    header="Abrir Comanda"
+    (onHide)="closeComandaDialog()">
+
+    <div class="comandas-grid">
+      @for (comanda of availableComandas(); track comanda.id) {
+        <button
+          type="button"
+          class="comanda-button"
+          [class.comanda-button-active]="selectedComandaNumero() === comanda.numero"
+          [class.comanda-button-em-uso]="comanda.status === 'em_uso'"
+          (click)="selectComanda(comanda.numero)">
+          <span class="comanda-numero">{{ comanda.numero }}</span>
+          <span class="comanda-label">Comanda</span>
+          @if (comanda.status === 'em_uso') {
+            <p-tag
+              value="Em Uso"
+              severity="warning"
+              styleClass="comanda-status-badge">
+            </p-tag>
+          }
+        </button>
+      }
+      @empty {
+        <p class="no-comandas-message">Nenhuma comanda disponível</p>
+      }
+    </div>
+
+    <ng-template pTemplate="footer">
+      <div class="dialog-footer">
+        <p-button
+          label="Cancelar"
+          severity="secondary"
+          [outlined]="true"
+          (onClick)="closeComandaDialog()" />
+        <p-button
+          label="Abrir & Registrar Venda"
+          icon="pi pi-check"
+          severity="success"
+          [disabled]="!selectedComandaNumero()"
+          (onClick)="handleSaleWithComanda()" />
+      </div>
+    </ng-template>
+  </p-dialog>
 
 </div>

@@ -18,6 +18,7 @@ export interface BeerType {
  * MUDANÇAS:
  * - id: string → number
  * - beerId: string → number (mantém FK para beer_types)
+ * - comandaId: Nova coluna opcional (V6) para vincular vendas a comandas
  */
 export interface Sale {
   id: number;              // ← MUDANÇA: number em vez de string
@@ -27,6 +28,7 @@ export interface Sale {
   quantity: number;
   timestamp: string;       // ISO string para SQLite
   totalVolume: number;     // em ml
+  comandaId?: number | null; // ← NOVO (V6): FK opcional para comandas
 }
 
 /**

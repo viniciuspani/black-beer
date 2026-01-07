@@ -15,6 +15,7 @@ import { BeerType, Sale, CUP_SIZES, CupSize } from '../../core/models/beer.model
 import { DatabaseService } from '../../core/services/database';
 import { ComandaService } from '../../core/services/comanda.service';
 import { Comanda } from '../../core/models/comanda.model';
+import { TabRefreshService, MainTab } from '../../core/services/tab-refresh.service';
 
 interface SaleSummary {
   beerName: string;
@@ -44,6 +45,7 @@ export class SalesFormComponent implements OnInit {
   private readonly comandaService = inject(ComandaService);
   private readonly fb = inject(FormBuilder);
   private readonly messageService = inject(MessageService);
+  private readonly tabRefreshService = inject(TabRefreshService);
 
   // ==================== CONSTANTES ====================
   readonly cupSizes: readonly CupSize[] = [CUP_SIZES.SMALL, CUP_SIZES.MEDIUM, CUP_SIZES.LARGE] as const;
@@ -183,6 +185,7 @@ export class SalesFormComponent implements OnInit {
   constructor() {
     this.saleForm = this.createSaleForm();
     this.setupDatabaseEffect();
+    this.setupTabRefreshListener();
   }
 
   // ==================== LIFECYCLE HOOKS ====================
@@ -210,6 +213,19 @@ export class SalesFormComponent implements OnInit {
    */
   private setupDatabaseEffect(): void {
     effect(() => {
+      if (this.dbService.isDbReady()) {
+        this.loadBeerTypes();
+      }
+    });
+  }
+
+  /**
+   * Configura listener para recarregar cervejas quando a aba SALES for ativada
+   * Isso garante que novas cervejas criadas no beer-management apareçam aqui
+   */
+  private setupTabRefreshListener(): void {
+    this.tabRefreshService.onMainTabActivated(MainTab.SALES).subscribe(() => {
+      console.log('📢 Sales-form: Recebeu notificação para recarregar cervejas');
       if (this.dbService.isDbReady()) {
         this.loadBeerTypes();
       }

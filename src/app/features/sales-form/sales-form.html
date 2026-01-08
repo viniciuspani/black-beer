@@ -29,33 +29,69 @@
 
 <div class="sales-form-container">
 
-  <!-- ==================== RESUMO DA VENDA (FIXO NO TOPO - MOBILE) ==================== -->
-  @if (saleSummary(); as summary) {
-    <div class="sticky-summary md:hidden">
-      <div class="summary-card">
-        <div class="summary-header">
-          <i class="pi pi-info-circle"></i>
-          <span>Resumo</span>
+  <!-- ==================== BOTTOM SHEET CARRINHO (MOBILE ONLY) ==================== -->
+  @if (hasCartItems()) {
+    <div class="bottom-sheet md:hidden">
+      <!-- Header do Bottom Sheet (sempre visível) -->
+      <div class="bottom-sheet-header" (click)="toggleBottomSheet()">
+        <div class="bottom-sheet-header-left">
+          <i class="pi pi-shopping-cart"></i>
+          <span>Carrinho</span>
+          <span class="cart-count">{{ cartItems().length }}</span>
         </div>
-        <div class="summary-content">
-          <div class="summary-item">
-            <span class="label">Cerveja:</span>
-            <span class="value">{{ summary.beerName }}</span>
-          </div>
-          <div class="summary-item">
-            <span class="label">Tamanho:</span>
-            <span class="value">{{ summary.cupSize }}ml</span>
-          </div>
-          <div class="summary-item">
-            <span class="label">Qtd:</span>
-            <span class="value">{{ summary.quantity }}</span>
-          </div>
-          <div class="summary-item highlight">
-            <span class="label">Total:</span>
-            <span class="value">{{ summary.totalVolume }}L</span>
-          </div>
+        <div class="bottom-sheet-header-right">
+          <span class="cart-total-value">R$ {{ cartTotalPrice().toFixed(2) }}</span>
+          <i class="pi pi-chevron-up toggle-icon" [class.rotated]="isBottomSheetExpanded()"></i>
         </div>
       </div>
+
+      <!-- Conteúdo expansível do Bottom Sheet -->
+      @if (isBottomSheetExpanded()) {
+        <div class="bottom-sheet-content">
+          <div class="cart-items-mobile">
+            @for (item of cartItems(); track item.id) {
+              <div class="cart-item-mobile">
+                <div class="cart-item-header">
+                  <div class="cart-item-beer">
+                    <div class="beer-color-indicator" [style.background-color]="item.beerColor"></div>
+                    <span class="beer-name">{{ item.beerName }}</span>
+                    <span class="cup-size-badge">{{ item.cupSize }}ml</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="remove-item-btn"
+                    (click)="removeFromCart(item.id)"
+                    aria-label="Remover item">
+                    <i class="pi pi-trash"></i>
+                  </button>
+                </div>
+                <div class="cart-item-controls">
+                  <div class="quantity-controls">
+                    <button
+                      type="button"
+                      class="qty-btn"
+                      (click)="decrementCartItem(item.id)"
+                      aria-label="Diminuir quantidade">
+                      <i class="pi pi-minus"></i>
+                    </button>
+                    <span class="qty-value">{{ item.quantity }}</span>
+                    <button
+                      type="button"
+                      class="qty-btn"
+                      (click)="incrementCartItem(item.id)"
+                      aria-label="Aumentar quantidade">
+                      <i class="pi pi-plus"></i>
+                    </button>
+                  </div>
+                  <div class="item-price">
+                    <span class="price-value">R$ {{ item.totalPrice.toFixed(2) }}</span>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
     </div>
   }
 
@@ -69,7 +105,7 @@
     </ng-template>
 
     <ng-template pTemplate="content">
-      <form [formGroup]="saleForm" (ngSubmit)="handleSale()" class="sales-form">
+      <form [formGroup]="saleForm" class="sales-form">
 
         <!-- ==================== SELEÇÃO DE CERVEJA ==================== -->
         <section class="form-section">
@@ -202,46 +238,85 @@
           </div>
         </section>
 
-        <!-- ==================== RESUMO (DESKTOP) ==================== -->
-        @if (saleSummary(); as summary) {
+        <!-- ==================== CARRINHO (DESKTOP) ==================== -->
+        @if (hasCartItems()) {
           <div class="hidden md:block">
             <section class="form-section">
-              <div class="desktop-summary">
-                <h4 class="desktop-summary-title">
-                  <i class="pi pi-info-circle"></i>
-                  Resumo da Venda
-                </h4>
-                <div class="desktop-summary-grid">
-                  <div class="desktop-summary-item">
-                    <span class="label">Cerveja:</span>
-                    <span class="value">{{ summary.beerName }}</span>
-                  </div>
-                  <div class="desktop-summary-item">
-                    <span class="label">Tamanho:</span>
-                    <span class="value">{{ summary.cupSize }}ml</span>
-                  </div>
-                  <div class="desktop-summary-item">
-                    <span class="label">Quantidade:</span>
-                    <span class="value">{{ summary.quantity }} copo(s)</span>
-                  </div>
-                  <div class="desktop-summary-item highlight">
-                    <span class="label">Volume Total:</span>
-                    <span class="value font-bold text-lg">{{ summary.totalVolume }}L</span>
-                  </div>
+              <div class="desktop-cart">
+                <div class="desktop-cart-header">
+                  <h4 class="desktop-cart-title">
+                    <i class="pi pi-shopping-cart"></i>
+                    Carrinho de Compras
+                    <span class="cart-count">{{ cartItems().length }}</span>
+                  </h4>
+                  <button
+                    type="button"
+                    class="clear-cart-btn"
+                    (click)="clearCart()"
+                    aria-label="Limpar carrinho">
+                    <i class="pi pi-trash"></i>
+                    Limpar
+                  </button>
                 </div>
 
-                <!-- Alerta de Estoque Insuficiente -->
-                @if (hasInsufficientStock()) {
-                  <div class="stock-insufficient-alert">
-                    <i class="pi pi-exclamation-triangle"></i>
-                    <div class="alert-content">
-                      <span class="alert-title">Estoque Insuficiente!</span>
-                      <span class="alert-message">
-                        Necessário: {{ summary.totalVolume }}L | Disponível: {{ currentStock() }}L
-                      </span>
+                <div class="cart-items-desktop">
+                  @for (item of cartItems(); track item.id) {
+                    <div class="cart-item-desktop">
+                      <div class="item-info">
+                        <div class="beer-color-indicator" [style.background-color]="item.beerColor"></div>
+                        <div class="item-details">
+                          <span class="item-beer-name">{{ item.beerName }}</span>
+                          <span class="item-cup-size">{{ item.cupSize }}ml</span>
+                        </div>
+                      </div>
+
+                      <div class="item-controls">
+                        <div class="quantity-controls">
+                          <button
+                            type="button"
+                            class="qty-btn"
+                            (click)="decrementCartItem(item.id)"
+                            aria-label="Diminuir quantidade">
+                            <i class="pi pi-minus"></i>
+                          </button>
+                          <span class="qty-value">{{ item.quantity }}</span>
+                          <button
+                            type="button"
+                            class="qty-btn"
+                            (click)="incrementCartItem(item.id)"
+                            aria-label="Aumentar quantidade">
+                            <i class="pi pi-plus"></i>
+                          </button>
+                        </div>
+
+                        <div class="item-price">
+                          <span class="price-label">R$</span>
+                          <span class="price-value">{{ item.totalPrice.toFixed(2) }}</span>
+                        </div>
+
+                        <button
+                          type="button"
+                          class="remove-item-btn"
+                          (click)="removeFromCart(item.id)"
+                          aria-label="Remover item">
+                          <i class="pi pi-trash"></i>
+                        </button>
+                      </div>
                     </div>
+                  }
+                </div>
+
+                <!-- Total do Carrinho -->
+                <div class="cart-total-desktop">
+                  <div class="cart-total-row">
+                    <span class="total-label">Volume Total:</span>
+                    <span class="total-value">{{ (cartTotalVolume() / 1000).toFixed(1) }}L</span>
                   </div>
-                }
+                  <div class="cart-total-row highlight">
+                    <span class="total-label">Total a Pagar:</span>
+                    <span class="total-value">R$ {{ cartTotalPrice().toFixed(2) }}</span>
+                  </div>
+                </div>
               </div>
             </section>
           </div>
@@ -250,30 +325,49 @@
         <!-- ==================== BOTÕES DE AÇÃO (FIXO NO BOTTOM - MOBILE) ==================== -->
         <div class="submit-container md:relative">
           <div class="submit-buttons-wrapper">
-            <!-- Botão: Abrir Comanda -->
+            <!-- Botão: Adicionar ao Carrinho -->
             <div class="submit-button">
               <p-button
                 type="button"
-                label="Abrir Comanda"
-                icon="pi pi-book"
+                label="Adicionar ao Carrinho"
+                icon="pi pi-shopping-cart"
                 iconPos="left"
+                severity="info"
                 styleClass="submit-button"
-                (onClick)="openComandaDialog()"
+                (onClick)="addToCart()"
                 [disabled]="saleForm.invalid"
-                [attr.aria-label]="'Abrir comanda para registrar venda'" />
+                [attr.aria-label]="saleForm.invalid ? 'Formulário incompleto, selecione todos os campos' : 'Adicionar item ao carrinho'" />
             </div>
 
-            <!-- Botão: Registrar Venda -->
-            <div class="submit-button">
-              <p-button
-                type="submit"
-                label="Registrar Venda"
-                icon="pi pi-check"
-                iconPos="left"
-                styleClass="submit-button"
-                [disabled]="saleForm.invalid || hasStockDepleted() || hasInsufficientStock()"
-                [attr.aria-label]="hasStockDepleted() ? 'Estoque esgotado, não é possível registrar venda' : (hasInsufficientStock() ? 'Estoque insuficiente para a quantidade solicitada' : (saleForm.invalid ? 'Formulário incompleto, selecione todos os campos' : 'Registrar venda'))" />
-            </div>
+            <!-- Botão: Finalizar com Comanda (somente se houver itens no carrinho) -->
+            @if (hasCartItems()) {
+              <div class="submit-button">
+                <p-button
+                  type="button"
+                  label="Finalizar com Comanda"
+                  icon="pi pi-book"
+                  iconPos="left"
+                  severity="secondary"
+                  styleClass="submit-button"
+                  (onClick)="openComandaDialog()"
+                  [attr.aria-label]="'Finalizar venda com comanda'" />
+              </div>
+            }
+
+            <!-- Botão: Finalizar Venda (somente se houver itens no carrinho) -->
+            @if (hasCartItems()) {
+              <div class="submit-button">
+                <p-button
+                  type="button"
+                  label="Finalizar Venda"
+                  icon="pi pi-check"
+                  iconPos="left"
+                  severity="success"
+                  styleClass="submit-button"
+                  (onClick)="finalizeSale()"
+                  [attr.aria-label]="'Finalizar venda'" />
+              </div>
+            }
           </div>
         </div>
       </form>
@@ -323,11 +417,11 @@
           [outlined]="true"
           (onClick)="closeComandaDialog()" />
         <p-button
-          label="Abrir & Registrar Venda"
+          label="Finalizar com Comanda"
           icon="pi pi-check"
           severity="success"
           [disabled]="!selectedComandaNumero()"
-          (onClick)="handleSaleWithComanda()" />
+          (onClick)="finalizeWithComanda()" />
       </div>
     </ng-template>
   </p-dialog>

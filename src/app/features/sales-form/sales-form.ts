@@ -24,6 +24,21 @@ interface SaleSummary {
   totalVolume: string;
 }
 
+/**
+ * Interface para itens do carrinho de compras
+ */
+interface CartItem {
+  id: string;              // `${beerId}-${cupSize}`
+  beerId: number;
+  beerName: string;
+  beerColor: string;
+  cupSize: CupSize;
+  quantity: number;
+  totalVolume: number;     // em ml
+  unitPrice: number;       // preço unitário do copo
+  totalPrice: number;      // unitPrice * quantity
+}
+
 @Component({
   selector: 'app-sales-form',
   standalone: true,
@@ -57,6 +72,15 @@ export class SalesFormComponent implements OnInit {
   readonly beerTypes = signal<BeerType[]>([]);
   readonly saleForm: FormGroup;
 
+  // Signals para carrinho de compras
+  readonly cartItems = signal<CartItem[]>([]);
+  readonly cartTotalPrice = computed(() => {
+    return this.cartItems().reduce((sum, item) => sum + item.totalPrice, 0);
+  });
+  readonly cartTotalVolume = computed(() => {
+    return this.cartItems().reduce((sum, item) => sum + item.totalVolume, 0);
+  });
+
   // Signals para modal de comanda
   protected isOpeningComanda = signal(false);
   protected selectedComandaNumero = signal<number | null>(null);
@@ -66,6 +90,9 @@ export class SalesFormComponent implements OnInit {
   protected showStockErrorModal = signal(false);
   protected stockErrorMessage = signal('');
   protected stockErrorTitle = signal('Erro de Estoque');
+
+  // Signal para controlar estado do bottom sheet (mobile only)
+  protected isBottomSheetExpanded = signal(false);
   
   // ==================== COMPUTED SIGNAL PARA RESUMO ====================
   /**
@@ -280,36 +307,77 @@ export class SalesFormComponent implements OnInit {
    */
   changeQuantity(amount: number): void {
     const newQuantity = this.quantity.value + amount;
-    
+
     if (newQuantity >= 1) {
       this.quantity.setValue(newQuantity);
     }
   }
 
-  // ==================== HANDLER PRINCIPAL DE VENDA ====================
+  // ==================== MÉTODOS DO CARRINHO ====================
   /**
-   * Processa a venda quando o formulário é submetido
-   * MUDANÇA PRINCIPAL: Não gera mais ID manualmente (usa AUTOINCREMENT)
+   * Adiciona item ao carrinho
+   * Valida estoque e busca preço do banco
    */
-  handleSale(): void {
-    if (!this.validateForm()) return;
+  addToCart(): void {
+    if (!this.validateFormForCart()) return;
 
     const selectedBeer = this.getSelectedBeer();
     if (!selectedBeer) return;
 
-    const newSale = this.createSaleObject(selectedBeer);
-    
-    this.saveSale(newSale);
+    const { beerId, cupSize, quantity } = this.saleForm.value;
+
+    // Busca o preço unitário do banco
+    const unitPrice = this.getPriceForCupSize(beerId, cupSize);
+    if (unitPrice === null) {
+      this.showError(`Preço não configurado para ${selectedBeer.name} (${cupSize}ml). Configure em Configurações > Vendas.`);
+      return;
+    }
+
+    // Verifica se já existe item no carrinho com mesma cerveja e copo
+    const cartItemId = `${beerId}-${cupSize}`;
+    const existingItem = this.cartItems().find(item => item.id === cartItemId);
+
+    if (existingItem) {
+      // Atualiza quantidade do item existente
+      this.updateCartItemQuantity(cartItemId, existingItem.quantity + quantity);
+    } else {
+      // Adiciona novo item ao carrinho
+      const totalVolume = cupSize * quantity;
+      const totalPrice = unitPrice * quantity;
+
+      const newItem: CartItem = {
+        id: cartItemId,
+        beerId,
+        beerName: selectedBeer.name,
+        beerColor: selectedBeer.color,
+        cupSize,
+        quantity,
+        totalVolume,
+        unitPrice,
+        totalPrice
+      };
+
+      this.cartItems.update(items => [...items, newItem]);
+      console.log('✅ Item adicionado ao carrinho:', newItem);
+    }
+
+    // Mostra mensagem de sucesso
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Adicionado ao Carrinho',
+      detail: `${quantity}x ${selectedBeer.name} (${cupSize}ml)`,
+      life: 2000
+    });
+
+    // Reseta apenas a quantidade para facilitar adicionar mais itens
+    this.quantity.setValue(this.DEFAULT_QUANTITY);
   }
 
-  // ==================== MÉTODOS PRIVADOS DE VALIDAÇÃO ====================
   /**
-   * Valida o formulário antes de salvar
-   * IMPORTANTE: Bloqueia venda se estoque zerado ou insuficiente
-   * Desktop: Mostra modal de erro
-   * Mobile: Mostra toast
+   * Valida formulário para adicionar ao carrinho
+   * Similar ao validateForm() mas também considera estoque já no carrinho
    */
-  private validateForm(): boolean {
+  private validateFormForCart(): boolean {
     if (this.saleForm.invalid) {
       this.showWarning('Selecione uma cerveja para continuar.');
       return false;
@@ -321,54 +389,270 @@ export class SalesFormComponent implements OnInit {
       return false;
     }
 
-    // Busca o estoque atual da cerveja
+    const { cupSize, quantity } = this.saleForm.value;
     const stock = this.dbService.getEventStockByBeerId(beerId);
 
-    // Se não há registro de estoque, permite venda (modo normal)
+    // Se não há registro de estoque, permite adicionar (modo normal)
     if (!stock) {
-      console.log(`ℹ️ Sem controle de estoque para beerId ${beerId} - venda permitida`);
+      console.log(`ℹ️ Sem controle de estoque para beerId ${beerId} - adição permitida`);
       return true;
     }
 
-    // Obtém o nome da cerveja para mensagens
     const selectedBeer = this.beerTypes().find(b => b.id === beerId);
     const beerName = selectedBeer?.name || 'desta cerveja';
+
+    // Calcula quantos litros já estão no carrinho para esta cerveja
+    const litersInCart = this.cartItems()
+      .filter(item => item.beerId === beerId)
+      .reduce((sum, item) => sum + item.totalVolume, 0) / this.ML_TO_LITERS;
+
+    // Calcula quantos litros estão sendo adicionados
+    const litersToAdd = (cupSize * quantity) / this.ML_TO_LITERS;
+
+    // Total que será necessário
+    const totalLitersNeeded = litersInCart + litersToAdd;
 
     // Validação de estoque esgotado
     if (stock.quantidadeLitros === 0) {
       console.log(`❌ Estoque esgotado para beerId ${beerId} (0L)`);
       this.showStockError(
         'Estoque Esgotado!',
-        `O estoque de ${beerName} está esgotado (0L disponível).\n\nNão é possível registrar esta venda. Por favor, reponha o estoque em Configurações > Vendas.`
+        `O estoque de ${beerName} está esgotado (0L disponível).\n\nNão é possível adicionar ao carrinho. Por favor, reponha o estoque em Configurações > Vendas.`
       );
       return false;
     }
 
-    // Calcula quantos litros serão vendidos
-    const { cupSize, quantity } = this.saleForm.value;
-    const litersToSell = (cupSize * quantity) / this.ML_TO_LITERS;
-
-    // Validação de estoque insuficiente
-    if (litersToSell > stock.quantidadeLitros) {
-      console.log(`❌ Estoque insuficiente para beerId ${beerId}: necessário ${litersToSell}L, disponível ${stock.quantidadeLitros}L`);
+    // Validação de estoque insuficiente (considerando o que já está no carrinho)
+    if (totalLitersNeeded > stock.quantidadeLitros) {
+      console.log(`❌ Estoque insuficiente para beerId ${beerId}: necessário ${totalLitersNeeded}L (${litersInCart}L no carrinho + ${litersToAdd}L agora), disponível ${stock.quantidadeLitros}L`);
       this.showStockError(
         'Estoque Insuficiente!',
-        `Você está tentando vender ${quantity}x copos de ${cupSize}ml (${litersToSell.toFixed(1)}L) de ${beerName}.\n\nEstoque disponível: ${stock.quantidadeLitros.toFixed(1)}L\n\nPor favor, ajuste a quantidade ou reponha o estoque.`
+        `Você já tem ${litersInCart.toFixed(1)}L de ${beerName} no carrinho.\n\nTentando adicionar mais ${litersToAdd.toFixed(1)}L = ${totalLitersNeeded.toFixed(1)}L total.\n\nEstoque disponível: ${stock.quantidadeLitros.toFixed(1)}L\n\nPor favor, ajuste a quantidade ou reponha o estoque.`
       );
       return false;
     }
 
-    console.log(`✅ Validação OK: ${litersToSell}L de ${stock.quantidadeLitros}L disponíveis`);
+    console.log(`✅ Validação OK: ${litersToAdd}L sendo adicionado (${litersInCart}L já no carrinho, ${stock.quantidadeLitros}L disponíveis)`);
     return true;
   }
 
+  /**
+   * Busca o preço de uma cerveja para um tamanho de copo específico
+   */
+  private getPriceForCupSize(beerId: number, cupSize: CupSize): number | null {
+    try {
+      const result = this.dbService.executeQuery(
+        'SELECT * FROM sales_config WHERE beerId = ?',
+        [beerId]
+      );
+
+      if (result.length === 0) {
+        console.warn(`⚠️ Sem configuração de preço para beerId ${beerId}`);
+        return null;
+      }
+
+      const priceConfig = result[0];
+
+      // Mapeia cupSize para coluna correspondente
+      const priceColumn = cupSize === 300 ? 'price300ml' :
+                         cupSize === 500 ? 'price500ml' :
+                         'price1000ml';
+
+      const price = priceConfig[priceColumn];
+
+      if (price === null || price === undefined) {
+        console.warn(`⚠️ Preço não configurado para ${cupSize}ml (beerId ${beerId})`);
+        return null;
+      }
+
+      return Number(price);
+    } catch (error) {
+      console.error('❌ Erro ao buscar preço:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Atualiza a quantidade de um item no carrinho
+   */
+  updateCartItemQuantity(itemId: string, newQuantity: number): void {
+    if (newQuantity < 1) {
+      this.removeFromCart(itemId);
+      return;
+    }
+
+    this.cartItems.update(items => {
+      return items.map(item => {
+        if (item.id === itemId) {
+          const totalVolume = item.cupSize * newQuantity;
+          const totalPrice = item.unitPrice * newQuantity;
+          return { ...item, quantity: newQuantity, totalVolume, totalPrice };
+        }
+        return item;
+      });
+    });
+  }
+
+  /**
+   * Incrementa a quantidade de um item do carrinho
+   */
+  incrementCartItem(itemId: string): void {
+    const item = this.cartItems().find(i => i.id === itemId);
+    if (!item) return;
+
+    // Valida estoque antes de incrementar
+    const stock = this.dbService.getEventStockByBeerId(item.beerId);
+    if (stock) {
+      const litersInCart = this.cartItems()
+        .filter(i => i.beerId === item.beerId)
+        .reduce((sum, i) => sum + i.totalVolume, 0) / this.ML_TO_LITERS;
+
+      const litersToAdd = item.cupSize / this.ML_TO_LITERS;
+      const totalNeeded = litersInCart + litersToAdd;
+
+      if (totalNeeded > stock.quantidadeLitros) {
+        this.showError(`Estoque insuficiente. Disponível: ${stock.quantidadeLitros.toFixed(1)}L`);
+        return;
+      }
+    }
+
+    this.updateCartItemQuantity(itemId, item.quantity + 1);
+  }
+
+  /**
+   * Decrementa a quantidade de um item do carrinho
+   */
+  decrementCartItem(itemId: string): void {
+    const item = this.cartItems().find(i => i.id === itemId);
+    if (!item) return;
+
+    this.updateCartItemQuantity(itemId, item.quantity - 1);
+  }
+
+  /**
+   * Remove um item do carrinho
+   */
+  removeFromCart(itemId: string): void {
+    this.cartItems.update(items => items.filter(item => item.id !== itemId));
+
+    this.messageService.add({
+      severity: 'info',
+      summary: 'Item Removido',
+      detail: 'Item removido do carrinho',
+      life: 2000
+    });
+  }
+
+  /**
+   * Limpa todo o carrinho
+   */
+  clearCart(): void {
+    this.cartItems.set([]);
+  }
+
+  /**
+   * Verifica se o carrinho tem itens
+   */
+  hasCartItems(): boolean {
+    return this.cartItems().length > 0;
+  }
+
+  /**
+   * Toggle do estado do bottom sheet (expandir/colapsar)
+   */
+  toggleBottomSheet(): void {
+    this.isBottomSheetExpanded.update(expanded => !expanded);
+  }
+
+  // ==================== HANDLER PRINCIPAL DE VENDA ====================
+  /**
+   * Finaliza a venda processando todos os itens do carrinho
+   */
+  finalizeSale(): void {
+    if (!this.hasCartItems()) {
+      this.showWarning('Adicione itens ao carrinho antes de finalizar a venda.');
+      return;
+    }
+
+    // Valida estoque novamente antes de finalizar
+    if (!this.validateCartStock()) {
+      return;
+    }
+
+    try {
+      // Registra cada item do carrinho como uma venda
+      this.cartItems().forEach(item => {
+        const sale: Omit<Sale, 'id'> = {
+          beerId: item.beerId,
+          beerName: item.beerName,
+          cupSize: item.cupSize,
+          quantity: item.quantity,
+          timestamp: new Date().toISOString(),
+          totalVolume: item.totalVolume,
+          comandaId: null
+        };
+
+        this.insertSaleIntoDatabase(sale);
+        this.updateEventStock(sale);
+      });
+
+      // Mensagem de sucesso
+      const totalItems = this.cartItems().reduce((sum, item) => sum + item.quantity, 0);
+      const totalPrice = this.cartTotalPrice();
+      const totalLiters = (this.cartTotalVolume() / this.ML_TO_LITERS).toFixed(1);
+
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Venda Finalizada!',
+        detail: `${totalItems} item(s) vendido(s) - ${totalLiters}L - R$ ${totalPrice.toFixed(2)}`,
+        life: 5000
+      });
+
+      // Limpa carrinho e reseta formulário
+      this.clearCart();
+      this.resetForm();
+
+      console.log('✅ Venda finalizada com sucesso');
+    } catch (error) {
+      this.handleSaleError(error);
+    }
+  }
+
+  /**
+   * Valida estoque para todos os itens do carrinho
+   * Retorna false se algum item não tem estoque suficiente
+   */
+  private validateCartStock(): boolean {
+    for (const item of this.cartItems()) {
+      const stock = this.dbService.getEventStockByBeerId(item.beerId);
+
+      // Se não há controle de estoque, continua
+      if (!stock) continue;
+
+      // Calcula quantos litros deste item precisam
+      const litersNeeded = item.totalVolume / this.ML_TO_LITERS;
+
+      // Verifica se há estoque suficiente
+      if (litersNeeded > stock.quantidadeLitros) {
+        this.showStockError(
+          'Estoque Insuficiente!',
+          `${item.beerName}: necessário ${litersNeeded.toFixed(1)}L, disponível ${stock.quantidadeLitros.toFixed(1)}L.\n\nPor favor, ajuste o carrinho ou reponha o estoque.`
+        );
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  // ==================== MÉTODOS PRIVADOS DE VALIDAÇÃO ====================
   /**
    * Obtém a cerveja selecionada
    * MUDANÇA: Comparação com number agora
    */
   private getSelectedBeer(): BeerType | undefined {
     const { beerId } = this.saleForm.value;
-    
+
     // beerId agora é number
     const selectedBeer = this.beerTypes().find(b => b.id === beerId);
 
@@ -378,53 +662,6 @@ export class SalesFormComponent implements OnInit {
     }
 
     return selectedBeer;
-  }
-
-  /**
-   * Cria o objeto Sale a partir dos dados do formulário
-   * MUDANÇA CRÍTICA: 
-   * - id não é mais gerado manualmente (será AUTOINCREMENT)
-   * - beerId agora é number
-   */
-  private createSaleObject(beer: BeerType): Omit<Sale, 'id'> {
-    const { cupSize, quantity } = this.saleForm.value;
-    const totalVolume = cupSize * quantity;
-
-    // IMPORTANTE: Não incluímos 'id' aqui
-    // O banco vai gerar automaticamente via AUTOINCREMENT
-    return {
-      beerId: beer.id,              // ← number agora (FK para beer_types)
-      beerName: beer.name,
-      cupSize,
-      quantity,
-      timestamp: new Date().toISOString(),
-      totalVolume,
-    };
-  }
-
-  /**
-   * Salva a venda no banco de dados
-   */
-  private saveSale(sale: Omit<Sale, 'id'>): void {
-    try {
-      this.insertSaleIntoDatabase(sale);
-
-      // Obtém o ID gerado pelo banco
-      const insertedId = this.dbService.getLastInsertId();
-      console.log('✅ Venda registrada com ID:', insertedId);
-
-      // Subtrai do estoque do evento (se configurado)
-      this.updateEventStock(sale);
-
-      this.showSuccessMessage({
-        ...sale,
-        id: insertedId
-      } as Sale);
-
-      this.resetForm();
-    } catch (error) {
-      this.handleSaleError(error);
-    }
   }
 
   /**
@@ -557,21 +794,6 @@ export class SalesFormComponent implements OnInit {
 
   // ==================== MÉTODOS DE MENSAGENS ====================
   /**
-   * Exibe mensagem de sucesso após registrar venda
-   */
-  private showSuccessMessage(sale: Sale): void {
-    const totalLiters = (sale.totalVolume / this.ML_TO_LITERS).toFixed(1);
-    const detail = `${sale.quantity}x ${sale.beerName} (${sale.cupSize}ml) - Total: ${totalLiters}L`;
-
-    this.messageService.add({
-      severity: 'success',
-      summary: 'Venda Registrada!',
-      detail,
-      life: 4000
-    });
-  }
-
-  /**
    * Exibe aviso ao usuário
    */
   private showWarning(message: string): void {
@@ -690,9 +912,9 @@ export class SalesFormComponent implements OnInit {
   }
 
   /**
-   * Processa a venda vinculada a uma comanda
+   * Finaliza venda com comanda processando todos os itens do carrinho
    */
-  protected handleSaleWithComanda(): void {
+  protected finalizeWithComanda(): void {
     const comandaNumero = this.selectedComandaNumero();
 
     if (!comandaNumero) {
@@ -700,8 +922,13 @@ export class SalesFormComponent implements OnInit {
       return;
     }
 
-    // Usa o mesmo método validateForm() para garantir consistência
-    if (!this.validateForm()) {
+    if (!this.hasCartItems()) {
+      this.showWarning('Adicione itens ao carrinho antes de finalizar.');
+      return;
+    }
+
+    // Valida estoque novamente antes de finalizar
+    if (!this.validateCartStock()) {
       return;
     }
 
@@ -718,56 +945,41 @@ export class SalesFormComponent implements OnInit {
         this.comandaService.openComanda(comandaNumero);
       }
 
-      // Processar a venda vinculada à comanda
-      this.processSaleWithComanda(comanda.id);
+      // Processar todos os itens do carrinho vinculados à comanda
+      this.cartItems().forEach(item => {
+        const sale: Omit<Sale, 'id'> = {
+          beerId: item.beerId,
+          beerName: item.beerName,
+          cupSize: item.cupSize,
+          quantity: item.quantity,
+          timestamp: new Date().toISOString(),
+          totalVolume: item.totalVolume,
+          comandaId: comanda.id
+        };
 
-      this.closeComandaDialog();
-    } catch (error: any) {
-      this.showError(error.message || 'Erro ao abrir comanda');
-    }
-  }
+        this.insertSaleIntoDatabase(sale);
+        this.updateEventStock(sale);
+      });
 
-  /**
-   * Processa uma venda vinculada a uma comanda específica
-   */
-  private processSaleWithComanda(comandaId: number): void {
-    const { beerId, cupSize, quantity } = this.saleForm.value;
-    const selectedBeer = this.beerTypes().find(b => b.id === beerId);
+      // Mensagem de sucesso
+      const totalItems = this.cartItems().reduce((sum, item) => sum + item.quantity, 0);
+      const totalPrice = this.cartTotalPrice();
 
-    if (!selectedBeer) {
-      this.showError('Cerveja não encontrada');
-      return;
-    }
-
-    const totalVolume = cupSize * quantity;
-    const sale: Omit<Sale, 'id'> = {
-      beerId,
-      beerName: selectedBeer.name,
-      cupSize,
-      quantity,
-      timestamp: new Date().toISOString(),
-      totalVolume,
-      comandaId  // Vincular à comanda
-    };
-
-    try {
-      this.insertSaleIntoDatabase(sale);
-      this.updateEventStock(sale);
-
-      const comanda = this.dbService.getComandaById(comandaId);
-
-      // Exibir mensagem de sucesso
       this.messageService.add({
         severity: 'success',
         summary: 'Venda Registrada',
-        detail: `Venda adicionada à Comanda ${comanda?.numero}! 🍺`,
-        life: 4000
+        detail: `${totalItems} item(s) adicionado(s) à Comanda ${comanda.numero} - R$ ${totalPrice.toFixed(2)}`,
+        life: 5000
       });
 
-      // NÃO resetar o formulário para permitir adicionar mais itens na mesma comanda
-      // this.resetForm();
-    } catch (error) {
-      this.handleSaleError(error);
+      // Limpa carrinho, reseta formulário e fecha modal
+      this.clearCart();
+      this.resetForm();
+      this.closeComandaDialog();
+
+      console.log('✅ Venda com comanda finalizada com sucesso');
+    } catch (error: any) {
+      this.showError(error.message || 'Erro ao processar venda com comanda');
     }
   }
 }

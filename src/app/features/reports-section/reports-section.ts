@@ -493,20 +493,25 @@ export class ReportsSectionComponent implements OnInit {
    * Gera arquivo CSV do relatório atual com encoding UTF-8 BOM
    * Formatado com ponto-e-vírgula (;) como separador de colunas
    * e ponto (.) como separador decimal (compatível com Excel PT-BR)
+   *
+   * VERSÃO 2.0 - Relatório Detalhado:
+   * - Inclui vendas detalhadas por evento com breakdown diário e por usuário
+   * - Inclui vendas sem evento vinculado
+   * - Mantém compatibilidade com seções agregadas existentes
    */
   private generateCSV(): File {
     const report = this.report();
     const csvLines: string[] = [];
 
     // ===========================================
-    // HEADER PRINCIPAL (linhas 1-2)
+    // HEADER PRINCIPAL
     // ===========================================
     csvLines.push('Relatório de Vendas - Black Beer');
     csvLines.push('Data de Geração;' + new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR'));
     csvLines.push(''); // Linha em branco
 
     // ===========================================
-    // RESUMO GERAL (formato tabular)
+    // RESUMO GERAL
     // ===========================================
     const totalRevenue = this.getTotalRevenue();
     csvLines.push('=== RESUMO GERAL ===');
@@ -515,7 +520,7 @@ export class ReportsSectionComponent implements OnInit {
     csvLines.push(''); // Linha em branco
 
     // ===========================================
-    // VENDAS POR TIPO DE CERVEJA (formato tabular)
+    // VENDAS POR TIPO DE CERVEJA
     // ===========================================
     csvLines.push('=== VENDAS POR TIPO DE CERVEJA ===');
     csvLines.push('Cerveja;Quantidade;Volume(Litros);Valor(R$)');
@@ -531,13 +536,12 @@ export class ReportsSectionComponent implements OnInit {
     csvLines.push(''); // Linha em branco
 
     // ===========================================
-    // VENDAS POR TAMANHO DE COPO (formato tabular)
+    // VENDAS POR TAMANHO DE COPO
     // ===========================================
     csvLines.push('=== VENDAS POR TAMANHO DE COPO ===');
     csvLines.push('Tamanho(ml);Quantidade');
 
     if (report.salesByCupSize.length > 0) {
-      // Ordenar por tamanho crescente (300, 500, 1000)
       const sortedSizes = [...report.salesByCupSize].sort((a, b) => a.cupSize - b.cupSize);
       sortedSizes.forEach(size => {
         csvLines.push(`"${size.cupSize}";"${size.count}"`);
@@ -547,6 +551,118 @@ export class ReportsSectionComponent implements OnInit {
     }
 
     csvLines.push(''); // Linha em branco
+
+    // ===========================================
+    // VENDAS DETALHADAS POR EVENTO (NOVO!)
+    // ===========================================
+    csvLines.push('=== VENDAS DETALHADAS POR EVENTO ===');
+    csvLines.push('');
+
+    const start = this.startDate();
+    const end = this.endDate();
+    const salesByEvent = this.dbService.getSalesDetailedByEvent(
+      start ?? undefined,
+      end ?? undefined
+    );
+    const eventTotals = this.dbService.getEventTotals(
+      start ?? undefined,
+      end ?? undefined
+    );
+
+    if (salesByEvent.length > 0) {
+      // Agrupar vendas por evento
+      const groupedByEvent = this.groupByEvent(salesByEvent);
+
+      // Iterar sobre cada evento
+      for (const [eventId, eventSales] of groupedByEvent.entries()) {
+        const firstRecord = eventSales[0];
+
+        // Cabeçalho do evento
+        csvLines.push(`EVENTO: ${firstRecord.nameEvent}`);
+        csvLines.push(`Local: ${firstRecord.localEvent}`);
+        csvLines.push(`Data do Evento: ${this.formatDateForCSV(firstRecord.dataEvent)}`);
+        csvLines.push('');
+
+        // Tabela de vendas diárias
+        csvLines.push('Data;Usuário;Nº Vendas;Volume (Litros);Receita (R$)');
+
+        eventSales.forEach(sale => {
+          csvLines.push(
+            `${this.formatDateForCSV(sale.saleDate)};` +
+            `${sale.username};` +
+            `"${sale.salesCount}";` +
+            `"${sale.totalLiters.toFixed(2)}";` +
+            `"${sale.totalRevenue.toFixed(2)}"`
+          );
+        });
+
+        // Totais do evento
+        const totals = eventTotals.find(t => t.eventId === eventId);
+        if (totals) {
+          csvLines.push('');
+          csvLines.push('TOTAL DO EVENTO;;;');
+          csvLines.push(';Nº Vendas;Volume (Litros);Receita (R$)');
+          csvLines.push(
+            `Total;"${totals.salesCount}";` +
+            `"${totals.totalLiters.toFixed(2)}";` +
+            `"${totals.totalRevenue.toFixed(2)}"`
+          );
+        }
+
+        csvLines.push('');
+        csvLines.push('---');
+        csvLines.push('');
+      }
+    } else {
+      csvLines.push('Nenhuma venda vinculada a eventos no período.');
+      csvLines.push('');
+    }
+
+    // ===========================================
+    // VENDAS SEM EVENTO VINCULADO (NOVO!)
+    // ===========================================
+    csvLines.push('=== VENDAS SEM EVENTO VINCULADO ===');
+    csvLines.push('');
+
+    const salesWithoutEvent = this.dbService.getSalesDetailedWithoutEvent(
+      start ?? undefined,
+      end ?? undefined
+    );
+
+    if (salesWithoutEvent.length > 0) {
+      csvLines.push('Data;Usuário;Nº Vendas;Volume (Litros);Receita (R$)');
+
+      let totalSales = 0;
+      let totalLiters = 0;
+      let totalRevenue = 0;
+
+      salesWithoutEvent.forEach(sale => {
+        csvLines.push(
+          `${this.formatDateForCSV(sale.saleDate)};` +
+          `${sale.username};` +
+          `"${sale.salesCount}";` +
+          `"${sale.totalLiters.toFixed(2)}";` +
+          `"${sale.totalRevenue.toFixed(2)}"`
+        );
+
+        totalSales += sale.salesCount;
+        totalLiters += sale.totalLiters;
+        totalRevenue += sale.totalRevenue;
+      });
+
+      csvLines.push('');
+      csvLines.push('TOTAL SEM EVENTO;;;');
+      csvLines.push(';Nº Vendas;Volume (Litros);Receita (R$)');
+      csvLines.push(
+        `Total;"${totalSales}";` +
+        `"${totalLiters.toFixed(2)}";` +
+        `"${totalRevenue.toFixed(2)}"`
+      );
+    } else {
+      csvLines.push('Nenhuma venda sem evento registrada no período.');
+    }
+
+    csvLines.push('');
 
     // ===========================================
     // PERÍODO DO RELATÓRIO
@@ -563,22 +679,18 @@ export class ReportsSectionComponent implements OnInit {
     }
 
     csvLines.push(''); // Linha em branco
-    csvLines.push('Relatório gerado automaticamente pelo sistema Black Beer');
+    csvLines.push('Relatório gerado automaticamente pelo sistema Black Beer v2.0');
 
     // ===========================================
     // CONVERTER PARA BLOB COM UTF-8 BOM
     // ===========================================
-
-    // UTF-8 BOM (Byte Order Mark) para Excel reconhecer encoding correto
     const BOM = '\uFEFF';
-    const csvContent = BOM + csvLines.join('\r\n'); // Windows line endings
+    const csvContent = BOM + csvLines.join('\r\n');
 
-    // Criar blob com charset UTF-8
     const blob = new Blob([csvContent], {
       type: 'text/csv;charset=utf-8;'
     });
 
-    // Nome do arquivo com data
     const fileName = `relatorio-black-beer-${new Date().toISOString().split('T')[0]}.csv`;
 
     return new File([blob], fileName, {
@@ -724,6 +836,43 @@ export class ReportsSectionComponent implements OnInit {
       detail: message,
       life: 5000
     });
+  }
+
+  // ==================== MÉTODOS AUXILIARES PARA CSV ====================
+
+  /**
+   * Agrupa vendas por eventId
+   * @param sales Array de vendas detalhadas
+   * @returns Map com vendas agrupadas por evento
+   */
+  private groupByEvent(sales: any[]): Map<number, any[]> {
+    const grouped = new Map<number, any[]>();
+
+    sales.forEach(sale => {
+      const eventId = sale.eventId;
+      if (!grouped.has(eventId)) {
+        grouped.set(eventId, []);
+      }
+      grouped.get(eventId)!.push(sale);
+    });
+
+    return grouped;
+  }
+
+  /**
+   * Formata data ISO para formato brasileiro
+   * @param isoDate Data em formato ISO string
+   * @returns Data formatada em dd/MM/yyyy
+   */
+  private formatDateForCSV(isoDate: string): string {
+    if (!isoDate) return 'N/A';
+
+    try {
+      const date = new Date(isoDate);
+      return date.toLocaleDateString('pt-BR');
+    } catch {
+      return isoDate;
+    }
   }
 
   // ==================== MÉTODOS PARA EMAILS SALVOS ====================

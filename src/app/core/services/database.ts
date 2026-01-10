@@ -913,6 +913,201 @@ export class DatabaseService {
   }
 
   /**
+   * Retorna vendas detalhadas agrupadas por evento, data e usuário
+   * Usado para geração de relatório CSV detalhado
+   *
+   * @param startDate Data inicial do filtro (opcional)
+   * @param endDate Data final do filtro (opcional)
+   * @returns Array de vendas diárias com informações de evento e usuário
+   */
+  public getSalesDetailedByEvent(startDate?: Date, endDate?: Date): any[] {
+    if (!this.db) return [];
+
+    let whereClause = 'WHERE s.eventId IS NOT NULL';
+    const params: any[] = [];
+
+    // Filtro de data inicial
+    if (startDate) {
+      whereClause += ' AND s.timestamp >= ?';
+      params.push(startDate.toISOString());
+    }
+
+    // Filtro de data final
+    if (endDate) {
+      const endOfDay = new Date(endDate);
+      endOfDay.setDate(endOfDay.getDate() + 1);
+      endOfDay.setSeconds(endOfDay.getSeconds() - 1);
+      whereClause += ' AND s.timestamp <= ?';
+      params.push(endOfDay.toISOString());
+    }
+
+    const query = `
+      SELECT
+        e.id as eventId,
+        e.nameEvent,
+        e.localEvent,
+        e.dataEvent,
+        DATE(s.timestamp) as saleDate,
+        COALESCE(u.username, 'Usuário Desconhecido') as username,
+        COUNT(s.id) as salesCount,
+        SUM(s.quantity) as totalQuantity,
+        COALESCE(SUM(s.totalVolume) / 1000.0, 0) as totalLiters,
+        COALESCE(SUM(
+          CASE
+            WHEN s.cupSize = 300 THEN s.quantity * COALESCE(sc.price300ml, 0)
+            WHEN s.cupSize = 500 THEN s.quantity * COALESCE(sc.price500ml, 0)
+            WHEN s.cupSize = 1000 THEN s.quantity * COALESCE(sc.price1000ml, 0)
+            ELSE 0
+          END
+        ), 0) as totalRevenue
+      FROM sales s
+      INNER JOIN events e ON s.eventId = e.id
+      LEFT JOIN users u ON s.userId = u.id
+      LEFT JOIN sales_config sc ON s.beerId = sc.beerId AND (sc.eventId = s.eventId OR sc.eventId IS NULL)
+      ${whereClause}
+      GROUP BY e.id, e.nameEvent, e.localEvent, e.dataEvent, DATE(s.timestamp), username
+      ORDER BY e.dataEvent DESC, saleDate DESC, username
+    `;
+
+    return this.executeQuery(query, params).map(row => ({
+      eventId: Number(row.eventId),
+      nameEvent: row.nameEvent,
+      localEvent: row.localEvent,
+      dataEvent: row.dataEvent,
+      saleDate: row.saleDate,
+      username: row.username,
+      salesCount: Number(row.salesCount),
+      totalQuantity: Number(row.totalQuantity),
+      totalLiters: Number(row.totalLiters),
+      totalRevenue: Number(row.totalRevenue)
+    }));
+  }
+
+  /**
+   * Retorna vendas detalhadas SEM evento vinculado, agrupadas por data e usuário
+   * Usado para geração de relatório CSV detalhado
+   *
+   * @param startDate Data inicial do filtro (opcional)
+   * @param endDate Data final do filtro (opcional)
+   * @returns Array de vendas diárias sem evento
+   */
+  public getSalesDetailedWithoutEvent(startDate?: Date, endDate?: Date): any[] {
+    if (!this.db) return [];
+
+    let whereClause = 'WHERE s.eventId IS NULL';
+    const params: any[] = [];
+
+    // Filtro de data inicial
+    if (startDate) {
+      whereClause += ' AND s.timestamp >= ?';
+      params.push(startDate.toISOString());
+    }
+
+    // Filtro de data final
+    if (endDate) {
+      const endOfDay = new Date(endDate);
+      endOfDay.setDate(endOfDay.getDate() + 1);
+      endOfDay.setSeconds(endOfDay.getSeconds() - 1);
+      whereClause += ' AND s.timestamp <= ?';
+      params.push(endOfDay.toISOString());
+    }
+
+    const query = `
+      SELECT
+        DATE(s.timestamp) as saleDate,
+        COALESCE(u.username, 'Usuário Desconhecido') as username,
+        COUNT(s.id) as salesCount,
+        SUM(s.quantity) as totalQuantity,
+        COALESCE(SUM(s.totalVolume) / 1000.0, 0) as totalLiters,
+        COALESCE(SUM(
+          CASE
+            WHEN s.cupSize = 300 THEN s.quantity * COALESCE(sc.price300ml, 0)
+            WHEN s.cupSize = 500 THEN s.quantity * COALESCE(sc.price500ml, 0)
+            WHEN s.cupSize = 1000 THEN s.quantity * COALESCE(sc.price1000ml, 0)
+            ELSE 0
+          END
+        ), 0) as totalRevenue
+      FROM sales s
+      LEFT JOIN users u ON s.userId = u.id
+      LEFT JOIN sales_config sc ON s.beerId = sc.beerId AND sc.eventId IS NULL
+      ${whereClause}
+      GROUP BY DATE(s.timestamp), username
+      ORDER BY saleDate DESC, username
+    `;
+
+    return this.executeQuery(query, params).map(row => ({
+      saleDate: row.saleDate,
+      username: row.username,
+      salesCount: Number(row.salesCount),
+      totalQuantity: Number(row.totalQuantity),
+      totalLiters: Number(row.totalLiters),
+      totalRevenue: Number(row.totalRevenue)
+    }));
+  }
+
+  /**
+   * Retorna totais por evento
+   * Usado para exibir totalizadores no relatório CSV
+   *
+   * @param startDate Data inicial do filtro (opcional)
+   * @param endDate Data final do filtro (opcional)
+   * @returns Array de totais por evento
+   */
+  public getEventTotals(startDate?: Date, endDate?: Date): any[] {
+    if (!this.db) return [];
+
+    let whereClause = 'WHERE s.eventId IS NOT NULL';
+    const params: any[] = [];
+
+    // Filtro de data inicial
+    if (startDate) {
+      whereClause += ' AND s.timestamp >= ?';
+      params.push(startDate.toISOString());
+    }
+
+    // Filtro de data final
+    if (endDate) {
+      const endOfDay = new Date(endDate);
+      endOfDay.setDate(endOfDay.getDate() + 1);
+      endOfDay.setSeconds(endOfDay.getSeconds() - 1);
+      whereClause += ' AND s.timestamp <= ?';
+      params.push(endOfDay.toISOString());
+    }
+
+    const query = `
+      SELECT
+        e.id as eventId,
+        e.nameEvent,
+        COUNT(s.id) as salesCount,
+        SUM(s.quantity) as totalQuantity,
+        COALESCE(SUM(s.totalVolume) / 1000.0, 0) as totalLiters,
+        COALESCE(SUM(
+          CASE
+            WHEN s.cupSize = 300 THEN s.quantity * COALESCE(sc.price300ml, 0)
+            WHEN s.cupSize = 500 THEN s.quantity * COALESCE(sc.price500ml, 0)
+            WHEN s.cupSize = 1000 THEN s.quantity * COALESCE(sc.price1000ml, 0)
+            ELSE 0
+          END
+        ), 0) as totalRevenue
+      FROM sales s
+      INNER JOIN events e ON s.eventId = e.id
+      LEFT JOIN sales_config sc ON s.beerId = sc.beerId AND (sc.eventId = s.eventId OR sc.eventId IS NULL)
+      ${whereClause}
+      GROUP BY e.id, e.nameEvent
+      ORDER BY e.dataEvent DESC
+    `;
+
+    return this.executeQuery(query, params).map(row => ({
+      eventId: Number(row.eventId),
+      nameEvent: row.nameEvent,
+      salesCount: Number(row.salesCount),
+      totalQuantity: Number(row.totalQuantity),
+      totalLiters: Number(row.totalLiters),
+      totalRevenue: Number(row.totalRevenue)
+    }));
+  }
+
+  /**
    * Obtém o último ID inserido (útil após INSERT)
    * @returns ID do último registro inserido
    */

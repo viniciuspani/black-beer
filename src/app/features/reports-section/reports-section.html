@@ -21,11 +21,49 @@
       <!-- ==================== FILTROS DE PERÍODO ==================== -->
       <div class="filters-section">
 
-        <!-- Filtros Rápidos -->
+        <!-- Filtro por Evento -->
+        <div class="filters-quick-card">
+          <h4 class="filters-subtitle">
+            <i class="pi pi-calendar"></i>
+            Filtrar por Evento
+          </h4>
+
+          <div class="filters-grid">
+            <button
+              type="button"
+              class="filter-button"
+              [class.filter-button-active]="selectedEventId() === null"
+              (click)="setEventFilter(null)">
+              <i class="pi pi-globe"></i>
+              <span>Todos os Eventos</span>
+            </button>
+
+            @for (event of availableEvents(); track event.id) {
+              <button
+                type="button"
+                class="filter-button"
+                [class.filter-button-active]="selectedEventId() === event.id"
+                (click)="setEventFilter(event.id)">
+                <i class="pi pi-calendar-plus"></i>
+                <span>{{ event.nameEvent }}</span>
+              </button>
+            }
+          </div>
+
+          <!-- Indicador de Filtro de Evento Ativo -->
+          @if (selectedEventId() !== null) {
+            <div class="filter-active-indicator">
+              <i class="pi pi-check-circle"></i>
+              <span>Evento selecionado: {{ getSelectedEventName() }}</span>
+            </div>
+          }
+        </div>
+
+        <!-- Filtros Rápidos de Período -->
         <div class="filters-quick-card">
           <h4 class="filters-subtitle">
             <i class="pi pi-filter"></i>
-            Filtros Rápidos
+            Filtros Rápidos de Período
           </h4>
 
           <div class="filters-grid">

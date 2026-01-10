@@ -1,5 +1,5 @@
 // src/app/features/settings-sales/settings-sales.ts
-import { Component, OnInit, OnDestroy, inject, signal, effect } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -11,11 +11,14 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
+import { SelectButtonModule } from 'primeng/selectbutton';
 
 // App
 import { BeerType } from '../../core/models/beer.model';
 import { DatabaseService } from '../../core/services/database';
 import { TabRefreshService, SettingsSubTab } from '../../core/services/tab-refresh.service';
+import { EventService } from '../../core/services/event.service';
+import { Event } from '../../core/models/event.model';
 
 interface BeerStock {
   beerId: number;
@@ -54,7 +57,8 @@ interface BeerPrice {
     InputNumberModule,
     ToastModule,
     TagModule,
-    TooltipModule
+    TooltipModule,
+    SelectButtonModule
   ],
   providers: [MessageService],
   templateUrl: './settings-sales.html',
@@ -63,6 +67,7 @@ interface BeerPrice {
 export class SettingsSalesComponent implements OnInit, OnDestroy {
   // ==================== INJEÇÃO DE DEPENDÊNCIAS ====================
   private readonly dbService = inject(DatabaseService);
+  private readonly eventService = inject(EventService);
   private readonly messageService = inject(MessageService);
   private readonly tabRefreshService = inject(TabRefreshService);
 
@@ -74,6 +79,10 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
   readonly originalMinLiters = signal<number>(5.0);
   readonly stockAlerts = signal<any[]>([]);
   readonly isSaving = signal<boolean>(false);
+
+  // Event management signals
+  readonly selectedEventId = signal<number | null>(null);
+  readonly availableEvents = computed(() => this.eventService.activeEvents());
 
   // ==================== CONSTANTES ====================
   private readonly DEFAULT_MIN_LITERS = 5.0;
@@ -95,7 +104,10 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
   }
 
   // ==================== LIFECYCLE HOOKS ====================
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
+    // Carrega eventos disponíveis
+    await this.eventService.loadEvents();
+
     if (this.dbService.isDbReady()) {
       this.loadData();
     }
@@ -111,6 +123,17 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
    */
   public refreshData(): void {
     console.log('🔄 Atualizando dados de settings-sales...');
+    this.loadData();
+  }
+
+  // ==================== EVENT MANAGEMENT ====================
+  /**
+   * Callback quando o evento selecionado muda
+   * Recarrega os dados filtrados pelo evento
+   */
+  onEventChange(eventId: number | null): void {
+    this.selectedEventId.set(eventId);
+    console.log('📅 Evento alterado:', eventId || 'Sem evento (geral)');
     this.loadData();
   }
 
@@ -156,8 +179,9 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
    */
   private loadBeerStocks(beers: BeerType[]): void {
     try {
+      const eventId = this.selectedEventId();
       const stocks: BeerStock[] = beers.map(beer => {
-        const eventStock = this.dbService.getEventStockByBeerId(beer.id);
+        const eventStock = this.dbService.getEventStockByBeerId(beer.id, eventId);
 
         // Se não há registro no banco, não há controle ativo
         if (!eventStock) {
@@ -206,8 +230,9 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
    */
   private loadBeerPrices(beers: BeerType[]): void {
     try {
+      const eventId = this.selectedEventId();
       const prices: BeerPrice[] = beers.map(beer => {
-        const salesConfig = this.dbService.getSalesConfigByBeerId(beer.id);
+        const salesConfig = this.dbService.getSalesConfigByBeerId(beer.id, eventId);
         const price300ml = salesConfig?.price300ml || 0;
         const price500ml = salesConfig?.price500ml || 0;
         const price1000ml = salesConfig?.price1000ml || 0;
@@ -271,11 +296,13 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
    */
   saveStockForBeer(stock: BeerStock): void {
     try {
+      const eventId = this.selectedEventId();
       this.dbService.setEventStock(
         stock.beerId,
         stock.beerName,
         stock.quantidadeLitros,
-        stock.minLitersAlert
+        stock.minLitersAlert,
+        eventId
       );
 
       // Atualiza valores originais
@@ -302,6 +329,7 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
     let savedCount = 0;
 
     try {
+      const eventId = this.selectedEventId();
       this.beerStocks().forEach(stock => {
         const hasChanges =
           stock.quantidadeLitros !== stock.originalQuantity ||
@@ -312,7 +340,8 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
             stock.beerId,
             stock.beerName,
             stock.quantidadeLitros,
-            stock.minLitersAlert
+            stock.minLitersAlert,
+            eventId
           );
           savedCount++;
         }
@@ -367,12 +396,14 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
    */
   savePriceForBeer(price: BeerPrice): void {
     try {
+      const eventId = this.selectedEventId();
       this.dbService.setSalesConfig(
         price.beerId,
         price.beerName,
         price.price300ml,
         price.price500ml,
-        price.price1000ml
+        price.price1000ml,
+        eventId
       );
 
       // Atualiza valor original
@@ -403,6 +434,7 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
     let savedCount = 0;
 
     try {
+      const eventId = this.selectedEventId();
       this.beerPrices().forEach(price => {
         const hasChanges =
           price.price300ml !== price.originalPrice300ml ||
@@ -415,7 +447,8 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
             price.beerName,
             price.price300ml,
             price.price500ml,
-            price.price1000ml
+            price.price1000ml,
+            eventId
           );
           savedCount++;
         }

@@ -5,8 +5,8 @@ import { BeerType, Sale } from '../models/beer.model';
 import { FullReport, SalesSummary, SalesByCupSize, SalesByBeerType } from '../models/report.model';
 import { isPlatformBrowser } from '@angular/common';
 
-const DB_STORAGE_KEY = 'black_beer_sqlite_db_v7'; // v7 para minLitersAlert individual
-const DB_VERSION = 7; // Versionamento do schema
+const DB_STORAGE_KEY = 'black_beer_sqlite_db_v9'; // v9 para gestão de eventos
+const DB_VERSION = 9; // Versionamento do schema
 
 /**
  * Constantes para validação de emails
@@ -61,32 +61,54 @@ export class DatabaseService {
         locateFile: (file: string) => `assets/${file}`
       });
 
-      // Tentar carregar de v6 primeiro
+      // Tentar carregar banco existente V9
       let savedDb = localStorage.getItem(DB_STORAGE_KEY);
 
-      // Se não encontrou v7, tentar v6 para migração
+      // Se não encontrou v9, tentar v6 para migração
       if (!savedDb) {
         const oldDbKeyV6 = 'black_beer_sqlite_db_v6';
         savedDb = localStorage.getItem(oldDbKeyV6);
 
         if (savedDb) {
-          console.log('🔄 Migrando banco de dados de V6 para V7...');
+          console.log('🔄 Migrando banco de dados de V6 para versão atual...');
           const dbArray = this.stringToUint8Array(savedDb);
           this.db = new this.SQL.Database(dbArray);
           this.migrateFromV6ToV7();
+          this.migrateFromV7ToV8();
+          this.migrateFromV8ToV9();
           localStorage.removeItem(oldDbKeyV6);
           this.persist();
-          console.log('✅ Migração V6 → V7 concluída');
+          console.log('✅ Migração concluída para V9');
         } else {
           // Não há DB, criar novo
-          console.log('🔄 Criando novo banco de dados (versão 7)...');
+          console.log('🔄 Criando novo banco de dados (versão 9)...');
           this.createNewDatabase();
         }
       } else {
-        // Carrega banco existente V7
+        // Carrega banco existente e verifica versão
         const dbArray = this.stringToUint8Array(savedDb);
         this.db = new this.SQL.Database(dbArray);
-        console.log('✅ Banco de dados V7 carregado');
+
+        const currentVersion = this.getCurrentDbVersion();
+        console.log(`📦 Banco de dados carregado. Versão atual: ${currentVersion}, Versão esperada: ${DB_VERSION}`);
+
+        // Executar migrações incrementais se necessário
+        if (currentVersion < DB_VERSION) {
+          console.log(`🔄 Iniciando migrações de V${currentVersion} para V${DB_VERSION}...`);
+
+          if (currentVersion < 8) {
+            this.migrateFromV7ToV8();
+          }
+          if (currentVersion < 9) {
+            this.migrateFromV8ToV9();
+          }
+
+          this.persist();
+          console.log(`✅ Migrações concluídas. Banco agora está na V${DB_VERSION}`);
+        }
+
+        // Validação adicional do schema (detecta problemas)
+        await this.validateAndFixSchema();
       }
 
       this.isDbReady.set(true);
@@ -96,18 +118,28 @@ export class DatabaseService {
   }
 
   /**
-   * Cria um novo banco de dados do zero com schema v6
+   * Cria um novo banco de dados do zero com schema v9
    */
   private createNewDatabase(): void {
     this.db = new this.SQL.Database();
-    this.createSchemaV6();
+    this.createSchemaV9();
     this.seedInitialData();
     this.setStoredVersion(DB_VERSION);
     this.persist();
   }
 
   /**
-   * Cria o schema do banco de dados versão 6
+   * Cria o schema do banco de dados versão 9
+   *
+   * MUDANÇAS V9:
+   * - events: Nova tabela para gerenciamento de eventos de venda
+   * - event_sale.eventId: Nova coluna opcional para vincular estoque a eventos
+   * - sales_config.eventId: Nova coluna opcional para vincular preços a eventos
+   * - sales.eventId: Nova coluna opcional para vincular vendas a eventos
+   * - UNIQUE constraints atualizadas: (beerId, eventId) para permitir configurações por evento
+   *
+   * MUDANÇAS V8:
+   * - sales.userId: Nova coluna obrigatória para rastrear qual usuário fez a venda
    *
    * MUDANÇAS V6:
    * - comandas: Nova tabela para gerenciamento de comandas (tabs)
@@ -130,7 +162,7 @@ export class DatabaseService {
     * - Mínimo: 1 email, Máximo: 10 emails
    * - client_config: Tabela para white-label (logo e nome da empresa)
    */
-  private createSchemaV6(): void {
+  private createSchemaV9(): void {
     if (!this.db) return;
 
    const schema = `
@@ -142,7 +174,8 @@ export class DatabaseService {
         description TEXT
       );
 
-      -- Tabela de vendas com IDs INTEGER e FK correta
+      -- Tabela de vendas com IDs INTEGER e FK correta (atualizada V9)
+      -- V9: Adicionado eventId opcional para vincular vendas a eventos
       CREATE TABLE IF NOT EXISTS sales (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         beerId INTEGER NOT NULL,
@@ -152,8 +185,12 @@ export class DatabaseService {
         timestamp TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         totalVolume REAL NOT NULL CHECK(totalVolume > 0),
         comandaId INTEGER,
+        userId INTEGER NOT NULL,
+        eventId INTEGER,
         FOREIGN KEY (beerId) REFERENCES beer_types(id) ON DELETE CASCADE,
-        FOREIGN KEY (comandaId) REFERENCES comandas(id) ON DELETE SET NULL
+        FOREIGN KEY (comandaId) REFERENCES comandas(id) ON DELETE SET NULL,
+        FOREIGN KEY (userId) REFERENCES users(id),
+        FOREIGN KEY (eventId) REFERENCES events(id) ON DELETE SET NULL
       );
 
       -- Índice para melhorar performance em queries por data
@@ -164,6 +201,12 @@ export class DatabaseService {
 
       -- Índice para melhorar performance em queries por comanda
       CREATE INDEX IF NOT EXISTS idx_sales_comandaId ON sales(comandaId);
+
+      -- Índice para melhorar performance em queries por usuário
+      CREATE INDEX IF NOT EXISTS idx_sales_userId ON sales(userId);
+
+      -- Índice para melhorar performance em queries por evento
+      CREATE INDEX IF NOT EXISTS idx_sales_eventId ON sales(eventId);
 
       -- Tabela de configurações reestruturada
       CREATE TABLE IF NOT EXISTS settings (
@@ -186,6 +229,23 @@ export class DatabaseService {
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 
+      -- Tabela de eventos (V9)
+      -- Gerencia eventos de venda com configurações isoladas de estoque e preços
+      CREATE TABLE IF NOT EXISTS events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nameEvent TEXT NOT NULL,
+        localEvent TEXT NOT NULL,
+        dataEvent TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        contactEvent TEXT,
+        nameContactEvent TEXT,
+        status TEXT NOT NULL CHECK(status IN ('planejamento', 'ativo', 'finalizado')) DEFAULT 'planejamento',
+        createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_events_status ON events(status);
+      CREATE INDEX IF NOT EXISTS idx_events_dataEvent ON events(dataEvent);
+
       -- Tabela de configurações do cliente (white-label)
       CREATE TABLE IF NOT EXISTS client_config (
         id INTEGER PRIMARY KEY CHECK(id = 1),
@@ -196,23 +256,29 @@ export class DatabaseService {
         updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- Tabela de estoque por evento (V4 - atualizada V7)
-      -- Armazena a quantidade de litros disponível de cada cerveja no evento atual
+      -- Tabela de estoque por evento (V4 - atualizada V7 - atualizada V9)
+      -- Armazena a quantidade de litros disponível de cada cerveja por evento
       -- V7: Adicionado minLitersAlert para limite individual por cerveja
+      -- V9: Adicionado eventId (NULL = estoque geral sem evento específico)
       CREATE TABLE IF NOT EXISTS event_sale (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         beerId INTEGER NOT NULL,
         beerName TEXT NOT NULL,
         quantidadeLitros REAL NOT NULL DEFAULT 0 CHECK(quantidadeLitros >= 0),
         minLitersAlert REAL DEFAULT 5.0 CHECK(minLitersAlert >= 0),
+        eventId INTEGER,
         createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (beerId) REFERENCES beer_types(id) ON DELETE CASCADE,
-        UNIQUE(beerId)
+        FOREIGN KEY (eventId) REFERENCES events(id) ON DELETE CASCADE,
+        UNIQUE(beerId, eventId)
       );
 
       -- Índice para melhorar performance em queries por cerveja
       CREATE INDEX IF NOT EXISTS idx_event_sale_beerId ON event_sale(beerId);
+
+      -- Índice para melhorar performance em queries por evento
+      CREATE INDEX IF NOT EXISTS idx_event_sale_eventId ON event_sale(eventId);
 
       -- Tabela de configuração de alertas de estoque (V4)
       -- Armazena o limite mínimo de litros para emitir alerta
@@ -225,8 +291,9 @@ export class DatabaseService {
       -- Insere configuração padrão de alerta (5 litros)
       INSERT OR IGNORE INTO stock_alert_config (id, minLiters) VALUES (1, 5.0);
 
-      -- Tabela de configuração de preços por cerveja (V5)
-      -- Armazena o preço de cada cerveja por tamanho de copo (300ml, 500ml, 1000ml)
+      -- Tabela de configuração de preços por cerveja (V5 - atualizada V9)
+      -- Armazena o preço de cada cerveja por tamanho de copo e por evento
+      -- V9: Adicionado eventId (NULL = preços gerais sem evento específico)
       CREATE TABLE IF NOT EXISTS sales_config (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         beerId INTEGER NOT NULL,
@@ -234,14 +301,19 @@ export class DatabaseService {
         price300ml REAL NOT NULL DEFAULT 0 CHECK(price300ml >= 0),
         price500ml REAL NOT NULL DEFAULT 0 CHECK(price500ml >= 0),
         price1000ml REAL NOT NULL DEFAULT 0 CHECK(price1000ml >= 0),
+        eventId INTEGER,
         createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (beerId) REFERENCES beer_types(id) ON DELETE CASCADE,
-        UNIQUE(beerId)
+        FOREIGN KEY (eventId) REFERENCES events(id) ON DELETE CASCADE,
+        UNIQUE(beerId, eventId)
       );
 
       -- Índice para melhorar performance em queries por cerveja
       CREATE INDEX IF NOT EXISTS idx_sales_config_beerId ON sales_config(beerId);
+
+      -- Índice para melhorar performance em queries por evento
+      CREATE INDEX IF NOT EXISTS idx_sales_config_eventId ON sales_config(eventId);
 
       -- Tabela de comandas (V6)
       -- Armazena o estado de cada comanda (disponível, em uso, aguardando pagamento)
@@ -270,7 +342,7 @@ export class DatabaseService {
     `;
 
     this.db.exec(schema);
-    console.log('✅ Schema V6 criado com sucesso');
+    console.log('✅ Schema V9 criado com sucesso');
     // Seed de comandas iniciais
     this.seedInitialComandas(10);
     // Cria admin padrão
@@ -400,12 +472,147 @@ export class DatabaseService {
 
       // Atualizar versão do banco
       this.db.exec('DELETE FROM db_version');
-      this.db.exec(`INSERT INTO db_version (version) VALUES (${DB_VERSION})`);
+      this.db.exec(`INSERT INTO db_version (version) VALUES (7)`);
 
       console.log('✅ Migração V6 → V7 concluída com sucesso');
     } catch (error) {
       console.error('❌ Erro na migração V6 → V7:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Migração V7 → V8
+   * Adiciona coluna userId na tabela sales
+   */
+  private migrateFromV7ToV8(): void {
+    if (!this.db) return;
+
+    console.log('🔄 Iniciando migração V7 → V8...');
+
+    try {
+      // Adicionar coluna userId na tabela sales
+      try {
+        // Primeiro, adicionar a coluna como nullable
+        this.db.exec('ALTER TABLE sales ADD COLUMN userId INTEGER');
+        console.log('✅ Coluna userId adicionada à tabela sales');
+
+        // Atualizar todas as vendas existentes com userId = 1 (admin padrão)
+        this.db.exec('UPDATE sales SET userId = 1 WHERE userId IS NULL');
+        console.log('✅ Vendas existentes associadas ao usuário admin (id=1)');
+      } catch (error) {
+        // Coluna já existe, ignorar erro
+        console.log('ℹ️ Coluna userId já existe');
+      }
+
+      // Criar índice para melhorar performance
+      try {
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_sales_userId ON sales(userId)');
+      } catch (error) {
+        console.log('ℹ️ Índice idx_sales_userId já existe');
+      }
+
+      // Atualizar versão do banco
+      this.db.exec('DELETE FROM db_version');
+      this.db.exec(`INSERT INTO db_version (version) VALUES (8)`);
+
+      console.log('✅ Migração V7 → V8 concluída com sucesso');
+    } catch (error) {
+      console.error('❌ Erro na migração V7 → V8:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Migração V8 → V9
+   * Adiciona tabela events e coluna eventId em sales, sales_config e event_sale
+   */
+  private migrateFromV8ToV9(): void {
+    if (!this.db) return;
+
+    console.log('🔄 Iniciando migração V8 → V9...');
+
+    try {
+      // 1. Criar tabela events
+      try {
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nameEvent TEXT NOT NULL UNIQUE,
+            localEvent TEXT NOT NULL,
+            dataEvent TEXT NOT NULL,
+            contactEvent TEXT,
+            nameContactEvent TEXT,
+            status TEXT NOT NULL CHECK(status IN ('planejamento', 'ativo', 'finalizado')) DEFAULT 'planejamento',
+            createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        console.log('✅ Tabela events criada');
+      } catch (error) {
+        console.log('ℹ️ Tabela events já existe');
+      }
+
+      // 2. Adicionar coluna eventId na tabela sales
+      try {
+        this.db.exec('ALTER TABLE sales ADD COLUMN eventId INTEGER');
+        console.log('✅ Coluna eventId adicionada à tabela sales');
+      } catch (error) {
+        console.log('ℹ️ Coluna eventId já existe na tabela sales');
+      }
+
+      // 3. Adicionar coluna eventId na tabela sales_config
+      try {
+        this.db.exec('ALTER TABLE sales_config ADD COLUMN eventId INTEGER');
+        console.log('✅ Coluna eventId adicionada à tabela sales_config');
+      } catch (error) {
+        console.log('ℹ️ Coluna eventId já existe na tabela sales_config');
+      }
+
+      // 4. Adicionar coluna eventId na tabela event_sale
+      try {
+        this.db.exec('ALTER TABLE event_sale ADD COLUMN eventId INTEGER');
+        console.log('✅ Coluna eventId adicionada à tabela event_sale');
+      } catch (error) {
+        console.log('ℹ️ Coluna eventId já existe na tabela event_sale');
+      }
+
+      // 5. Criar índices para melhorar performance
+      try {
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_sales_eventId ON sales(eventId)');
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_sales_config_eventId ON sales_config(eventId)');
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_event_sale_eventId ON event_sale(eventId)');
+        console.log('✅ Índices de eventId criados');
+      } catch (error) {
+        console.log('ℹ️ Índices de eventId já existem');
+      }
+
+      // Atualizar versão do banco
+      this.db.exec('DELETE FROM db_version');
+      this.db.exec(`INSERT INTO db_version (version) VALUES (9)`);
+
+      console.log('✅ Migração V8 → V9 concluída com sucesso');
+    } catch (error) {
+      console.error('❌ Erro na migração V8 → V9:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtém a versão atual do banco de dados
+   */
+  private getCurrentDbVersion(): number {
+    if (!this.db) return 0;
+
+    try {
+      const result = this.db.exec('SELECT version FROM db_version LIMIT 1');
+      if (result.length > 0 && result[0].values.length > 0) {
+        return Number(result[0].values[0][0]);
+      }
+      return 0;
+    } catch (error) {
+      // Tabela db_version não existe, versão muito antiga
+      console.warn('⚠️ Tabela db_version não encontrada, assumindo versão 0');
+      return 0;
     }
   }
 
@@ -588,7 +795,7 @@ export class DatabaseService {
    * @param endDate Data final do filtro (opcional)
    * @returns Relatório completo com resumo e dados agregados
    */
-  public getFullReport(startDate?: Date, endDate?: Date): FullReport {
+  public getFullReport(startDate?: Date, endDate?: Date, eventId?: number): FullReport {
     if (!this.db) {
       return {
         summary: { totalSales: 0, totalVolumeLiters: 0 },
@@ -597,49 +804,67 @@ export class DatabaseService {
       };
     }
 
-    let whereClause = '';
-    const params: string[] = [];
+    // Construir WHERE clauses separadas para queries com e sem JOIN
+    let whereClauseSales = ''; // Para queries simples (sales apenas)
+    let whereClauseJoin = '';  // Para queries com JOIN (sales + beer_types + sales_config)
+    const params: any[] = [];
+    const paramsJoin: any[] = [];
 
+    // Filtro de data inicial
     if (startDate) {
-      whereClause += ' WHERE timestamp >= ?';
+      whereClauseSales += ' WHERE timestamp >= ?';
+      whereClauseJoin += ' WHERE s.timestamp >= ?';
       params.push(startDate.toISOString());
+      paramsJoin.push(startDate.toISOString());
     }
 
+    // Filtro de data final
     if (endDate) {
-      whereClause += whereClause ? ' AND timestamp <= ?' : ' WHERE timestamp <= ?';
       const endOfDay = new Date(endDate);
       endOfDay.setDate(endOfDay.getDate() + 1);
       endOfDay.setSeconds(endOfDay.getSeconds() - 1);
+
+      whereClauseSales += whereClauseSales ? ' AND timestamp <= ?' : ' WHERE timestamp <= ?';
+      whereClauseJoin += whereClauseJoin ? ' AND s.timestamp <= ?' : ' WHERE s.timestamp <= ?';
       params.push(endOfDay.toISOString());
+      paramsJoin.push(endOfDay.toISOString());
     }
 
-    // Query de resumo
+    // Filtro de evento (CRÍTICO: usar alias correto para evitar ambiguidade)
+    if (eventId !== undefined) {
+      whereClauseSales += whereClauseSales ? ' AND eventId = ?' : ' WHERE eventId = ?';
+      whereClauseJoin += whereClauseJoin ? ' AND s.eventId = ?' : ' WHERE s.eventId = ?';
+      params.push(eventId);
+      paramsJoin.push(eventId);
+    }
+
+    // Query de resumo (tabela sales apenas)
     const summaryQuery = `
       SELECT
         COUNT(id) as totalSales,
         COALESCE(SUM(totalVolume) / 1000.0, 0) as totalVolumeLiters
       FROM sales
-      ${whereClause}
+      ${whereClauseSales}
     `;
     const summaryResult = this.executeQuery(summaryQuery, params)[0] || {
       totalSales: 0,
       totalVolumeLiters: 0
     };
 
-    // Query por tamanho de copo
+    // Query por tamanho de copo (tabela sales apenas)
     const byCupSizeQuery = `
       SELECT
         cupSize,
         SUM(quantity) as count
       FROM sales
-      ${whereClause}
+      ${whereClauseSales}
       GROUP BY cupSize
       ORDER BY cupSize
     `;
     const salesByCupSize = this.executeQuery(byCupSizeQuery, params);
 
-    // Query por tipo de cerveja (JOIN com beer_types usando INTEGER)
-    // Inclui cálculo de receita (totalRevenue) com base nos preços configurados
+    // Query por tipo de cerveja (JOIN com beer_types e sales_config)
+    // IMPORTANTE: Usar whereClauseJoin que qualifica colunas com alias 's.'
     const byBeerTypeQuery = `
       SELECT
         bt.id as beerId,
@@ -659,12 +884,12 @@ export class DatabaseService {
       FROM sales s
       INNER JOIN beer_types bt ON s.beerId = bt.id
       LEFT JOIN sales_config sc ON s.beerId = sc.beerId
-      ${whereClause}
+      ${whereClauseJoin}
       GROUP BY bt.id, bt.name, bt.color, bt.description
       ORDER BY totalLiters DESC
     `;
 
-    const salesByBeerType = this.executeQuery(byBeerTypeQuery, params);
+    const salesByBeerType = this.executeQuery(byBeerTypeQuery, paramsJoin);
 
     return {
       summary: {
@@ -720,6 +945,98 @@ export class DatabaseService {
     } catch (error) {
       console.error('❌ Erro ao verificar tabela:', error);
       return false;
+    }
+  }
+
+  /**
+   * Verifica se uma coluna existe em uma tabela
+   * @param tableName Nome da tabela
+   * @param columnName Nome da coluna
+   * @returns true se a coluna existe
+   */
+  public columnExists(tableName: string, columnName: string): boolean {
+    if (!this.db) return false;
+
+    try {
+      const result = this.executeQuery(`PRAGMA table_info(${tableName})`);
+      return result.some((col: any) => col.name === columnName);
+    } catch (error) {
+      console.error(`❌ Erro ao verificar coluna ${columnName} na tabela ${tableName}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Valida o schema do banco e executa migrações se necessário
+   * Método público para ser chamado em caso de erros
+   */
+  public async validateAndFixSchema(): Promise<boolean> {
+    if (!this.db) {
+      console.error('❌ Banco de dados não inicializado');
+      return false;
+    }
+
+    try {
+      console.log('🔍 Validando schema do banco de dados...');
+
+      const currentVersion = this.getCurrentDbVersion();
+      console.log(`📦 Versão atual do banco: ${currentVersion}`);
+      console.log(`📦 Versão esperada: ${DB_VERSION}`);
+
+      // Verifica se a tabela events existe
+      const eventsTableExists = this.tableExists('events');
+      console.log(`📋 Tabela 'events' existe: ${eventsTableExists}`);
+
+      // Verifica se as colunas eventId existem
+      const salesHasEventId = this.columnExists('sales', 'eventId');
+      const salesConfigHasEventId = this.columnExists('sales_config', 'eventId');
+      const eventSaleHasEventId = this.columnExists('event_sale', 'eventId');
+
+      console.log(`📋 Coluna 'sales.eventId' existe: ${salesHasEventId}`);
+      console.log(`📋 Coluna 'sales_config.eventId' existe: ${salesConfigHasEventId}`);
+      console.log(`📋 Coluna 'event_sale.eventId' existe: ${eventSaleHasEventId}`);
+
+      // Se alguma coisa estiver faltando e a versão for menor que 9, executar migrações
+      if (currentVersion < DB_VERSION || !eventsTableExists || !salesHasEventId) {
+        console.log('🔄 Schema desatualizado! Executando migrações...');
+
+        if (currentVersion < 8) {
+          this.migrateFromV7ToV8();
+        }
+        if (currentVersion < 9) {
+          this.migrateFromV8ToV9();
+        }
+
+        this.persist();
+        console.log('✅ Schema validado e corrigido!');
+        return true;
+      }
+
+      console.log('✅ Schema está correto!');
+      return true;
+    } catch (error) {
+      console.error('❌ Erro ao validar schema:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Reseta o banco de dados (CUIDADO: apaga todos os dados!)
+   * Método público para casos de emergência
+   */
+  public resetDatabase(): void {
+    console.warn('⚠️ ATENÇÃO: Resetando banco de dados - todos os dados serão perdidos!');
+
+    if (isPlatformBrowser(this.platformId)) {
+      // Remove do localStorage
+      localStorage.removeItem(DB_STORAGE_KEY);
+      localStorage.removeItem(`${DB_STORAGE_KEY}_version`);
+
+      // Recria o banco
+      this.createNewDatabase();
+
+      console.log('✅ Banco de dados resetado com sucesso');
+      console.log('🔄 Recarregue a página para aplicar as mudanças');
     }
   }
 
@@ -817,12 +1134,14 @@ export class DatabaseService {
    * @param beerId ID da cerveja
    * @returns Objeto com dados do estoque ou null
    */
-  public getEventStockByBeerId(beerId: number): any | null {
+  public getEventStockByBeerId(beerId: number, eventId: number | null = null): any | null {
     try {
-      const result = this.executeQuery(
-        'SELECT * FROM event_sale WHERE beerId = ?',
-        [beerId]
-      );
+      const query = eventId !== null
+        ? 'SELECT * FROM event_sale WHERE beerId = ? AND eventId = ?'
+        : 'SELECT * FROM event_sale WHERE beerId = ? AND eventId IS NULL';
+      const params = eventId !== null ? [beerId, eventId] : [beerId];
+
+      const result = this.executeQuery(query, params);
       return result.length > 0 ? result[0] : null;
     } catch (error) {
       console.error('❌ Erro ao buscar estoque da cerveja:', error);
@@ -836,31 +1155,32 @@ export class DatabaseService {
    * @param beerName Nome da cerveja
    * @param quantidadeLitros Quantidade em litros
    * @param minLitersAlert Limite mínimo em litros para alerta (opcional, padrão 5.0)
+   * @param eventId ID do evento (null = configuração geral)
    */
-  public setEventStock(beerId: number, beerName: string, quantidadeLitros: number, minLitersAlert: number = 5.0): void {
+  public setEventStock(beerId: number, beerName: string, quantidadeLitros: number, minLitersAlert: number = 5.0, eventId: number | null = null): void {
     try {
-      // Verifica se já existe registro para esta cerveja
-      const existing = this.getEventStockByBeerId(beerId);
+      // Verifica se já existe registro para esta cerveja e evento
+      const existing = this.getEventStockByBeerId(beerId, eventId);
 
       if (existing) {
         // Atualiza registro existente
-        this.executeRun(
-          `UPDATE event_sale
-           SET quantidadeLitros = ?,
-               minLitersAlert = ?,
-               updatedAt = CURRENT_TIMESTAMP
-           WHERE beerId = ?`,
-          [quantidadeLitros, minLitersAlert, beerId]
-        );
-        console.log(`✅ Estoque atualizado: ${beerName} = ${quantidadeLitros}L (alerta: ${minLitersAlert}L)`);
+        const updateQuery = eventId !== null
+          ? `UPDATE event_sale SET quantidadeLitros = ?, minLitersAlert = ?, updatedAt = CURRENT_TIMESTAMP WHERE beerId = ? AND eventId = ?`
+          : `UPDATE event_sale SET quantidadeLitros = ?, minLitersAlert = ?, updatedAt = CURRENT_TIMESTAMP WHERE beerId = ? AND eventId IS NULL`;
+        const updateParams = eventId !== null
+          ? [quantidadeLitros, minLitersAlert, beerId, eventId]
+          : [quantidadeLitros, minLitersAlert, beerId];
+
+        this.executeRun(updateQuery, updateParams);
+        console.log(`✅ Estoque atualizado: ${beerName} = ${quantidadeLitros}L (alerta: ${minLitersAlert}L) [eventId: ${eventId || 'geral'}]`);
       } else {
         // Insere novo registro
         this.executeRun(
-          `INSERT INTO event_sale (beerId, beerName, quantidadeLitros, minLitersAlert)
-           VALUES (?, ?, ?, ?)`,
-          [beerId, beerName, quantidadeLitros, minLitersAlert]
+          `INSERT INTO event_sale (beerId, beerName, quantidadeLitros, minLitersAlert, eventId)
+           VALUES (?, ?, ?, ?, ?)`,
+          [beerId, beerName, quantidadeLitros, minLitersAlert, eventId]
         );
-        console.log(`✅ Estoque criado: ${beerName} = ${quantidadeLitros}L (alerta: ${minLitersAlert}L)`);
+        console.log(`✅ Estoque criado: ${beerName} = ${quantidadeLitros}L (alerta: ${minLitersAlert}L) [eventId: ${eventId || 'geral'}]`);
       }
     } catch (error) {
       console.error('❌ Erro ao definir estoque do evento:', error);
@@ -893,29 +1213,33 @@ export class DatabaseService {
    * Subtrai quantidade vendida do estoque do evento
    * @param beerId ID da cerveja
    * @param litersToSubtract Quantidade em litros a subtrair
+   * @param eventId ID do evento (null = estoque geral)
    * @returns true se subtraiu com sucesso, false se não havia estoque configurado
    */
-  public subtractFromEventStock(beerId: number, litersToSubtract: number): boolean {
+  public subtractFromEventStock(beerId: number, litersToSubtract: number, eventId: number | null = null): boolean {
     try {
-      const stock = this.getEventStockByBeerId(beerId);
+      const stock = this.getEventStockByBeerId(beerId, eventId);
 
       // Se não há estoque configurado, retorna false (modo normal)
       if (!stock || stock.quantidadeLitros === 0) {
+        console.log(`ℹ️ Sem estoque configurado para beerId ${beerId} (eventId: ${eventId || 'geral'})`);
         return false;
       }
 
       // Calcula novo estoque (não permite negativo)
       const newQuantity = Math.max(0, stock.quantidadeLitros - litersToSubtract);
 
-      this.executeRun(
-        `UPDATE event_sale
-         SET quantidadeLitros = ?,
-             updatedAt = CURRENT_TIMESTAMP
-         WHERE beerId = ?`,
-        [newQuantity, beerId]
-      );
+      // Atualiza com filtro correto incluindo eventId
+      const updateQuery = eventId !== null
+        ? `UPDATE event_sale SET quantidadeLitros = ?, updatedAt = CURRENT_TIMESTAMP WHERE beerId = ? AND eventId = ?`
+        : `UPDATE event_sale SET quantidadeLitros = ?, updatedAt = CURRENT_TIMESTAMP WHERE beerId = ? AND eventId IS NULL`;
+      const updateParams = eventId !== null
+        ? [newQuantity, beerId, eventId]
+        : [newQuantity, beerId];
 
-      console.log(`✅ Estoque subtraído: ${stock.beerName} -${litersToSubtract}L = ${newQuantity}L`);
+      this.executeRun(updateQuery, updateParams);
+
+      console.log(`✅ Estoque subtraído: ${stock.beerName} -${litersToSubtract}L = ${newQuantity}L [eventId: ${eventId || 'geral'}]`);
       return true;
     } catch (error) {
       console.error('❌ Erro ao subtrair do estoque:', error);
@@ -1010,12 +1334,14 @@ export class DatabaseService {
    * @param beerId ID da cerveja
    * @returns Objeto com preços ou null
    */
-  public getSalesConfigByBeerId(beerId: number): any | null {
+  public getSalesConfigByBeerId(beerId: number, eventId: number | null = null): any | null {
     try {
-      const result = this.executeQuery(
-        'SELECT * FROM sales_config WHERE beerId = ?',
-        [beerId]
-      );
+      const query = eventId !== null
+        ? 'SELECT * FROM sales_config WHERE beerId = ? AND eventId = ?'
+        : 'SELECT * FROM sales_config WHERE beerId = ? AND eventId IS NULL';
+      const params = eventId !== null ? [beerId, eventId] : [beerId];
+
+      const result = this.executeQuery(query, params);
       return result.length > 0 ? result[0] : null;
     } catch (error) {
       console.error('❌ Erro ao buscar configuração de preços:', error);
@@ -1043,39 +1369,39 @@ export class DatabaseService {
    * @param price300ml Preço do copo de 300ml
    * @param price500ml Preço do copo de 500ml
    * @param price1000ml Preço do copo de 1000ml
+   * @param eventId ID do evento (null = configuração geral)
    */
   public setSalesConfig(
     beerId: number,
     beerName: string,
     price300ml: number,
     price500ml: number,
-    price1000ml: number
+    price1000ml: number,
+    eventId: number | null = null
   ): void {
     try {
-      // Verifica se já existe configuração para esta cerveja
-      const existing = this.getSalesConfigByBeerId(beerId);
+      // Verifica se já existe configuração para esta cerveja e evento
+      const existing = this.getSalesConfigByBeerId(beerId, eventId);
 
       if (existing) {
         // Atualiza configuração existente
-        this.executeRun(
-          `UPDATE sales_config
-           SET beerName = ?,
-               price300ml = ?,
-               price500ml = ?,
-               price1000ml = ?,
-               updatedAt = CURRENT_TIMESTAMP
-           WHERE beerId = ?`,
-          [beerName, price300ml, price500ml, price1000ml, beerId]
-        );
-        console.log('✅ Configuração de preços atualizada:', beerName);
+        const updateQuery = eventId !== null
+          ? `UPDATE sales_config SET beerName = ?, price300ml = ?, price500ml = ?, price1000ml = ?, updatedAt = CURRENT_TIMESTAMP WHERE beerId = ? AND eventId = ?`
+          : `UPDATE sales_config SET beerName = ?, price300ml = ?, price500ml = ?, price1000ml = ?, updatedAt = CURRENT_TIMESTAMP WHERE beerId = ? AND eventId IS NULL`;
+        const updateParams = eventId !== null
+          ? [beerName, price300ml, price500ml, price1000ml, beerId, eventId]
+          : [beerName, price300ml, price500ml, price1000ml, beerId];
+
+        this.executeRun(updateQuery, updateParams);
+        console.log(`✅ Configuração de preços atualizada: ${beerName} [eventId: ${eventId || 'geral'}]`);
       } else {
         // Insere nova configuração
         this.executeRun(
-          `INSERT INTO sales_config (beerId, beerName, price300ml, price500ml, price1000ml)
-           VALUES (?, ?, ?, ?, ?)`,
-          [beerId, beerName, price300ml, price500ml, price1000ml]
+          `INSERT INTO sales_config (beerId, beerName, price300ml, price500ml, price1000ml, eventId)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [beerId, beerName, price300ml, price500ml, price1000ml, eventId]
         );
-        console.log('✅ Configuração de preços criada:', beerName);
+        console.log(`✅ Configuração de preços criada: ${beerName} [eventId: ${eventId || 'geral'}]`);
       }
 
       this.persist();
@@ -1106,7 +1432,7 @@ export class DatabaseService {
    * @param endDate Data final do filtro (opcional)
    * @returns Valor total em reais
    */
-  public getTotalRevenue(startDate?: Date, endDate?: Date): number {
+  public getTotalRevenue(startDate?: Date, endDate?: Date, eventId?: number): number {
     if (!this.db) {
       return 0;
     }
@@ -1127,12 +1453,21 @@ export class DatabaseService {
       `;
 
       const params: any[] = [];
+      let whereClause = '';
 
       // Aplicar filtros de data se houver
       if (startDate && endDate) {
-        sql += ' WHERE s.timestamp BETWEEN ? AND ?';
+        whereClause = ' WHERE s.timestamp BETWEEN ? AND ?';
         params.push(startDate.toISOString(), endDate.toISOString());
       }
+
+      // Aplicar filtro de evento se houver
+      if (eventId !== undefined) {
+        whereClause += whereClause ? ' AND s.eventId = ?' : ' WHERE s.eventId = ?';
+        params.push(eventId);
+      }
+
+      sql += whereClause;
 
       const result = this.executeQuery(sql, params);
 
@@ -1320,5 +1655,315 @@ export class DatabaseService {
       ...comanda,
       items
     };
+  }
+
+  // ==================== EVENTS CRUD ====================
+
+  /**
+   * Cria um novo evento
+   * @param eventData Dados do evento (nameEvent, localEvent, dataEvent, contactEvent, nameContactEvent, status)
+   * @returns ID do evento criado ou null se falhar
+   */
+  public createEvent(eventData: {
+    nameEvent: string;
+    localEvent: string;
+    dataEvent: string;
+    contactEvent?: string;
+    nameContactEvent?: string;
+    status?: 'planejamento' | 'ativo' | 'finalizado';
+  }): number | null {
+    if (!this.db) {
+      console.error('❌ Banco de dados não inicializado');
+      return null;
+    }
+
+    try {
+      const now = new Date().toISOString();
+      const status = eventData.status || 'planejamento';
+
+      console.log('📝 Criando evento:', eventData);
+
+      // Usar statement preparado para obter melhor controle
+      const stmt = this.db.prepare(
+        `INSERT INTO events (nameEvent, localEvent, dataEvent, contactEvent, nameContactEvent, status, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      );
+
+      stmt.run([
+        eventData.nameEvent,
+        eventData.localEvent,
+        eventData.dataEvent,
+        eventData.contactEvent || null,
+        eventData.nameContactEvent || null,
+        status,
+        now,
+        now
+      ]);
+
+      stmt.free();
+
+      // Obter ID imediatamente após o INSERT
+      const eventId = this.getLastInsertId();
+
+      if (!eventId || eventId === 0) {
+        console.error('❌ Erro: ID do evento é 0 ou null');
+        console.error('   Isso indica que o INSERT pode ter falhado silenciosamente');
+        console.error('   Verifique se a tabela events existe');
+        return null;
+      }
+
+      this.persist();
+      console.log('✅ Evento criado com sucesso - ID:', eventId);
+      return eventId;
+    } catch (error) {
+      console.error('❌ Erro ao criar evento:', error);
+      console.error('   Detalhes do evento:', eventData);
+      return null;
+    }
+  }
+
+  /**
+   * Busca todos os eventos ordenados por data (mais recentes primeiro)
+   * @returns Array de eventos
+   */
+  public getAllEvents(): any[] {
+    const query = 'SELECT * FROM events ORDER BY dataEvent DESC';
+    return this.executeQuery(query);
+  }
+
+  /**
+   * Busca eventos por status
+   * @param status Status do evento (planejamento, ativo, finalizado)
+   * @returns Array de eventos com o status especificado
+   */
+  public getEventsByStatus(status: 'planejamento' | 'ativo' | 'finalizado'): any[] {
+    const query = 'SELECT * FROM events WHERE status = ? ORDER BY dataEvent DESC';
+    return this.executeQuery(query, [status]);
+  }
+
+  /**
+   * Busca evento por ID
+   * @param id ID do evento
+   * @returns Evento ou null se não encontrado
+   */
+  public getEventById(id: number): any | null {
+    const query = 'SELECT * FROM events WHERE id = ? LIMIT 1';
+    const result = this.executeQuery(query, [id]);
+    return result.length > 0 ? result[0] : null;
+  }
+
+  /**
+   * Atualiza um evento existente
+   * @param id ID do evento
+   * @param eventData Dados a serem atualizados (parciais)
+   * @returns true se atualizado com sucesso, false caso contrário
+   */
+  public updateEvent(id: number, eventData: {
+    nameEvent?: string;
+    localEvent?: string;
+    dataEvent?: string;
+    contactEvent?: string;
+    nameContactEvent?: string;
+    status?: 'planejamento' | 'ativo' | 'finalizado';
+  }): boolean {
+    try {
+      const now = new Date().toISOString();
+      const updates: string[] = [];
+      const values: any[] = [];
+
+      // Construir query dinamicamente baseado nos campos fornecidos
+      if (eventData.nameEvent !== undefined) {
+        updates.push('nameEvent = ?');
+        values.push(eventData.nameEvent);
+      }
+      if (eventData.localEvent !== undefined) {
+        updates.push('localEvent = ?');
+        values.push(eventData.localEvent);
+      }
+      if (eventData.dataEvent !== undefined) {
+        updates.push('dataEvent = ?');
+        values.push(eventData.dataEvent);
+      }
+      if (eventData.contactEvent !== undefined) {
+        updates.push('contactEvent = ?');
+        values.push(eventData.contactEvent || null);
+      }
+      if (eventData.nameContactEvent !== undefined) {
+        updates.push('nameContactEvent = ?');
+        values.push(eventData.nameContactEvent || null);
+      }
+      if (eventData.status !== undefined) {
+        updates.push('status = ?');
+        values.push(eventData.status);
+      }
+
+      // Sempre atualizar updatedAt
+      updates.push('updatedAt = ?');
+      values.push(now);
+
+      // Adicionar ID ao final
+      values.push(id);
+
+      if (updates.length === 1) {
+        // Apenas updatedAt, nada para atualizar
+        return false;
+      }
+
+      const query = `UPDATE events SET ${updates.join(', ')} WHERE id = ?`;
+      this.executeRun(query, values);
+      this.persist();
+      console.log('✅ Evento atualizado com sucesso:', id);
+      return true;
+    } catch (error) {
+      console.error('❌ Erro ao atualizar evento:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Deleta um evento
+   * ATENÇÃO: Isso irá:
+   * - Deletar configurações de estoque relacionadas (event_sale CASCADE)
+   * - Deletar configurações de preços relacionadas (sales_config CASCADE)
+   * - Setar eventId = NULL nas vendas relacionadas (sales SET NULL)
+   *
+   * @param id ID do evento
+   * @returns true se deletado com sucesso, false caso contrário
+   */
+  public deleteEvent(id: number): boolean {
+    try {
+      this.executeRun('DELETE FROM events WHERE id = ?', [id]);
+      this.persist();
+      console.log('✅ Evento deletado com sucesso:', id);
+      return true;
+    } catch (error) {
+      console.error('❌ Erro ao deletar evento:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Busca eventos ativos (status = 'ativo')
+   * Útil para seletor de eventos na tela de vendas
+   * @returns Array de eventos ativos
+   */
+  public getActiveEvents(): any[] {
+    return this.getEventsByStatus('ativo');
+  }
+
+  /**
+   * Muda o status de um evento
+   * @param id ID do evento
+   * @param status Novo status
+   * @returns true se atualizado com sucesso, false caso contrário
+   */
+  public updateEventStatus(id: number, status: 'planejamento' | 'ativo' | 'finalizado'): boolean {
+    return this.updateEvent(id, { status });
+  }
+
+  /**
+   * Busca estatísticas de um evento (total de vendas, volume, receita)
+   * @param eventId ID do evento
+   * @returns Objeto com estatísticas do evento
+   */
+  public getEventStatistics(eventId: number): {
+    totalSales: number;
+    totalVolume: number;
+    totalRevenue: number;
+    salesByBeer: any[];
+  } {
+    try {
+      // Total de vendas e volume
+      const summaryQuery = `
+        SELECT
+          COUNT(*) as totalSales,
+          COALESCE(SUM(totalVolume), 0) as totalVolume
+        FROM sales
+        WHERE eventId = ?
+      `;
+      const summary = this.executeQuery(summaryQuery, [eventId]);
+
+      // Receita total
+      const revenueQuery = `
+        SELECT
+          COALESCE(SUM(
+            CASE
+              WHEN s.cupSize = 300 THEN s.quantity * COALESCE(sc.price300ml, 0)
+              WHEN s.cupSize = 500 THEN s.quantity * COALESCE(sc.price500ml, 0)
+              WHEN s.cupSize = 1000 THEN s.quantity * COALESCE(sc.price1000ml, 0)
+              ELSE 0
+            END
+          ), 0) as totalRevenue
+        FROM sales s
+        LEFT JOIN sales_config sc ON s.beerId = sc.beerId AND (sc.eventId = ? OR sc.eventId IS NULL)
+        WHERE s.eventId = ?
+      `;
+      const revenue = this.executeQuery(revenueQuery, [eventId, eventId]);
+
+      // Vendas por cerveja
+      const salesByBeerQuery = `
+        SELECT
+          s.beerName,
+          COUNT(*) as salesCount,
+          COALESCE(SUM(s.quantity), 0) as totalQuantity,
+          COALESCE(SUM(s.totalVolume), 0) as totalVolume,
+          COALESCE(SUM(
+            CASE
+              WHEN s.cupSize = 300 THEN s.quantity * COALESCE(sc.price300ml, 0)
+              WHEN s.cupSize = 500 THEN s.quantity * COALESCE(sc.price500ml, 0)
+              WHEN s.cupSize = 1000 THEN s.quantity * COALESCE(sc.price1000ml, 0)
+              ELSE 0
+            END
+          ), 0) as revenue
+        FROM sales s
+        LEFT JOIN sales_config sc ON s.beerId = sc.beerId AND (sc.eventId = ? OR sc.eventId IS NULL)
+        WHERE s.eventId = ?
+        GROUP BY s.beerId, s.beerName
+        ORDER BY revenue DESC
+      `;
+      const salesByBeer = this.executeQuery(salesByBeerQuery, [eventId, eventId]);
+
+      return {
+        totalSales: summary[0]?.totalSales || 0,
+        totalVolume: summary[0]?.totalVolume || 0,
+        totalRevenue: revenue[0]?.totalRevenue || 0,
+        salesByBeer
+      };
+    } catch (error) {
+      console.error('❌ Erro ao buscar estatísticas do evento:', error);
+      return {
+        totalSales: 0,
+        totalVolume: 0,
+        totalRevenue: 0,
+        salesByBeer: []
+      };
+    }
+  }
+
+  /**
+   * Verifica se um evento tem vendas associadas
+   * @param eventId ID do evento
+   * @returns true se o evento tem vendas, false caso contrário
+   */
+  public eventHasSales(eventId: number): boolean {
+    const query = 'SELECT COUNT(*) as count FROM sales WHERE eventId = ?';
+    const result = this.executeQuery(query, [eventId]);
+    return result[0]?.count > 0;
+  }
+
+  /**
+   * Busca todas as vendas de um evento
+   * @param eventId ID do evento
+   * @returns Array de vendas do evento
+   */
+  public getSalesByEvent(eventId: number): any[] {
+    const query = `
+      SELECT s.*, u.username
+      FROM sales s
+      LEFT JOIN users u ON s.userId = u.id
+      WHERE s.eventId = ?
+      ORDER BY s.timestamp DESC
+    `;
+    return this.executeQuery(query, [eventId]);
   }
 }

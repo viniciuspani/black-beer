@@ -128,6 +128,10 @@
                     <span> Admin</span>
                   </p-tab>
                   <p-tab value="3" (click)="onSettingsTabClick(3)">
+                    <i class="pi pi-calendar"></i>
+                    <span> Eventos</span>
+                  </p-tab>
+                  <p-tab value="4" (click)="onSettingsTabClick(4)">
                     <i class="pi pi-question-circle"></i>
                     <span> Ajuda</span>
                   </p-tab>
@@ -144,6 +148,9 @@
                     <app-settings-admin></app-settings-admin>
                   </p-tabpanel>
                   <p-tabpanel value="3">
+                    <app-event-management></app-event-management>
+                  </p-tabpanel>
+                  <p-tabpanel value="4">
                     <app-help></app-help>
                   </p-tabpanel>
                 </p-tabpanels>
@@ -216,6 +223,17 @@
                 [class.text-white]="activeSettingsTab() === 3"
                 [class.bg-gray-100]="activeSettingsTab() !== 3"
                 [class.text-gray-700]="activeSettingsTab() !== 3">
+                <i class="pi pi-calendar"></i>
+                <span>Eventos</span>
+              </button>
+              <button
+                type="button"
+                (click)="setActiveSettingsTab(4)"
+                class="flex-1 py-2 px-3 rounded-md transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium whitespace-nowrap"
+                [class.bg-amber-600]="activeSettingsTab() === 4"
+                [class.text-white]="activeSettingsTab() === 4"
+                [class.bg-gray-100]="activeSettingsTab() !== 4"
+                [class.text-gray-700]="activeSettingsTab() !== 4">
                 <i class="pi pi-question-circle"></i>
                 <span>Ajuda</span>
               </button>
@@ -233,6 +251,9 @@
                 <app-settings-admin></app-settings-admin>
               }
               @case (3) {
+                <app-event-management></app-event-management>
+              }
+              @case (4) {
                 <app-help></app-help>
               }
             }

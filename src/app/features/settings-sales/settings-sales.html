@@ -6,13 +6,66 @@
   <div class="page-header">
     <h2>
       <i class="pi pi-shopping-cart"></i>
-      Controle de Estoque por Evento
+      Controle de Estoque e Preços
     </h2>
     <p class="header-description">
-      Configure a quantidade de litros disponível para cada cerveja no evento.
-      Quando configurado, o sistema automaticamente subtrai as vendas do estoque.
+      Configure a quantidade de litros disponível e os preços para cada cerveja.
+      Selecione um evento para configurações específicas ou deixe em "Geral" para configurações padrão.
     </p>
   </div>
+
+  <!-- Seletor de Evento -->
+  <p-card class="event-selector-card">
+    <ng-template pTemplate="header">
+      <div class="card-header-with-icon">
+        <i class="pi pi-calendar"></i>
+        <span>Selecionar Evento</span>
+      </div>
+    </ng-template>
+
+    <div class="event-selector-content">
+      <label for="event-select" class="event-selector-label">
+        Configure estoque e preços para:
+      </label>
+
+      <div class="event-selector-buttons">
+        <!-- Botão "Geral" (sem evento específico) -->
+        <button
+          type="button"
+          class="event-button"
+          [class.event-button-active]="selectedEventId() === null"
+          (click)="onEventChange(null)">
+          <i class="pi pi-globe"></i>
+          <div class="event-button-content">
+            <span class="event-button-title">Geral</span>
+            <span class="event-button-subtitle">Configuração padrão</span>
+          </div>
+        </button>
+
+        <!-- Botões de eventos ativos -->
+        @for (event of availableEvents(); track event.id) {
+          <button
+            type="button"
+            class="event-button"
+            [class.event-button-active]="selectedEventId() === event.id"
+            (click)="onEventChange(event.id)">
+            <i class="pi pi-calendar-plus"></i>
+            <div class="event-button-content">
+              <span class="event-button-title">{{ event.nameEvent }}</span>
+              <span class="event-button-subtitle">{{ event.localEvent }}</span>
+            </div>
+          </button>
+        }
+      </div>
+
+      @if (availableEvents().length === 0) {
+        <div class="no-events-message">
+          <i class="pi pi-info-circle"></i>
+          <p>Nenhum evento ativo disponível. Crie um evento na seção de Gerenciar Eventos.</p>
+        </div>
+      }
+    </div>
+  </p-card>
 
   <!-- Alertas de Estoque Baixo -->
   @if (stockAlerts().length > 0) {

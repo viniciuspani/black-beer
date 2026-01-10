@@ -79,6 +79,117 @@
   }
 }
 
+// ==================== EVENT SELECTOR ====================
+.event-selector-card {
+  margin-bottom: 2rem;
+
+  ::ng-deep .p-card-content {
+    padding: 0;
+  }
+}
+
+.event-selector-content {
+  padding: 1.5rem;
+}
+
+.event-selector-label {
+  display: block;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 1rem;
+}
+
+.event-selector-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.event-button {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+
+  &:hover:not(.event-button-active) {
+    border-color: #f97316;
+    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.15);
+    transform: translateY(-2px);
+  }
+
+  &.event-button-active {
+    border-color: #f97316;
+    background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
+
+    i {
+      color: #f97316;
+    }
+
+    .event-button-title {
+      color: #f97316;
+      font-weight: 700;
+    }
+  }
+
+  i {
+    font-size: 1.75rem;
+    color: #64748b;
+    transition: color 0.2s ease;
+  }
+}
+
+.event-button-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.event-button-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+  transition: color 0.2s ease;
+}
+
+.event-button-subtitle {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.no-events-message {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  background: #f1f5f9;
+  border-radius: 0.5rem;
+  color: #64748b;
+
+  i {
+    font-size: 1.5rem;
+    color: #94a3b8;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+}
+
 // ==================== ALERTS CARD ====================
 .alerts-card {
   margin-bottom: 2rem;

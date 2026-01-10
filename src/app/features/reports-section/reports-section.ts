@@ -15,6 +15,7 @@ import { finalize } from 'rxjs/operators';
 import { DatabaseService } from '../../core/services/database';
 import { EmailService } from '../../core/services/email.service';
 import { SalesService } from '../../core/services/sales.service';
+import { EventService } from '../../core/services/event.service';
 import { FullReport } from '../../core/models/report.model';
 import { TabRefreshService, MainTab } from '../../core/services/tab-refresh.service';
 
@@ -45,6 +46,7 @@ export class ReportsSectionComponent implements OnInit {
   private readonly dbService = inject(DatabaseService);
   private readonly emailService = inject(EmailService);
   private readonly salesService = inject(SalesService);
+  private readonly eventService = inject(EventService);
   private readonly messageService = inject(MessageService);
   private readonly tabRefreshService = inject(TabRefreshService);
 
@@ -54,12 +56,24 @@ export class ReportsSectionComponent implements OnInit {
    * Período selecionado para filtro rápido
    */
   protected readonly selectedPeriod = signal<'today' | 'week' | 'month' | 'all'>('all');
-  
+
+  /**
+   * Evento selecionado para filtro (null = todos os eventos)
+   */
+  protected readonly selectedEventId = signal<number | null>(null);
+
+  /**
+   * Lista de eventos disponíveis para filtro
+   */
+  protected readonly availableEvents = computed(() => {
+    return this.eventService.events();
+  });
+
   /**
    * Data inicial para filtro customizado
    */
   protected startDate = signal<Date | null>(null);
-  
+
   /**
    * Data final para filtro customizado
    */
@@ -114,11 +128,13 @@ export class ReportsSectionComponent implements OnInit {
 
     const start = this.startDate();
     const end = this.endDate();
+    const eventId = this.selectedEventId();
 
     // DatabaseService.getFullReport já faz a filtragem no SQL
     return this.dbService.getFullReport(
       start ?? undefined,
-      end ?? undefined
+      end ?? undefined,
+      eventId ?? undefined
     );
   });
   
@@ -266,6 +282,9 @@ export class ReportsSectionComponent implements OnInit {
   });
   
   ngOnInit(): void {
+    // Carrega eventos ao inicializar
+    this.eventService.loadEvents();
+
     // Subscription para escutar quando a aba de Relatórios é ativada
     this.tabRefreshService.onMainTabActivated(MainTab.REPORTS).subscribe(() => {
       console.log('🔔 Reports: Aba ativada, atualizando dados...');
@@ -411,11 +430,33 @@ export class ReportsSectionComponent implements OnInit {
   protected getTotalRevenue(): number {
     const start = this.startDate();
     const end = this.endDate();
+    const eventId = this.selectedEventId();
 
     return this.salesService.getTotalRevenue(
       start ?? undefined,
-      end ?? undefined
+      end ?? undefined,
+      eventId ?? undefined
     );
+  }
+
+  /**
+   * Aplica filtro por evento
+   */
+  protected setEventFilter(eventId: number | null): void {
+    this.selectedEventId.set(eventId);
+  }
+
+  /**
+   * Retorna o nome do evento selecionado ou "Todos os Eventos"
+   */
+  protected getSelectedEventName(): string {
+    const eventId = this.selectedEventId();
+    if (eventId === null) {
+      return 'Todos os Eventos';
+    }
+
+    const event = this.availableEvents().find(e => e.id === eventId);
+    return event ? event.nameEvent : 'Evento não encontrado';
   }
   
   /**

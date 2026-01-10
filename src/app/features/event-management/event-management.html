@@ -1,0 +1,541 @@
+<p-toast />
+<p-confirmDialog />
+
+<div class="event-management-container">
+  <p-card styleClass="event-management-card">
+    <ng-template pTemplate="title">
+      <div class="card-title">
+        <i class="pi pi-calendar"></i>
+        <span>Gerenciar Eventos</span>
+      </div>
+    </ng-template>
+
+    <ng-template pTemplate="content">
+
+      <!-- ==================== BOTÕES DE AÇÃO E FILTROS ==================== -->
+      <div class="action-bar">
+        <!-- Botão Novo Evento -->
+        <div class="action-bar-left">
+          <p-button
+            label="Novo Evento"
+            icon="pi pi-plus"
+            severity="success"
+            (onClick)="toggleAddForm()"
+            [outlined]="isAdding()"
+          />
+        </div>
+
+        <!-- Filtros de Status -->
+        <div class="status-filters">
+          <p-button
+            label="Todos"
+            [outlined]="statusFilter() !== 'all'"
+            severity="secondary"
+            size="small"
+            (onClick)="applyStatusFilter('all')"
+          />
+          <p-button
+            label="Planejamento"
+            [outlined]="statusFilter() !== 'planejamento'"
+            severity="info"
+            size="small"
+            (onClick)="applyStatusFilter('planejamento')"
+          />
+          <p-button
+            label="Ativo"
+            [outlined]="statusFilter() !== 'ativo'"
+            severity="success"
+            size="small"
+            (onClick)="applyStatusFilter('ativo')"
+          />
+          <p-button
+            label="Finalizado"
+            [outlined]="statusFilter() !== 'finalizado'"
+            severity="secondary"
+            size="small"
+            (onClick)="applyStatusFilter('finalizado')"
+          />
+        </div>
+      </div>
+
+      <!-- ==================== FORMULÁRIO DE CRIAÇÃO ==================== -->
+      @if (isAdding()) {
+        <div class="add-form-container">
+          <form [formGroup]="eventForm" class="event-form">
+            <div class="form-header">
+              <h3><i class="pi pi-plus-circle"></i> Novo Evento</h3>
+            </div>
+
+            <div class="form-grid">
+              <!-- Nome do Evento -->
+              <div class="form-field col-span-2">
+                <label for="nameEvent">Nome do Evento *</label>
+                <input
+                  pInputText
+                  id="nameEvent"
+                  formControlName="nameEvent"
+                  placeholder="Ex: Festa Holliday"
+                  maxlength="100"
+                />
+              </div>
+
+              <!-- Local -->
+              <div class="form-field col-span-2">
+                <label for="localEvent">Local *</label>
+                <input
+                  pInputText
+                  id="localEvent"
+                  formControlName="localEvent"
+                  placeholder="Ex: Clube Recreativo"
+                  maxlength="200"
+                />
+              </div>
+
+              <!-- Data -->
+              <div class="form-field col-span-2">
+                <label for="dataEvent">Data do Evento *</label>
+                <p-datePicker
+                  inputId="dataEvent"
+                  formControlName="dataEvent"
+                  [showTime]="true"
+                  [showIcon]="true"
+                  dateFormat="dd/mm/yy"
+                  placeholder="Selecione a data"
+                />
+              </div>
+
+              <!-- Status -->
+              <div class="form-field col-span-2">
+                <label for="status">Status *</label>
+                <select
+                  id="status"
+                  formControlName="status"
+                  class="form-select"
+                  [value]="eventForm.get('status')?.value">
+                  <option value="planejamento">Planejamento</option>
+                  <option value="ativo">Ativo</option>
+                  <option value="finalizado">Finalizado</option>
+                </select>
+              </div>
+
+              <!-- Contato -->
+              <div class="form-field col-span-2">
+                <label for="contactEvent">Telefone/Contato</label>
+                <p-inputMask
+                  id="contactEvent"
+                  formControlName="contactEvent"
+                  mask="(99) 99999-9999"
+                  placeholder="(00) 00000-0000"
+                  [autoClear]="false"
+                />
+              </div>
+
+              <!-- Nome do Contato -->
+              <div class="form-field col-span-2">
+                <label for="nameContactEvent">Nome do Responsável</label>
+                <input
+                  pInputText
+                  id="nameContactEvent"
+                  formControlName="nameContactEvent"
+                  placeholder="Ex: João Silva"
+                  maxlength="100"
+                />
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <p-button
+                label="Cancelar"
+                severity="secondary"
+                [outlined]="true"
+                (onClick)="toggleAddForm()"
+              />
+              <p-button
+                label="Salvar Evento"
+                icon="pi pi-check"
+                severity="success"
+                [disabled]="eventForm.invalid"
+                (onClick)="addEvent()"
+              />
+            </div>
+          </form>
+        </div>
+      }
+
+      <!-- ==================== LISTA DESKTOP (TABELA - MD+) ==================== -->
+      <div class="hidden md:block desktop-table">
+        <p-table [value]="events()" [tableStyle]="{'min-width': '60rem'}">
+          <ng-template pTemplate="header">
+            <tr>
+              <th>Nome do Evento</th>
+              <th>Local</th>
+              <th>Data</th>
+              <th>Status</th>
+              <th style="width: 15%">Ações</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-event>
+            <tr>
+              <td>
+                <div class="event-name-cell">
+                  <strong>{{ event.nameEvent }}</strong>
+                  @if (eventHasSales(event.id)) {
+                    <p-tag value="Com vendas" severity="warning" styleClass="ml-2" />
+                  }
+                </div>
+              </td>
+              <td>{{ event.localEvent }}</td>
+              <td>{{ formatDate(event.dataEvent) }}</td>
+              <td>
+                <p-tag
+                  [value]="getStatusLabel(event.status)"
+                  [severity]="getStatusSeverity(event.status)"
+                />
+              </td>
+              <td>
+                <div class="action-buttons">
+                  <p-button
+                    icon="pi pi-chart-line"
+                    severity="secondary"
+                    [text]="true"
+                    [rounded]="true"
+                    (click)="openStatsDialog(event)"
+                    pTooltip="Ver estatísticas"
+                    tooltipPosition="top"
+                  />
+                  <p-button
+                    icon="pi pi-pencil"
+                    severity="info"
+                    [text]="true"
+                    [rounded]="true"
+                    (click)="openEditDialog(event)"
+                    pTooltip="Editar Evento"
+                    tooltipPosition="top"
+                  />
+                  <p-button
+                    icon="pi pi-trash"
+                    severity="danger"
+                    [text]="true"
+                    [rounded]="true"
+                    (click)="confirmDelete(event)"
+                    pTooltip="Remover Evento"
+                    tooltipPosition="top"
+                  />
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="5" class="text-center p-4">
+                Nenhum evento encontrado.
+                @if (statusFilter() !== 'all') {
+                  <p class="mt-2">Tente limpar os filtros.</p>
+                }
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+
+      <!-- ==================== LISTA MOBILE (CARDS - <MD) ==================== -->
+      <div class="md:hidden mobile-cards">
+        <div class="cards-grid">
+          @for (event of events(); track event.id) {
+            <article class="event-card">
+              <!-- Header -->
+              <div class="event-card-header">
+                <div class="event-card-title">
+                  <i class="pi pi-calendar"></i>
+                  <h3 class="event-name">{{ event.nameEvent }}</h3>
+                </div>
+                <p-tag
+                  [value]="getStatusLabel(event.status)"
+                  [severity]="getStatusSeverity(event.status)"
+                />
+              </div>
+
+              <!-- Informações -->
+              <div class="event-card-info">
+                <div class="info-row">
+                  <i class="pi pi-map-marker"></i>
+                  <span>{{ event.localEvent }}</span>
+                </div>
+                <div class="info-row">
+                  <i class="pi pi-clock"></i>
+                  <span>{{ formatDate(event.dataEvent) }}</span>
+                </div>
+                @if (event.nameContactEvent) {
+                  <div class="info-row">
+                    <i class="pi pi-user"></i>
+                    <span>{{ event.nameContactEvent }}</span>
+                  </div>
+                }
+                @if (event.contactEvent) {
+                  <div class="info-row">
+                    <i class="pi pi-phone"></i>
+                    <span>{{ event.contactEvent }}</span>
+                  </div>
+                }
+                @if (eventHasSales(event.id)) {
+                  <p-tag value="Evento com vendas" severity="warning" styleClass="mt-2" />
+                }
+              </div>
+
+              <!-- Ações -->
+              <div class="event-card-actions">
+                <p-button
+                  label="Stats"
+                  icon="pi pi-chart-line"
+                  severity="secondary"
+                  [outlined]="true"
+                  size="small"
+                  (onClick)="openStatsDialog(event)"
+                  pTooltip="Ver estatísticas"
+                  tooltipPosition="top"
+                  styleClass="mobile-action-btn"
+                />
+                <p-button
+                  label="Edit"
+                  icon="pi pi-pencil"
+                  severity="info"
+                  [outlined]="true"
+                  size="small"
+                  (onClick)="openEditDialog(event)"
+                  pTooltip="Editar evento"
+                  tooltipPosition="top"
+                  styleClass="mobile-action-btn"
+                />
+                <p-button
+                  label="Del"
+                  icon="pi pi-trash"
+                  severity="danger"
+                  [outlined]="true"
+                  size="small"
+                  (onClick)="confirmDelete(event)"
+                  pTooltip="Remover evento"
+                  tooltipPosition="top"
+                  styleClass="mobile-action-btn"
+                />
+              </div>
+            </article>
+          } @empty {
+            <div class="empty-state">
+              <i class="pi pi-calendar"></i>
+              <p class="empty-state-title">Nenhum evento cadastrado</p>
+              <p class="empty-state-text">
+                @if (statusFilter() !== 'all') {
+                  Nenhum evento encontrado com este filtro.
+                } @else {
+                  Clique em "Novo Evento" para começar
+                }
+              </p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- ==================== RESUMO ==================== -->
+      <div class="info-section">
+        <div class="info-cards">
+          <div class="info-card info-card-primary">
+            <i class="pi pi-calendar"></i>
+            <div class="info-card-content">
+              <span class="info-card-value">{{ getTotalEvents() }}</span>
+              <span class="info-card-label">{{ getFilterLabel() }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </ng-template>
+  </p-card>
+</div>
+
+<!-- ==================== MODAL: EDITAR EVENTO ==================== -->
+<p-dialog
+  [(visible)]="isEditing"
+  [modal]="true"
+  [closable]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{width: '90vw', maxWidth: '40rem'}"
+  header="Editar Evento"
+  (onHide)="closeEditDialog()">
+
+  <form [formGroup]="editForm" class="event-form">
+    <div class="form-grid">
+      <!-- Nome do Evento -->
+      <div class="form-field col-span-2">
+        <label for="edit-nameEvent">Nome do Evento *</label>
+        <input
+          pInputText
+          id="edit-nameEvent"
+          formControlName="nameEvent"
+          maxlength="100"
+        />
+      </div>
+
+      <!-- Local -->
+      <div class="form-field col-span-2">
+        <label for="edit-localEvent">Local *</label>
+        <input
+          pInputText
+          id="edit-localEvent"
+          formControlName="localEvent"
+          maxlength="200"
+        />
+      </div>
+
+      <!-- Data -->
+      <div class="form-field col-span-2">
+        <label for="edit-dataEvent">Data do Evento *</label>
+        <p-datePicker
+          inputId="edit-dataEvent"
+          formControlName="dataEvent"
+          [showTime]="true"
+          [showIcon]="true"
+          dateFormat="dd/mm/yy"
+        />
+      </div>
+
+      <!-- Status -->
+      <div class="form-field col-span-2">
+        <label for="edit-status">Status *</label>
+        <select
+          id="edit-status"
+          formControlName="status"
+          class="form-select"
+          [value]="editForm.get('status')?.value">
+          <option value="planejamento">Planejamento</option>
+          <option value="ativo">Ativo</option>
+          <option value="finalizado">Finalizado</option>
+        </select>
+      </div>
+
+      <!-- Contato -->
+      <div class="form-field col-span-2">
+        <label for="edit-contactEvent">Telefone/Contato</label>
+        <p-inputMask
+          id="edit-contactEvent"
+          formControlName="contactEvent"
+          mask="(99) 99999-9999"
+          placeholder="(00) 00000-0000"
+          [autoClear]="false"
+        />
+      </div>
+
+      <!-- Nome do Contato -->
+      <div class="form-field col-span-2">
+        <label for="edit-nameContactEvent">Nome do Responsável</label>
+        <input
+          pInputText
+          id="edit-nameContactEvent"
+          formControlName="nameContactEvent"
+          maxlength="100"
+        />
+      </div>
+    </div>
+  </form>
+
+  <ng-template pTemplate="footer">
+    <div class="dialog-footer">
+      <p-button
+        label="Cancelar"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="closeEditDialog()"
+      />
+      <p-button
+        label="Salvar Alterações"
+        icon="pi pi-check"
+        severity="success"
+        [disabled]="editForm.invalid"
+        (onClick)="saveEdit()"
+      />
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- ==================== MODAL: ESTATÍSTICAS ==================== -->
+<p-dialog
+  [(visible)]="isViewingStats"
+  [modal]="true"
+  [closable]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{width: '90vw', maxWidth: '35rem'}"
+  [header]="currentStatsEvent ? 'Estatísticas: ' + currentStatsEvent.nameEvent : 'Estatísticas'"
+  (onHide)="closeStatsDialog()">
+
+  @if (eventStats) {
+    <div class="stats-container">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-sales">
+            <i class="pi pi-shopping-cart"></i>
+          </div>
+          <div class="stat-content">
+            <span class="stat-value">{{ eventStats.totalSales }}</span>
+            <span class="stat-label">Total de Vendas</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-volume">
+            <i class="pi pi-chart-bar"></i>
+          </div>
+          <div class="stat-content">
+            <span class="stat-value">{{ (eventStats.totalVolume / 1000).toFixed(1) }}L</span>
+            <span class="stat-label">Volume Total</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-revenue">
+            <i class="pi pi-dollar"></i>
+          </div>
+          <div class="stat-content">
+            <span class="stat-value">R$ {{ eventStats.totalRevenue.toFixed(2) }}</span>
+            <span class="stat-label">Receita Total</span>
+          </div>
+        </div>
+      </div>
+
+      @if (eventStats.salesByBeer && eventStats.salesByBeer.length > 0) {
+        <div class="sales-by-beer">
+          <h4>Vendas por Cerveja</h4>
+          <div class="beer-stats-list">
+            @for (beerStat of eventStats.salesByBeer; track beerStat.beerName) {
+              <div class="beer-stat-item">
+                <div class="beer-stat-info">
+                  <strong>{{ beerStat.beerName }}</strong>
+                  <span class="beer-stat-details">
+                    {{ beerStat.salesCount }} vendas ·
+                    {{ (beerStat.totalVolume / 1000).toFixed(1) }}L
+                  </span>
+                </div>
+                <div class="beer-stat-revenue">
+                  R$ {{ beerStat.revenue.toFixed(2) }}
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      } @else {
+        <div class="no-sales-message">
+          <i class="pi pi-info-circle"></i>
+          <p>Este evento ainda não possui vendas registradas.</p>
+        </div>
+      }
+    </div>
+  }
+
+  <ng-template pTemplate="footer">
+    <p-button
+      label="Fechar"
+      severity="secondary"
+      (onClick)="closeStatsDialog()"
+    />
+  </ng-template>
+</p-dialog>

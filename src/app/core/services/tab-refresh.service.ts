@@ -20,6 +20,7 @@ export enum SettingsSubTab {
   USER = 'user',
   SALES = 'sales',
   ADMIN = 'admin',
+  EVENTS = 'events',
   HELP = 'help'
 }
 

@@ -16,6 +16,9 @@ import { DatabaseService } from '../../core/services/database';
 import { ComandaService } from '../../core/services/comanda.service';
 import { Comanda } from '../../core/models/comanda.model';
 import { TabRefreshService, MainTab } from '../../core/services/tab-refresh.service';
+import { AuthService } from '../../core/services/auth.service';
+import { EventService } from '../../core/services/event.service';
+import { Event } from '../../core/models/event.model';
 
 interface SaleSummary {
   beerName: string;
@@ -58,6 +61,8 @@ export class SalesFormComponent implements OnInit {
   // ==================== INJEÇÃO DE DEPENDÊNCIAS ====================
   private readonly dbService = inject(DatabaseService);
   private readonly comandaService = inject(ComandaService);
+  private readonly authService = inject(AuthService);
+  private readonly eventService = inject(EventService);
   private readonly fb = inject(FormBuilder);
   private readonly messageService = inject(MessageService);
   private readonly tabRefreshService = inject(TabRefreshService);
@@ -93,7 +98,11 @@ export class SalesFormComponent implements OnInit {
 
   // Signal para controlar estado do bottom sheet (mobile only)
   protected isBottomSheetExpanded = signal(false);
-  
+
+  // Event management signals
+  readonly selectedEventId = signal<number | null>(null);
+  readonly availableEvents = computed(() => this.eventService.activeEvents());
+
   // ==================== COMPUTED SIGNAL PARA RESUMO ====================
   /**
    * Calcula o resumo da venda em tempo real
@@ -128,8 +137,10 @@ export class SalesFormComponent implements OnInit {
     const beerId = this.beerId.value;
     if (!beerId) return false;
 
-    // Busca o estoque da cerveja selecionada
-    const stock = this.dbService.getEventStockByBeerId(beerId);
+    const eventId = this.selectedEventId();
+
+    // Busca o estoque da cerveja selecionada para o evento atual
+    const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
 
     // Se não tem registro de estoque, estoque está desabilitado
     if (!stock) return false;
@@ -145,7 +156,8 @@ export class SalesFormComponent implements OnInit {
     const beerId = this.beerId.value;
     if (!beerId) return null;
 
-    const stock = this.dbService.getEventStockByBeerId(beerId);
+    const eventId = this.selectedEventId();
+    const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
     return stock ? stock.quantidadeLitros : null;
   });
 
@@ -157,8 +169,10 @@ export class SalesFormComponent implements OnInit {
     const beerId = this.beerId.value;
     if (!beerId) return false;
 
-    // Busca o estoque da cerveja selecionada
-    const stock = this.dbService.getEventStockByBeerId(beerId);
+    const eventId = this.selectedEventId();
+
+    // Busca o estoque da cerveja selecionada para o evento atual
+    const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
 
     // Se não tem registro de estoque, estoque está desabilitado
     if (!stock) return false;
@@ -177,9 +191,10 @@ export class SalesFormComponent implements OnInit {
 
     const cupSize = this.cupSize.value;
     const quantity = this.quantity.value;
+    const eventId = this.selectedEventId();
 
-    // Busca o estoque da cerveja selecionada
-    const stock = this.dbService.getEventStockByBeerId(beerId);
+    // Busca o estoque da cerveja selecionada para o evento atual
+    const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
 
     // Se não tem registro de estoque, estoque está desabilitado (permite venda)
     if (!stock) return false;
@@ -216,10 +231,21 @@ export class SalesFormComponent implements OnInit {
   }
 
   // ==================== LIFECYCLE HOOKS ====================
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
+    // Carrega eventos disponíveis
+    await this.eventService.loadEvents();
+
     if (this.dbService.isDbReady()) {
       this.loadBeerTypes();
     }
+  }
+
+  /**
+   * Callback quando o evento selecionado muda
+   */
+  onEventChange(eventId: number | null): void {
+    this.selectedEventId.set(eventId);
+    console.log('📅 Evento alterado para venda:', eventId || 'Sem evento (geral)');
   }
 
   // ==================== MÉTODOS PRIVADOS DE INICIALIZAÇÃO ====================
@@ -390,11 +416,12 @@ export class SalesFormComponent implements OnInit {
     }
 
     const { cupSize, quantity } = this.saleForm.value;
-    const stock = this.dbService.getEventStockByBeerId(beerId);
+    const eventId = this.selectedEventId();
+    const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
 
     // Se não há registro de estoque, permite adicionar (modo normal)
     if (!stock) {
-      console.log(`ℹ️ Sem controle de estoque para beerId ${beerId} - adição permitida`);
+      console.log(`ℹ️ Sem controle de estoque para beerId ${beerId} [eventId: ${eventId || 'geral'}] - adição permitida`);
       return true;
     }
 
@@ -414,7 +441,7 @@ export class SalesFormComponent implements OnInit {
 
     // Validação de estoque esgotado
     if (stock.quantidadeLitros === 0) {
-      console.log(`❌ Estoque esgotado para beerId ${beerId} (0L)`);
+      console.log(`❌ Estoque esgotado para beerId ${beerId} (0L) [eventId: ${eventId || 'geral'}]`);
       this.showStockError(
         'Estoque Esgotado!',
         `O estoque de ${beerName} está esgotado (0L disponível).\n\nNão é possível adicionar ao carrinho. Por favor, reponha o estoque em Configurações > Vendas.`
@@ -424,7 +451,7 @@ export class SalesFormComponent implements OnInit {
 
     // Validação de estoque insuficiente (considerando o que já está no carrinho)
     if (totalLitersNeeded > stock.quantidadeLitros) {
-      console.log(`❌ Estoque insuficiente para beerId ${beerId}: necessário ${totalLitersNeeded}L (${litersInCart}L no carrinho + ${litersToAdd}L agora), disponível ${stock.quantidadeLitros}L`);
+      console.log(`❌ Estoque insuficiente para beerId ${beerId}: necessário ${totalLitersNeeded}L (${litersInCart}L no carrinho + ${litersToAdd}L agora), disponível ${stock.quantidadeLitros}L [eventId: ${eventId || 'geral'}]`);
       this.showStockError(
         'Estoque Insuficiente!',
         `Você já tem ${litersInCart.toFixed(1)}L de ${beerName} no carrinho.\n\nTentando adicionar mais ${litersToAdd.toFixed(1)}L = ${totalLitersNeeded.toFixed(1)}L total.\n\nEstoque disponível: ${stock.quantidadeLitros.toFixed(1)}L\n\nPor favor, ajuste a quantidade ou reponha o estoque.`
@@ -432,7 +459,7 @@ export class SalesFormComponent implements OnInit {
       return false;
     }
 
-    console.log(`✅ Validação OK: ${litersToAdd}L sendo adicionado (${litersInCart}L já no carrinho, ${stock.quantidadeLitros}L disponíveis)`);
+    console.log(`✅ Validação OK: ${litersToAdd}L sendo adicionado (${litersInCart}L já no carrinho, ${stock.quantidadeLitros}L disponíveis) [eventId: ${eventId || 'geral'}]`);
     return true;
   }
 
@@ -500,8 +527,10 @@ export class SalesFormComponent implements OnInit {
     const item = this.cartItems().find(i => i.id === itemId);
     if (!item) return;
 
+    const eventId = this.selectedEventId();
+
     // Valida estoque antes de incrementar
-    const stock = this.dbService.getEventStockByBeerId(item.beerId);
+    const stock = this.dbService.getEventStockByBeerId(item.beerId, eventId);
     if (stock) {
       const litersInCart = this.cartItems()
         .filter(i => i.beerId === item.beerId)
@@ -574,12 +603,21 @@ export class SalesFormComponent implements OnInit {
       return;
     }
 
+    // Valida se o usuário está logado
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) {
+      this.showError('Você precisa estar logado para finalizar uma venda.');
+      return;
+    }
+
     // Valida estoque novamente antes de finalizar
     if (!this.validateCartStock()) {
       return;
     }
 
     try {
+      const eventId = this.selectedEventId();
+
       // Registra cada item do carrinho como uma venda
       this.cartItems().forEach(item => {
         const sale: Omit<Sale, 'id'> = {
@@ -589,7 +627,9 @@ export class SalesFormComponent implements OnInit {
           quantity: item.quantity,
           timestamp: new Date().toISOString(),
           totalVolume: item.totalVolume,
-          comandaId: null
+          comandaId: null,
+          userId: currentUser.userId,
+          eventId
         };
 
         this.insertSaleIntoDatabase(sale);
@@ -623,8 +663,10 @@ export class SalesFormComponent implements OnInit {
    * Retorna false se algum item não tem estoque suficiente
    */
   private validateCartStock(): boolean {
+    const eventId = this.selectedEventId();
+
     for (const item of this.cartItems()) {
-      const stock = this.dbService.getEventStockByBeerId(item.beerId);
+      const stock = this.dbService.getEventStockByBeerId(item.beerId, eventId);
 
       // Se não há controle de estoque, continua
       if (!stock) continue;
@@ -669,11 +711,13 @@ export class SalesFormComponent implements OnInit {
    * MUDANÇA: Não inserimos ID, deixamos o AUTOINCREMENT fazer o trabalho
    * MUDANÇA: beerId agora é number
    * MUDANÇA V6: Suporte para comandaId opcional
+   * MUDANÇA V8: Inclui userId obrigatório para rastrear quem fez a venda
+   * MUDANÇA V9: Inclui eventId opcional para vincular a eventos
    */
   private insertSaleIntoDatabase(sale: Omit<Sale, 'id'>): void {
     const query = `
-      INSERT INTO sales (beerId, beerName, cupSize, quantity, timestamp, totalVolume, comandaId)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO sales (beerId, beerName, cupSize, quantity, timestamp, totalVolume, comandaId, userId, eventId)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     // MUDANÇA: Removemos o ID da inserção
@@ -685,32 +729,36 @@ export class SalesFormComponent implements OnInit {
       sale.quantity,
       sale.timestamp,
       sale.totalVolume,
-      sale.comandaId ?? null  // ← NOVO V6: FK opcional para comandas
+      sale.comandaId ?? null,  // ← NOVO V6: FK opcional para comandas
+      sale.userId,        // ← NOVO V8: FK obrigatória para users
+      sale.eventId ?? null  // ← NOVO V9: FK opcional para eventos
     ]);
   }
 
   /**
    * Atualiza o estoque do evento (se configurado)
    * Converte volume de ml para litros e subtrai do estoque
+   * IMPORTANTE: Passa o eventId para subtrair do estoque correto
    */
   private updateEventStock(sale: Omit<Sale, 'id'>): void {
     try {
       // Converte totalVolume (ml) para litros
       const litersToSubtract = sale.totalVolume / this.ML_TO_LITERS;
 
-      // Tenta subtrair do estoque (retorna false se não há estoque configurado)
+      // Tenta subtrair do estoque passando o eventId (retorna false se não há estoque configurado)
       const wasSubtracted = this.dbService.subtractFromEventStock(
         sale.beerId,
-        litersToSubtract
+        litersToSubtract,
+        sale.eventId ?? null  // ← CORREÇÃO: Passa o eventId da venda
       );
 
       if (wasSubtracted) {
-        console.log(`📦 Estoque atualizado: -${litersToSubtract}L de ${sale.beerName}`);
+        console.log(`📦 Estoque atualizado: -${litersToSubtract}L de ${sale.beerName} [eventId: ${sale.eventId || 'geral'}]`);
 
         // Verifica se está abaixo do limite de alerta
-        this.checkStockAlert(sale.beerId, sale.beerName);
+        this.checkStockAlert(sale.beerId, sale.beerName, sale.eventId ?? null);
       } else {
-        console.log(`ℹ️ Sem controle de estoque para ${sale.beerName}`);
+        console.log(`ℹ️ Sem controle de estoque para ${sale.beerName} [eventId: ${sale.eventId || 'geral'}]`);
       }
     } catch (error) {
       // Não propaga o erro - venda já foi registrada com sucesso
@@ -720,10 +768,13 @@ export class SalesFormComponent implements OnInit {
 
   /**
    * Verifica se o estoque de uma cerveja está abaixo do limite e exibe alerta
+   * @param beerId ID da cerveja
+   * @param beerName Nome da cerveja
+   * @param eventId ID do evento (null = estoque geral)
    */
-  private checkStockAlert(beerId: number, beerName: string): void {
+  private checkStockAlert(beerId: number, beerName: string, eventId: number | null = null): void {
     try {
-      const stock = this.dbService.getEventStockByBeerId(beerId);
+      const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
       if (!stock) return;
 
       const config = this.dbService.getStockAlertConfig();
@@ -742,7 +793,7 @@ export class SalesFormComponent implements OnInit {
         sticky: false
       });
 
-      console.log(`⚠️ ALERTA: ${beerName} com estoque baixo (${remainingLiters}L)`);
+      console.log(`⚠️ ALERTA: ${beerName} com estoque baixo (${remainingLiters}L) [eventId: ${eventId || 'geral'}]`);
     } catch (error) {
       console.error('⚠️ Erro ao verificar alerta de estoque:', error);
     }
@@ -850,7 +901,8 @@ export class SalesFormComponent implements OnInit {
    * @returns true se estoque está ativo E 0 < quantidade < minLitersAlert
    */
   checkLowStockForBeer(beerId: number): boolean {
-    const stock = this.dbService.getEventStockByBeerId(beerId);
+    const eventId = this.selectedEventId();
+    const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
     if (!stock) return false;
     return stock.quantidadeLitros > 0 && stock.quantidadeLitros < stock.minLitersAlert;
   }
@@ -861,7 +913,8 @@ export class SalesFormComponent implements OnInit {
    * @returns true se estoque está ativo E quantidade = 0
    */
   checkDepletedStockForBeer(beerId: number): boolean {
-    const stock = this.dbService.getEventStockByBeerId(beerId);
+    const eventId = this.selectedEventId();
+    const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
     if (!stock) return false;
     return stock.quantidadeLitros === 0;
   }
@@ -872,7 +925,8 @@ export class SalesFormComponent implements OnInit {
    * @returns Quantidade em litros ou null se não tem controle
    */
   getStockForBeer(beerId: number): number | null {
-    const stock = this.dbService.getEventStockByBeerId(beerId);
+    const eventId = this.selectedEventId();
+    const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
     return stock ? stock.quantidadeLitros : null;
   }
 
@@ -927,6 +981,13 @@ export class SalesFormComponent implements OnInit {
       return;
     }
 
+    // Valida se o usuário está logado
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) {
+      this.showError('Você precisa estar logado para finalizar uma venda.');
+      return;
+    }
+
     // Valida estoque novamente antes de finalizar
     if (!this.validateCartStock()) {
       return;
@@ -945,6 +1006,8 @@ export class SalesFormComponent implements OnInit {
         this.comandaService.openComanda(comandaNumero);
       }
 
+      const eventId = this.selectedEventId();
+
       // Processar todos os itens do carrinho vinculados à comanda
       this.cartItems().forEach(item => {
         const sale: Omit<Sale, 'id'> = {
@@ -954,7 +1017,9 @@ export class SalesFormComponent implements OnInit {
           quantity: item.quantity,
           timestamp: new Date().toISOString(),
           totalVolume: item.totalVolume,
-          comandaId: comanda.id
+          comandaId: comanda.id,
+          userId: currentUser.userId,
+          eventId
         };
 
         this.insertSaleIntoDatabase(sale);

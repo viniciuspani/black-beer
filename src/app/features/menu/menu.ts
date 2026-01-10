@@ -13,6 +13,7 @@ import { SettingsUserComponent } from '../settings-user/settings-user';
 import { SettingsSalesComponent } from '../settings-sales/settings-sales';
 import { SettingsAdminComponent } from '../settings-admin/settings-admin';
 import { HelpComponent } from '../help/help';
+import { EventManagementComponent } from '../event-management/event-management';
 import { ClientConfigService } from '../../core/services/client-config.service';
 import { AuthService } from '../../core/services/auth.service';
 import { TabRefreshService, MainTab, SettingsSubTab } from '../../core/services/tab-refresh.service';
@@ -36,6 +37,7 @@ import { MenuItem } from 'primeng/api';
     SettingsUserComponent,
     SettingsSalesComponent,
     SettingsAdminComponent,
+    EventManagementComponent,
     HelpComponent,
   ],
    templateUrl: './menu.html',
@@ -64,7 +66,8 @@ export class Menu {
    * 0 = Usuário
    * 1 = Vendas/Estoque
    * 2 = Admin
-   * 3 = Ajuda
+   * 3 = Eventos
+   * 4 = Ajuda
    */
   protected readonly activeSettingsTab = signal<number>(0);
 
@@ -262,14 +265,15 @@ export class Menu {
 
   /**
    * Notifica mudança de sub-aba de configurações via serviço
-   * @param subTabIndex Índice da sub-aba (0=User, 1=Sales, 2=Admin, 3=Help)
+   * @param subTabIndex Índice da sub-aba (0=User, 1=Sales, 2=Admin, 3=Events, 4=Help)
    */
   private notifySettingsSubTabChange(subTabIndex: number): void {
     const subTabMap: { [key: number]: SettingsSubTab } = {
       0: SettingsSubTab.USER,
       1: SettingsSubTab.SALES,
       2: SettingsSubTab.ADMIN,
-      3: SettingsSubTab.HELP
+      3: SettingsSubTab.EVENTS,
+      4: SettingsSubTab.HELP
     };
 
     const subTab = subTabMap[subTabIndex];

@@ -107,6 +107,38 @@
     <ng-template pTemplate="content">
       <form [formGroup]="saleForm" class="sales-form">
 
+        <!-- ==================== SELEÇÃO DE EVENTO ==================== -->
+        <section class="form-section event-selector-section">
+          <h3 class="section-title">
+            <i class="pi pi-calendar text-amber-600"></i>
+            Evento (Opcional)
+          </h3>
+
+          <div class="event-selector-compact">
+            <!-- Botão "Sem Evento" -->
+            <button
+              type="button"
+              class="event-btn-compact"
+              [class.event-btn-active]="selectedEventId() === null"
+              (click)="onEventChange(null)">
+              <i class="pi pi-globe"></i>
+              <span>Sem Evento</span>
+            </button>
+
+            <!-- Botões de eventos ativos -->
+            @for (event of availableEvents(); track event.id) {
+              <button
+                type="button"
+                class="event-btn-compact"
+                [class.event-btn-active]="selectedEventId() === event.id"
+                (click)="onEventChange(event.id)">
+                <i class="pi pi-calendar-plus"></i>
+                <span>{{ event.nameEvent }}</span>
+              </button>
+            }
+          </div>
+        </section>
+
         <!-- ==================== SELEÇÃO DE CERVEJA ==================== -->
         <section class="form-section">
           <h3 class="section-title">

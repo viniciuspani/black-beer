@@ -86,13 +86,13 @@ $shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
       width: 100% !important;
     }
 
-    // Estilos para o modal do DatePicker em mobile
+    // Estilos para o modal do DatePicker em mobile - 60% otimizado
     @media (max-width: 767px) {
       .p-datepicker-panel {
         width: 75vw !important;
-        max-width: 75vw !important;
-        font-size: 0.85rem !important;
-        padding: 0.75rem !important;
+        max-width: 300px !important;
+        font-size: 0.7rem !important;
+        padding: 0.4rem !important;
         margin: auto !important;
       }
 
@@ -101,115 +101,131 @@ $shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
-        padding: 0.5rem 0.25rem !important;
-        gap: 0.25rem !important;
-        min-height: 2.5rem !important;
-        overflow: visible !important;
+        padding: 0.3rem 0.15rem !important;
+        gap: 0.3rem !important;
+        min-height: 1.75rem !important;
+        margin-bottom: 0.15rem !important;
 
         .p-datepicker-title {
           flex: 1 !important;
           display: flex !important;
           align-items: center !important;
           justify-content: center !important;
-          gap: 0.25rem !important;
-          font-size: 0.8rem !important;
+          gap: 0.15rem !important;
+          font-size: 0.7rem !important;
           font-weight: 600 !important;
-          white-space: nowrap !important;
-          overflow: visible !important;
-          min-width: 0 !important;
-          max-width: none !important;
-
-          // Garantir que todos os elementos filhos (mês/ano) sejam visíveis
-          * {
-            overflow: visible !important;
-            white-space: nowrap !important;
-            font-size: 0.8rem !important;
-          }
 
           button,
           span {
-            font-size: 0.8rem !important;
-            padding: 0.25rem !important;
-            min-width: auto !important;
+            font-size: 0.7rem !important;
+            padding: 0.075rem !important;
           }
         }
 
-        // Botões de navegação (setas)
+        // Botões de navegação (setas) - 60% otimizado
         > button {
-          width: 1.75rem !important;
-          height: 1.75rem !important;
+          width: 1.5rem !important;
+          height: 1.5rem !important;
+          min-width: 28px !important;
+          min-height: 28px !important;
           flex-shrink: 0 !important;
-          padding: 0 !important;
+          padding: 0.15rem !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+
+          .p-icon {
+            font-size: 0.7rem !important;
+          }
         }
       }
 
       // Tabela do calendário
       .p-datepicker-calendar-container {
-        padding: 0.5rem 0.25rem !important;
+        padding: 0.15rem !important;
       }
 
       .p-datepicker-calendar {
-        font-size: 0.75rem !important;
         width: 100% !important;
 
         thead tr th {
-          padding: 0.25rem !important;
-          font-size: 0.65rem !important;
+          padding: 0.15rem 0.075rem !important;
+          font-size: 0.6rem !important;
           font-weight: 600 !important;
           text-align: center !important;
         }
 
         tbody {
           td {
-            padding: 0.1rem !important;
+            padding: 0.0375rem !important;
             text-align: center !important;
           }
 
+          // Botões dos dias - 60% otimizado
           .p-datepicker-day {
-            width: 1.875rem !important;
-            height: 1.875rem !important;
-            font-size: 0.75rem !important;
+            width: 1.5rem !important;
+            height: 1.5rem !important;
+            min-width: 28px !important;
+            min-height: 28px !important;
+            font-size: 0.7rem !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
+            border-radius: 0.15rem !important;
+            font-weight: 500 !important;
           }
         }
       }
 
-      // Botões do timepicker alinhados corretamente
+      // Botões do timepicker - 60% otimizado
       .p-datepicker-time-picker {
-        padding: 0.75rem 0.5rem !important;
+        padding: 0.3rem 0.15rem !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        gap: 0.5rem !important;
+        gap: 0.3rem !important;
+        border-top: 1px solid $border-light !important;
+        margin-top: 0.15rem !important;
 
         > div {
           display: flex !important;
+          flex-direction: column !important;
           align-items: center !important;
-          gap: 0.25rem !important;
+          gap: 0.075rem !important;
         }
 
+        // Botões incremento/decremento - 60% otimizado
         button {
-          width: 2rem !important;
-          height: 2rem !important;
+          width: 1.2rem !important;
+          height: 1.2rem !important;
+          min-width: 22px !important;
+          min-height: 22px !important;
           flex-shrink: 0 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 0 !important;
 
           .p-icon {
-            font-size: 1rem !important;
+            font-size: 0.6rem !important;
           }
         }
 
+        // Display de hora/minuto - 60% otimizado
         span {
-          font-size: 1.125rem !important;
-          font-weight: 600 !important;
-          min-width: 2.5rem !important;
+          font-size: 0.75rem !important;
+          font-weight: 700 !important;
+          min-width: 1.2rem !important;
           text-align: center !important;
+          padding: 0 !important;
+          line-height: 1 !important;
         }
 
+        // Separador ":" - 60% otimizado
         .p-separator {
-          font-size: 1.125rem !important;
-          font-weight: 600 !important;
+          font-size: 0.75rem !important;
+          font-weight: 700 !important;
+          margin: 0 0.0375rem !important;
         }
       }
     }

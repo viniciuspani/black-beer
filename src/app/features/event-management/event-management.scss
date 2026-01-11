@@ -44,6 +44,7 @@ $shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
 
   @media (min-width: 768px) {
     padding: 1.5rem;
+    overflow-y: visible;
   }
 
   // Garantir que componentes PrimeNG sejam responsivos
@@ -232,9 +233,20 @@ $shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
 
     // Estilos para o modal do DatePicker em desktop - 50% menor
     @media (min-width: 768px) {
+      // Garantir que o overlay não seja cortado
+      .p-datepicker {
+        position: relative !important;
+        z-index: 1000 !important;
+      }
+
       .p-datepicker-panel {
         font-size: 0.625rem !important;
         padding: 0.5rem !important;
+        width: auto !important;
+        max-width: none !important;
+        overflow: visible !important;
+        min-width: 240px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
       }
 
       // Cabeçalho do calendário (mês/ano)
@@ -282,10 +294,12 @@ $shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
       // Tabela do calendário
       .p-datepicker-calendar-container {
         padding: 0.25rem !important;
+        width: 100% !important;
       }
 
       .p-datepicker-calendar {
         width: 100% !important;
+        table-layout: fixed !important;
 
         thead tr th {
           padding: 0.25rem 0.125rem !important;
@@ -310,31 +324,36 @@ $shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
             justify-content: center !important;
             border-radius: 0.25rem !important;
             font-weight: 500 !important;
+            margin: 0 auto !important;
           }
         }
       }
 
       // Botões do timepicker - 50% menor
       .p-datepicker-time-picker {
-        padding: 0.375rem 0.25rem !important;
+        padding: 0.5rem 0.25rem !important;
         display: flex !important;
+        flex-wrap: nowrap !important;
         align-items: center !important;
         justify-content: center !important;
-        gap: 0.375rem !important;
+        gap: 0.5rem !important;
         border-top: 1px solid $border-light !important;
         margin-top: 0.25rem !important;
+        width: 100% !important;
+        overflow: visible !important;
 
         > div {
           display: flex !important;
           flex-direction: column !important;
           align-items: center !important;
           gap: 0.125rem !important;
+          flex-shrink: 0 !important;
         }
 
         // Botões incremento/decremento - 50% menor
         button {
-          width: 1.25rem !important;
-          height: 1.25rem !important;
+          width: 1.5rem !important;
+          height: 1.5rem !important;
           flex-shrink: 0 !important;
           display: flex !important;
           align-items: center !important;
@@ -342,25 +361,26 @@ $shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
           padding: 0 !important;
 
           .p-icon {
-            font-size: 0.625rem !important;
+            font-size: 0.7rem !important;
           }
         }
 
         // Display de hora/minuto - 50% menor
         span {
-          font-size: 0.75rem !important;
+          font-size: 0.85rem !important;
           font-weight: 700 !important;
-          min-width: 1.25rem !important;
+          min-width: 1.5rem !important;
           text-align: center !important;
-          padding: 0 !important;
-          line-height: 1 !important;
+          padding: 0.125rem !important;
+          line-height: 1.2 !important;
         }
 
         // Separador ":" - 50% menor
         .p-separator {
-          font-size: 0.75rem !important;
+          font-size: 0.85rem !important;
           font-weight: 700 !important;
-          margin: 0 0.0625rem !important;
+          margin: 0 0.125rem !important;
+          align-self: center !important;
         }
       }
     }
@@ -370,12 +390,16 @@ $shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
 // Card principal
 ::ng-deep {
   .event-management-card {
+    overflow: visible !important;
+
     .p-card-body {
       padding: 0;
+      overflow: visible !important;
     }
 
     .p-card-content {
       padding: 0;
+      overflow: visible !important;
     }
   }
 }
@@ -428,6 +452,8 @@ $shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
   padding: 1rem;
   background: $gray-50;
   border-bottom: 1px solid $border-light;
+  overflow: visible;
+  position: relative;
 
   @media (min-width: 768px) {
     padding: 1.5rem 2rem;
@@ -443,6 +469,7 @@ $shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
   max-width: 1200px;
   margin: 0 auto;
   overflow-x: hidden;
+  overflow-y: visible;
 
   .form-header {
     margin-bottom: 1rem;
@@ -475,6 +502,8 @@ $shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
     grid-template-columns: 1fr !important;
     gap: 0.75rem !important;
     width: 100%;
+    overflow: visible !important;
+    position: relative;
 
     @media (min-width: 640px) {
       grid-template-columns: repeat(2, 1fr) !important;
@@ -507,6 +536,8 @@ $shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
     flex-direction: column;
     gap: 0.5rem;
     width: 100%;
+    position: relative;
+    overflow: visible;
     min-width: 0;
     margin-bottom: 0;
 

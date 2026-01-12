@@ -26,14 +26,19 @@ declare global {
 /**
  * Serviço responsável por gerenciar o banco de dados SQLite da aplicação
  *
- * MUDANÇAS NA REFATORAÇÃO:
- * - IDs mudados de TEXT para INTEGER (auto-increment)
- * - Tabela settings reestruturada (id, email, isConfigured)
- * - Foreign key beerId agora é INTEGER
- * - Seed data atualizado com IDs numéricos
- * - Queries tipadas e otimizadas
+ * VERSÃO ATUAL: 9 (schema unificado)
  *
- * @version 3.0.0
+ * CARACTERÍSTICAS:
+ * - IDs INTEGER com auto-increment em todas as tabelas
+ * - Gestão completa de usuários (autenticação e autorização)
+ * - Sistema de eventos de venda com estoque e preços isolados
+ * - Gestão de comandas/tabs para clientes
+ * - Configuração de preços por cerveja e tamanho de copo
+ * - Controle de estoque com alertas personalizados
+ * - White-label (logo e nome da empresa)
+ * - Relatórios detalhados com filtros por data e evento
+ *
+ * @version 9.0.0
  */
 @Injectable({
   providedIn: 'root'
@@ -52,7 +57,7 @@ export class DatabaseService {
 
   /**
    * Inicializa o banco de dados SQLite
-   * Verifica versão e realiza migração se necessário
+   * Carrega banco existente ou cria novo se não existir
    */
   private async initializeDatabase(): Promise<void> {
     try {
@@ -62,52 +67,21 @@ export class DatabaseService {
       });
 
       // Tentar carregar banco existente V9
-      let savedDb = localStorage.getItem(DB_STORAGE_KEY);
+      const savedDb = localStorage.getItem(DB_STORAGE_KEY);
 
-      // Se não encontrou v9, tentar v6 para migração
       if (!savedDb) {
-        const oldDbKeyV6 = 'black_beer_sqlite_db_v6';
-        savedDb = localStorage.getItem(oldDbKeyV6);
-
-        if (savedDb) {
-          console.log('🔄 Migrando banco de dados de V6 para versão atual...');
-          const dbArray = this.stringToUint8Array(savedDb);
-          this.db = new this.SQL.Database(dbArray);
-          this.migrateFromV6ToV7();
-          this.migrateFromV7ToV8();
-          this.migrateFromV8ToV9();
-          localStorage.removeItem(oldDbKeyV6);
-          this.persist();
-          console.log('✅ Migração concluída para V9');
-        } else {
-          // Não há DB, criar novo
-          console.log('🔄 Criando novo banco de dados (versão 9)...');
-          this.createNewDatabase();
-        }
+        // Não há DB, criar novo
+        console.log('🔄 Criando novo banco de dados (versão 9)...');
+        this.createNewDatabase();
       } else {
-        // Carrega banco existente e verifica versão
+        // Carrega banco existente
         const dbArray = this.stringToUint8Array(savedDb);
         this.db = new this.SQL.Database(dbArray);
 
         const currentVersion = this.getCurrentDbVersion();
-        console.log(`📦 Banco de dados carregado. Versão atual: ${currentVersion}, Versão esperada: ${DB_VERSION}`);
+        console.log(`📦 Banco de dados carregado. Versão: ${currentVersion}`);
 
-        // Executar migrações incrementais se necessário
-        if (currentVersion < DB_VERSION) {
-          console.log(`🔄 Iniciando migrações de V${currentVersion} para V${DB_VERSION}...`);
-
-          if (currentVersion < 8) {
-            this.migrateFromV7ToV8();
-          }
-          if (currentVersion < 9) {
-            this.migrateFromV8ToV9();
-          }
-
-          this.persist();
-          console.log(`✅ Migrações concluídas. Banco agora está na V${DB_VERSION}`);
-        }
-
-        // Validação adicional do schema (detecta problemas)
+        // Validação do schema
         await this.validateAndFixSchema();
       }
 
@@ -129,38 +103,33 @@ export class DatabaseService {
   }
 
   /**
-   * Cria o schema do banco de dados versão 9
+   * Cria o schema do banco de dados versão 9 (unificado)
    *
-   * MUDANÇAS V9:
-   * - events: Nova tabela para gerenciamento de eventos de venda
-   * - event_sale.eventId: Nova coluna opcional para vincular estoque a eventos
-   * - sales_config.eventId: Nova coluna opcional para vincular preços a eventos
-   * - sales.eventId: Nova coluna opcional para vincular vendas a eventos
-   * - UNIQUE constraints atualizadas: (beerId, eventId) para permitir configurações por evento
+   * ESTRUTURA COMPLETA DO BANCO DE DADOS:
    *
-   * MUDANÇAS V8:
-   * - sales.userId: Nova coluna obrigatória para rastrear qual usuário fez a venda
+   * TABELAS PRINCIPAIS:
+   * - beer_types: Tipos de cerveja disponíveis (IDs INTEGER auto-increment)
+   * - sales: Registro de vendas (vinculadas a cerveja, usuário, comanda e/ou evento)
+   * - users: Usuários do sistema (autenticação e controle de acesso)
+   * - events: Eventos de venda (com status: planejamento, ativo, finalizado)
+   * - comandas: Gestão de comandas/tabs de clientes
    *
-   * MUDANÇAS V6:
-   * - comandas: Nova tabela para gerenciamento de comandas (tabs)
-   * - sales.comandaId: Nova coluna opcional para vincular vendas a comandas
+   * TABELAS DE CONFIGURAÇÃO:
+   * - settings: Configurações gerais (emails para relatórios)
+   * - client_config: White-label (logo e nome da empresa)
+   * - sales_config: Preços por cerveja e tamanho de copo (com suporte a eventos)
+   * - event_sale: Estoque por cerveja (com suporte a eventos)
+   * - stock_alert_config: Configuração de alertas de estoque baixo
    *
-   * MUDANÇAS V5:
-   * - sales_config: Nova tabela para configuração de preços por cerveja e tamanho de copo
-   *
-   * MUDANÇAS V4:
-   * - event_sale: Nova tabela para controle de estoque por evento
-   * - stock_alert_config: Nova tabela para configuração de alertas de estoque baixo
-   *
-   * MUDANÇAS V3:
-   * - beer_types.id: TEXT → INTEGER PRIMARY KEY AUTOINCREMENT
-   * - sales.id: TEXT → INTEGER PRIMARY KEY AUTOINCREMENT
-   * - sales.beerId: TEXT → INTEGER (FK mantida)
-   * - settings: nova estrutura (id INTEGER, email TEXT, isConfigured INTEGER)
-   * - Tabela de configurações com suporte a múltiplos emails
-    * - email: String com emails separados por ; (ex: "a@x.com;b@x.com")
-    * - Mínimo: 1 email, Máximo: 10 emails
-   * - client_config: Tabela para white-label (logo e nome da empresa)
+   * RELACIONAMENTOS:
+   * - sales.beerId → beer_types.id (CASCADE)
+   * - sales.userId → users.id
+   * - sales.comandaId → comandas.id (SET NULL)
+   * - sales.eventId → events.id (SET NULL)
+   * - sales_config.beerId → beer_types.id (CASCADE)
+   * - sales_config.eventId → events.id (CASCADE)
+   * - event_sale.beerId → beer_types.id (CASCADE)
+   * - event_sale.eventId → events.id (CASCADE)
    */
   private createSchemaV9(): void {
     if (!this.db) return;
@@ -174,8 +143,8 @@ export class DatabaseService {
         description TEXT
       );
 
-      -- Tabela de vendas com IDs INTEGER e FK correta (atualizada V9)
-      -- V9: Adicionado eventId opcional para vincular vendas a eventos
+      -- Tabela de vendas com IDs INTEGER e FK
+      -- Permite vincular vendas a cerveja, usuário, comanda e/ou evento
       CREATE TABLE IF NOT EXISTS sales (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         beerId INTEGER NOT NULL,
@@ -229,7 +198,7 @@ export class DatabaseService {
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 
-      -- Tabela de eventos (V9)
+      -- Tabela de eventos
       -- Gerencia eventos de venda com configurações isoladas de estoque e preços
       CREATE TABLE IF NOT EXISTS events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -256,10 +225,9 @@ export class DatabaseService {
         updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- Tabela de estoque por evento (V4 - atualizada V7 - atualizada V9)
-      -- Armazena a quantidade de litros disponível de cada cerveja por evento
-      -- V7: Adicionado minLitersAlert para limite individual por cerveja
-      -- V9: Adicionado eventId (NULL = estoque geral sem evento específico)
+      -- Tabela de estoque por evento
+      -- Armazena a quantidade de litros disponível de cada cerveja
+      -- Suporta configuração por evento (eventId NULL = estoque geral)
       CREATE TABLE IF NOT EXISTS event_sale (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         beerId INTEGER NOT NULL,
@@ -280,7 +248,7 @@ export class DatabaseService {
       -- Índice para melhorar performance em queries por evento
       CREATE INDEX IF NOT EXISTS idx_event_sale_eventId ON event_sale(eventId);
 
-      -- Tabela de configuração de alertas de estoque (V4)
+      -- Tabela de configuração de alertas de estoque
       -- Armazena o limite mínimo de litros para emitir alerta
       CREATE TABLE IF NOT EXISTS stock_alert_config (
         id INTEGER PRIMARY KEY CHECK(id = 1),
@@ -291,9 +259,9 @@ export class DatabaseService {
       -- Insere configuração padrão de alerta (5 litros)
       INSERT OR IGNORE INTO stock_alert_config (id, minLiters) VALUES (1, 5.0);
 
-      -- Tabela de configuração de preços por cerveja (V5 - atualizada V9)
-      -- Armazena o preço de cada cerveja por tamanho de copo e por evento
-      -- V9: Adicionado eventId (NULL = preços gerais sem evento específico)
+      -- Tabela de configuração de preços por cerveja
+      -- Armazena o preço de cada cerveja por tamanho de copo
+      -- Suporta configuração por evento (eventId NULL = preços gerais)
       CREATE TABLE IF NOT EXISTS sales_config (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         beerId INTEGER NOT NULL,
@@ -315,7 +283,7 @@ export class DatabaseService {
       -- Índice para melhorar performance em queries por evento
       CREATE INDEX IF NOT EXISTS idx_sales_config_eventId ON sales_config(eventId);
 
-      -- Tabela de comandas (V6)
+      -- Tabela de comandas
       -- Armazena o estado de cada comanda (disponível, em uso, aguardando pagamento)
       CREATE TABLE IF NOT EXISTS comandas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -397,205 +365,6 @@ export class DatabaseService {
     this.persist();
   }
 
-  /**
-   * Migra banco de dados de V5 para V6
-   * Adiciona tabela comandas e coluna comandaId em sales
-   */
-  private migrateFromV5ToV6(): void {
-    if (!this.db) return;
-
-    console.log('🔄 Iniciando migração V5 → V6...');
-
-    try {
-      // Criar tabela comandas
-      this.db.exec(`
-        CREATE TABLE IF NOT EXISTS comandas (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          numero INTEGER NOT NULL UNIQUE,
-          status TEXT NOT NULL CHECK(status IN ('disponivel', 'em_uso', 'aguardando_pagamento')) DEFAULT 'disponivel',
-          totalValue REAL DEFAULT 0,
-          openedAt TEXT,
-          closedAt TEXT,
-          paidAt TEXT,
-          createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_comandas_status ON comandas(status);
-        CREATE INDEX IF NOT EXISTS idx_comandas_numero ON comandas(numero);
-      `);
-
-      console.log('✅ Tabela comandas criada');
-
-      // Adicionar coluna comandaId na tabela sales
-      try {
-        this.db.exec('ALTER TABLE sales ADD COLUMN comandaId INTEGER REFERENCES comandas(id) ON DELETE SET NULL');
-        this.db.exec('CREATE INDEX IF NOT EXISTS idx_sales_comandaId ON sales(comandaId)');
-        console.log('✅ Coluna comandaId adicionada à tabela sales');
-      } catch (error) {
-        // Coluna já existe, ignorar erro
-        console.log('ℹ️ Coluna comandaId já existe');
-      }
-
-      // Criar 10 comandas iniciais
-      this.seedInitialComandas(10);
-
-      // Atualizar versão do banco
-      this.db.exec('DELETE FROM db_version');
-      this.db.exec(`INSERT INTO db_version (version) VALUES (${DB_VERSION})`);
-
-      console.log('✅ Migração V5 → V6 concluída com sucesso');
-    } catch (error) {
-      console.error('❌ Erro na migração V5 → V6:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Migração V6 → V7
-   * Adiciona coluna minLitersAlert individual para cada cerveja na tabela event_sale
-   */
-  private migrateFromV6ToV7(): void {
-    if (!this.db) return;
-
-    console.log('🔄 Iniciando migração V6 → V7...');
-
-    try {
-      // Adicionar coluna minLitersAlert na tabela event_sale
-      try {
-        this.db.exec('ALTER TABLE event_sale ADD COLUMN minLitersAlert REAL DEFAULT 5.0 CHECK(minLitersAlert >= 0)');
-        console.log('✅ Coluna minLitersAlert adicionada à tabela event_sale');
-      } catch (error) {
-        // Coluna já existe, ignorar erro
-        console.log('ℹ️ Coluna minLitersAlert já existe');
-      }
-
-      // Atualizar versão do banco
-      this.db.exec('DELETE FROM db_version');
-      this.db.exec(`INSERT INTO db_version (version) VALUES (7)`);
-
-      console.log('✅ Migração V6 → V7 concluída com sucesso');
-    } catch (error) {
-      console.error('❌ Erro na migração V6 → V7:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Migração V7 → V8
-   * Adiciona coluna userId na tabela sales
-   */
-  private migrateFromV7ToV8(): void {
-    if (!this.db) return;
-
-    console.log('🔄 Iniciando migração V7 → V8...');
-
-    try {
-      // Adicionar coluna userId na tabela sales
-      try {
-        // Primeiro, adicionar a coluna como nullable
-        this.db.exec('ALTER TABLE sales ADD COLUMN userId INTEGER');
-        console.log('✅ Coluna userId adicionada à tabela sales');
-
-        // Atualizar todas as vendas existentes com userId = 1 (admin padrão)
-        this.db.exec('UPDATE sales SET userId = 1 WHERE userId IS NULL');
-        console.log('✅ Vendas existentes associadas ao usuário admin (id=1)');
-      } catch (error) {
-        // Coluna já existe, ignorar erro
-        console.log('ℹ️ Coluna userId já existe');
-      }
-
-      // Criar índice para melhorar performance
-      try {
-        this.db.exec('CREATE INDEX IF NOT EXISTS idx_sales_userId ON sales(userId)');
-      } catch (error) {
-        console.log('ℹ️ Índice idx_sales_userId já existe');
-      }
-
-      // Atualizar versão do banco
-      this.db.exec('DELETE FROM db_version');
-      this.db.exec(`INSERT INTO db_version (version) VALUES (8)`);
-
-      console.log('✅ Migração V7 → V8 concluída com sucesso');
-    } catch (error) {
-      console.error('❌ Erro na migração V7 → V8:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Migração V8 → V9
-   * Adiciona tabela events e coluna eventId em sales, sales_config e event_sale
-   */
-  private migrateFromV8ToV9(): void {
-    if (!this.db) return;
-
-    console.log('🔄 Iniciando migração V8 → V9...');
-
-    try {
-      // 1. Criar tabela events
-      try {
-        this.db.exec(`
-          CREATE TABLE IF NOT EXISTS events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nameEvent TEXT NOT NULL UNIQUE,
-            localEvent TEXT NOT NULL,
-            dataEvent TEXT NOT NULL,
-            contactEvent TEXT,
-            nameContactEvent TEXT,
-            status TEXT NOT NULL CHECK(status IN ('planejamento', 'ativo', 'finalizado')) DEFAULT 'planejamento',
-            createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-          )
-        `);
-        console.log('✅ Tabela events criada');
-      } catch (error) {
-        console.log('ℹ️ Tabela events já existe');
-      }
-
-      // 2. Adicionar coluna eventId na tabela sales
-      try {
-        this.db.exec('ALTER TABLE sales ADD COLUMN eventId INTEGER');
-        console.log('✅ Coluna eventId adicionada à tabela sales');
-      } catch (error) {
-        console.log('ℹ️ Coluna eventId já existe na tabela sales');
-      }
-
-      // 3. Adicionar coluna eventId na tabela sales_config
-      try {
-        this.db.exec('ALTER TABLE sales_config ADD COLUMN eventId INTEGER');
-        console.log('✅ Coluna eventId adicionada à tabela sales_config');
-      } catch (error) {
-        console.log('ℹ️ Coluna eventId já existe na tabela sales_config');
-      }
-
-      // 4. Adicionar coluna eventId na tabela event_sale
-      try {
-        this.db.exec('ALTER TABLE event_sale ADD COLUMN eventId INTEGER');
-        console.log('✅ Coluna eventId adicionada à tabela event_sale');
-      } catch (error) {
-        console.log('ℹ️ Coluna eventId já existe na tabela event_sale');
-      }
-
-      // 5. Criar índices para melhorar performance
-      try {
-        this.db.exec('CREATE INDEX IF NOT EXISTS idx_sales_eventId ON sales(eventId)');
-        this.db.exec('CREATE INDEX IF NOT EXISTS idx_sales_config_eventId ON sales_config(eventId)');
-        this.db.exec('CREATE INDEX IF NOT EXISTS idx_event_sale_eventId ON event_sale(eventId)');
-        console.log('✅ Índices de eventId criados');
-      } catch (error) {
-        console.log('ℹ️ Índices de eventId já existem');
-      }
-
-      // Atualizar versão do banco
-      this.db.exec('DELETE FROM db_version');
-      this.db.exec(`INSERT INTO db_version (version) VALUES (9)`);
-
-      console.log('✅ Migração V8 → V9 concluída com sucesso');
-    } catch (error) {
-      console.error('❌ Erro na migração V8 → V9:', error);
-      throw error;
-    }
-  }
 
   /**
    * Obtém a versão atual do banco de dados
@@ -1162,7 +931,7 @@ export class DatabaseService {
   }
 
   /**
-   * Valida o schema do banco e executa migrações se necessário
+   * Valida o schema do banco de dados
    * Método público para ser chamado em caso de erros
    */
   public async validateAndFixSchema(): Promise<boolean> {
@@ -1175,36 +944,31 @@ export class DatabaseService {
       console.log('🔍 Validando schema do banco de dados...');
 
       const currentVersion = this.getCurrentDbVersion();
-      console.log(`📦 Versão atual do banco: ${currentVersion}`);
-      console.log(`📦 Versão esperada: ${DB_VERSION}`);
+      console.log(`📦 Versão do banco: ${currentVersion}`);
 
-      // Verifica se a tabela events existe
+      // Verifica se tabelas principais existem
       const eventsTableExists = this.tableExists('events');
-      console.log(`📋 Tabela 'events' existe: ${eventsTableExists}`);
+      const comandasTableExists = this.tableExists('comandas');
+      const usersTableExists = this.tableExists('users');
 
-      // Verifica se as colunas eventId existem
+      console.log(`📋 Tabela 'events': ${eventsTableExists}`);
+      console.log(`📋 Tabela 'comandas': ${comandasTableExists}`);
+      console.log(`📋 Tabela 'users': ${usersTableExists}`);
+
+      // Verifica colunas críticas
       const salesHasEventId = this.columnExists('sales', 'eventId');
-      const salesConfigHasEventId = this.columnExists('sales_config', 'eventId');
-      const eventSaleHasEventId = this.columnExists('event_sale', 'eventId');
+      const salesHasUserId = this.columnExists('sales', 'userId');
+      const salesHasComandaId = this.columnExists('sales', 'comandaId');
 
-      console.log(`📋 Coluna 'sales.eventId' existe: ${salesHasEventId}`);
-      console.log(`📋 Coluna 'sales_config.eventId' existe: ${salesConfigHasEventId}`);
-      console.log(`📋 Coluna 'event_sale.eventId' existe: ${eventSaleHasEventId}`);
+      console.log(`📋 Coluna 'sales.eventId': ${salesHasEventId}`);
+      console.log(`📋 Coluna 'sales.userId': ${salesHasUserId}`);
+      console.log(`📋 Coluna 'sales.comandaId': ${salesHasComandaId}`);
 
-      // Se alguma coisa estiver faltando e a versão for menor que 9, executar migrações
-      if (currentVersion < DB_VERSION || !eventsTableExists || !salesHasEventId) {
-        console.log('🔄 Schema desatualizado! Executando migrações...');
-
-        if (currentVersion < 8) {
-          this.migrateFromV7ToV8();
-        }
-        if (currentVersion < 9) {
-          this.migrateFromV8ToV9();
-        }
-
-        this.persist();
-        console.log('✅ Schema validado e corrigido!');
-        return true;
+      // Se schema estiver incompleto, avisar que precisa recriar
+      if (!eventsTableExists || !salesHasEventId || !salesHasUserId) {
+        console.warn('⚠️ Schema desatualizado! Recomenda-se resetar o banco de dados.');
+        console.warn('   Execute: this.resetDatabase() no console do navegador');
+        return false;
       }
 
       console.log('✅ Schema está correto!');

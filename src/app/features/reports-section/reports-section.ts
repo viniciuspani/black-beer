@@ -722,7 +722,12 @@ export class ReportsSectionComponent implements OnInit {
       type: 'text/csv;charset=utf-8;'
     });
 
-    const fileName = `relatorio-black-beer-${new Date().toISOString().split('T')[0]}.csv`;
+    // Usa data local para evitar problema de fuso horário (toISOString usa UTC)
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const fileName = `relatorio-black-beer-${year}-${month}-${day}.csv`;
 
     return new File([blob], fileName, {
       type: 'text/csv;charset=utf-8;'

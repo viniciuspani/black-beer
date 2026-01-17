@@ -180,10 +180,14 @@ export class SalesFormComponent implements OnInit {
 
   /**
    * Callback quando o evento selecionado muda
+   * Atualiza os mapas de estoque para refletir o estoque do evento selecionado
    */
-  onEventChange(eventId: number | null): void {
+  async onEventChange(eventId: number | null): Promise<void> {
     this.selectedEventId.set(eventId);
     console.log('📅 Evento alterado para venda:', eventId || 'Sem evento (geral)');
+
+    // Atualiza os mapas de estoque para o novo contexto de evento
+    await this.updateStockMaps(this.beerTypes());
   }
 
   // ==================== MÉTODOS PRIVADOS DE INICIALIZAÇÃO ====================

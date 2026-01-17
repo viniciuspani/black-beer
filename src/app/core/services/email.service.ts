@@ -123,8 +123,8 @@ export class EmailService {
    * Busca emails configurados do banco de dados
    * @returns Array de strings com emails configurados
    */
-  getConfiguredEmailsFromDatabase(): string[] {
-    return this.dbService.getConfiguredEmails();
+  async getConfiguredEmailsFromDatabase(): Promise<string[]> {
+    return await this.dbService.getConfiguredEmails();
   }
 
   /**

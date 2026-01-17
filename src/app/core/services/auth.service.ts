@@ -76,7 +76,7 @@ export class AuthService {
 
   // ==================== REGISTRO (CADASTRO) ====================
 
-  public listarUsuarios(): any[] {
+  public async listarUsuarios(): Promise<any[]> {
     try {
       // Verifica se o banco está pronto
       if (!this.dbService.isDbReady()) {
@@ -84,7 +84,7 @@ export class AuthService {
         return [];
       }
 
-      const result = this.dbService.getUsuarios();
+      const result = await this.dbService.getUsuarios();
       console.log('✅ Usuários listados:', result);
       console.log('✅ Total de usuários:', result.length);
       return result;
@@ -108,29 +108,31 @@ export class AuthService {
     }
 
     try {
-      if (this.usernameExists(dto.username)) return { success: false, message: 'Nome de usuário já está em uso' };
-      if (this.emailExists(dto.email)) return { success: false, message: 'Email já está cadastrado' };
+      if (await this.usernameExists(dto.username)) return { success: false, message: 'Nome de usuário já está em uso' };
+      if (await this.emailExists(dto.email)) return { success: false, message: 'Email já está cadastrado' };
 
       console.log('✅ Dados de registro validados. Criando usuário...');
-      console.log('🔐 Verifica usuario...', this.usernameExists(dto.username));
-      console.log('🔐 Verifica email...', this.emailExists(dto.email));
-
 
       const passwordHash = this.hashPassword(dto.password);
       const role: UserRole = dto.role || 'user';
 
-      var resultado = this.dbService.executeRun('INSERT INTO users (username, email, passwordHash, role) VALUES (?, ?, ?, ?)', [
-        dto.username.trim(),
-        dto.email.trim().toLowerCase(),
-        passwordHash,
-        role,
-      ]);
+      const db = this.dbService.getDatabase();
+      if (!db) {
+        return { success: false, message: 'Banco de dados não disponível' };
+      }
 
-      console.log('✅ Usuário criado. Resultado:', resultado);
-      console.log('✅ Usuário criado com sucesso. ID:', this.dbService.getLastInsertId());
+      const userId = await db.users.add({
+        username: dto.username.trim(),
+        email: dto.email.trim().toLowerCase(),
+        passwordHash: passwordHash,
+        role: role,
+        createdAt: new Date().toISOString(),
+        lastLoginAt: undefined
+      });
 
-      const userId = this.dbService.getLastInsertId();
-      const user = this.getUserById(userId);
+      console.log('✅ Usuário criado com sucesso. ID:', userId);
+
+      const user = await this.getUserById(userId);
       if (!user) return { success: false, message: 'Erro ao buscar usuário criado' };
 
       const session = userToSession(user);
@@ -173,13 +175,13 @@ export class AuthService {
     }
 
     try {
-      const user = this.findUserByEmailOrUsername(dto.emailOrUsername);
+      const user = await this.findUserByEmailOrUsername(dto.emailOrUsername);
       if (!user) return { success: false, message: 'Usuário ou senha incorretos' };
 
       const passwordMatch = this.verifyPassword(dto.password, user.passwordHash);
       if (!passwordMatch) return { success: false, message: 'Usuário ou senha incorretos' };
 
-      this.updateLastLogin(user.id);
+      await this.updateLastLogin(user.id);
       const session = userToSession(user);
       this.setSession(session);
 
@@ -243,52 +245,73 @@ export class AuthService {
   }
 
   // ==================== QUERIES E SUPORTE ====================
-  private usernameExists(username: string): boolean {
+  private async usernameExists(username: string): Promise<boolean> {
     try {
-      const result = this.dbService.executeQuery('SELECT id FROM users WHERE LOWER(username) = LOWER(?) LIMIT 1', [username.trim()]);
-      return result.length > 0;
+      const db = this.dbService.getDatabase();
+      if (!db) return false;
+
+      const result = await db.users
+        .filter(u => u.username.toLowerCase() === username.trim().toLowerCase())
+        .first();
+      return !!result;
     } catch (error) {
       console.error('❌ Erro ao verificar username:', error);
       return false;
     }
   }
 
-  private emailExists(email: string): boolean {
+  private async emailExists(email: string): Promise<boolean> {
     try {
-      const result = this.dbService.executeQuery('SELECT id FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [email.trim()]);
-      return result.length > 0;
+      const db = this.dbService.getDatabase();
+      if (!db) return false;
+
+      const result = await db.users
+        .filter(u => u.email.toLowerCase() === email.trim().toLowerCase())
+        .first();
+      return !!result;
     } catch (error) {
       console.error('❌ Erro ao verificar email:', error);
       return false;
     }
   }
 
-  private getUserById(id: number): User | null {
+  private async getUserById(id: number): Promise<User | null> {
     try {
-      const result = this.dbService.executeQuery('SELECT * FROM users WHERE id = ? LIMIT 1', [id]);
-      if (result.length === 0) return null;
-      return this.mapToUser(result[0]);
+      const db = this.dbService.getDatabase();
+      if (!db) return null;
+
+      const result = await db.users.get(id);
+      if (!result) return null;
+      return this.mapToUser(result);
     } catch (error) {
       console.error('❌ Erro ao buscar usuário:', error);
       return null;
     }
   }
 
-  private findUserByEmailOrUsername(emailOrUsername: string): User | null {
+  private async findUserByEmailOrUsername(emailOrUsername: string): Promise<User | null> {
     try {
+      const db = this.dbService.getDatabase();
+      if (!db) return null;
+
       const input = emailOrUsername.trim().toLowerCase();
-      const result = this.dbService.executeQuery('SELECT * FROM users WHERE LOWER(email) = ? OR LOWER(username) = ? LIMIT 1', [input, input]);
-      if (result.length === 0) return null;
-      return this.mapToUser(result[0]);
+      const result = await db.users
+        .filter(u => u.email.toLowerCase() === input || u.username.toLowerCase() === input)
+        .first();
+      if (!result) return null;
+      return this.mapToUser(result);
     } catch (error) {
       console.error('❌ Erro ao buscar usuário:', error);
       return null;
     }
   }
 
-  private updateLastLogin(userId: number): void {
+  private async updateLastLogin(userId: number): Promise<void> {
     try {
-      this.dbService.executeRun('UPDATE users SET lastLoginAt = ? WHERE id = ?', [new Date().toISOString(), userId]);
+      const db = this.dbService.getDatabase();
+      if (!db) return;
+
+      await db.users.update(userId, { lastLoginAt: new Date().toISOString() });
     } catch (error) {
       console.error('❌ Erro ao atualizar último login:', error);
     }
@@ -331,11 +354,11 @@ export class AuthService {
     return this.isAdmin();
   }
 
-  refreshSession(): void {
+  async refreshSession(): Promise<void> {
     const session = this.currentSessionSignal();
     if (!session) return;
 
-    const user = this.getUserById(session.userId);
+    const user = await this.getUserById(session.userId);
     if (!user) {
       this.logout();
       return;

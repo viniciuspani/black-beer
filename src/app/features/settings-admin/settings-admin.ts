@@ -16,10 +16,16 @@ import { DatabaseService } from '../../core/services/database';
  * Interface para as estatísticas do banco de dados
  */
 interface DatabaseStats {
+  beerTypes: number;
+  sales: number;
+  users: number;
+  events: number;
+  comandas: number;
+  totalRecords: number;
+  // Propriedades para o template
   totalSales: number;
   totalBeerTypes: number;
   hasSettings: boolean;
-  dbVersion: number;
 }
 
 @Component({
@@ -58,10 +64,15 @@ export class SettingsAdminComponent implements OnInit {
    * Armazena as estatísticas do banco de dados
    */
   private readonly dbStatsSignal = signal<DatabaseStats>({
+    beerTypes: 0,
+    sales: 0,
+    users: 0,
+    events: 0,
+    comandas: 0,
+    totalRecords: 0,
     totalSales: 0,
     totalBeerTypes: 0,
-    hasSettings: false,
-    dbVersion: 0
+    hasSettings: false
   });
 
   // ==================== COMPUTED SIGNALS ====================
@@ -91,17 +102,28 @@ export class SettingsAdminComponent implements OnInit {
   /**
    * Atualiza as estatísticas do banco de dados
    */
-  private updateDatabaseStats(): void {
+  private async updateDatabaseStats(): Promise<void> {
     try {
-      const stats = this.dbService.getDatabaseStats();
-      this.dbStatsSignal.set(stats);
+      const stats = await this.dbService.getDatabaseStats();
+      // Adiciona propriedades para compatibilidade com o template
+      this.dbStatsSignal.set({
+        ...stats,
+        totalSales: stats.sales,
+        totalBeerTypes: stats.beerTypes,
+        hasSettings: stats.totalRecords > 0
+      });
     } catch (error) {
       console.error('❌ Erro ao atualizar estatísticas:', error);
       this.dbStatsSignal.set({
+        beerTypes: 0,
+        sales: 0,
+        users: 0,
+        events: 0,
+        comandas: 0,
+        totalRecords: 0,
         totalSales: 0,
         totalBeerTypes: 0,
-        hasSettings: false,
-        dbVersion: 0
+        hasSettings: false
       });
     }
   }
@@ -175,7 +197,7 @@ export class SettingsAdminComponent implements OnInit {
     }
 
     const stats = this.dbStats();
-    if (stats.totalSales === 0) {
+    if (stats.totalRecords === 0) {
       return 'Vazio';
     }
 
@@ -184,10 +206,11 @@ export class SettingsAdminComponent implements OnInit {
 
   hasDataToClear(): boolean {
     const stats = this.dbStats();
-    return stats.totalSales > 0 || stats.hasSettings;
+    return stats.totalRecords > 0;
   }
 
   getDatabaseVersion(): number {
-    return this.dbStats().dbVersion;
+    // Retorna versão do schema Dexie (versão 2)
+    return 2;
   }
 }

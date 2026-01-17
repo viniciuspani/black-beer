@@ -38,13 +38,17 @@ export class SalesService {
    * // Obter receita de um evento específico
    * const revenue = this.salesService.getTotalRevenue(undefined, undefined, eventId);
    */
-  public getTotalRevenue(startDate?: Date, endDate?: Date, eventId?: number): number {
+  public async getTotalRevenue(startDate?: Date, endDate?: Date, eventId?: number): Promise<number> {
     if (!this.dbService.isDbReady()) {
       console.warn('⚠️ Banco de dados não está pronto');
       return 0;
     }
 
-    return this.dbService.getTotalRevenue(startDate, endDate, eventId);
+    // Converter Date para string ISO
+    const startStr = startDate?.toISOString();
+    const endStr = endDate?.toISOString();
+
+    return await this.dbService.getTotalRevenue(startStr, endStr, eventId);
   }
 
   /**
@@ -53,8 +57,8 @@ export class SalesService {
    * @param beerId ID da cerveja
    * @returns true se há preços configurados, false caso contrário
    */
-  public hasPriceConfiguration(beerId: number): boolean {
-    const config = this.dbService.getSalesConfigByBeerId(beerId);
+  public async hasPriceConfiguration(beerId: number): Promise<boolean> {
+    const config = await this.dbService.getSalesConfigByBeerId(beerId);
     return config !== null;
   }
 
@@ -65,8 +69,8 @@ export class SalesService {
    * @param cupSize Tamanho do copo (300, 500 ou 1000)
    * @returns Preço em reais ou 0 se não configurado
    */
-  public getUnitPrice(beerId: number, cupSize: 300 | 500 | 1000): number {
-    const config = this.dbService.getSalesConfigByBeerId(beerId);
+  public async getUnitPrice(beerId: number, cupSize: 300 | 500 | 1000): Promise<number> {
+    const config = await this.dbService.getSalesConfigByBeerId(beerId);
 
     if (!config) {
       return 0;
@@ -92,12 +96,12 @@ export class SalesService {
    * @param quantity Quantidade de copos
    * @returns Valor total em reais
    */
-  public calculateSaleValue(
+  public async calculateSaleValue(
     beerId: number,
     cupSize: 300 | 500 | 1000,
     quantity: number
-  ): number {
-    const unitPrice = this.getUnitPrice(beerId, cupSize);
+  ): Promise<number> {
+    const unitPrice = await this.getUnitPrice(beerId, cupSize);
     return unitPrice * quantity;
   }
 }

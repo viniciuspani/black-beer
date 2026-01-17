@@ -43,13 +43,8 @@ export class HelpComponent implements OnInit {
   // ==================== UTILIDADES ====================
 
   getDatabaseVersion(): number {
-    try {
-      const stats = this.dbService.getDatabaseStats();
-      return stats.dbVersion;
-    } catch (error) {
-      console.error('❌ Erro ao obter versão do banco:', error);
-      return 0;
-    }
+    // Retorna versão do schema Dexie (versão 2)
+    return 2;
   }
 
   getSystemStatus(): string {

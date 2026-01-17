@@ -130,81 +130,18 @@ export class SalesFormComponent implements OnInit {
 
   // ==================== VALIDAÇÃO DE ESTOQUE ====================
   /**
-   * Verifica se a cerveja selecionada tem estoque zerado
-   * Retorna true se estoque está ativo E quantidade = 0
+   * Signals para estados de estoque (atualizados via effects)
+   * Não podem ser computed porque chamam métodos async
    */
-  readonly hasStockDepleted = computed<boolean>(() => {
-    const beerId = this.beerId.value;
-    if (!beerId) return false;
+  readonly hasStockDepleted = signal<boolean>(false);
+  readonly currentStock = signal<number | null>(null);
+  readonly hasLowStock = signal<boolean>(false);
+  readonly hasInsufficientStock = signal<boolean>(false);
 
-    const eventId = this.selectedEventId();
-
-    // Busca o estoque da cerveja selecionada para o evento atual
-    const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
-
-    // Se não tem registro de estoque, estoque está desabilitado
-    if (!stock) return false;
-
-    // Verifica se quantidade está zerada
-    return stock.quantidadeLitros === 0;
-  });
-
-  /**
-   * Retorna a quantidade de litros em estoque da cerveja selecionada
-   */
-  readonly currentStock = computed<number | null>(() => {
-    const beerId = this.beerId.value;
-    if (!beerId) return null;
-
-    const eventId = this.selectedEventId();
-    const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
-    return stock ? stock.quantidadeLitros : null;
-  });
-
-  /**
-   * Verifica se a cerveja selecionada tem estoque baixo
-   * Retorna true se estoque está ativo E 0 < quantidade < minLitersAlert
-   */
-  readonly hasLowStock = computed<boolean>(() => {
-    const beerId = this.beerId.value;
-    if (!beerId) return false;
-
-    const eventId = this.selectedEventId();
-
-    // Busca o estoque da cerveja selecionada para o evento atual
-    const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
-
-    // Se não tem registro de estoque, estoque está desabilitado
-    if (!stock) return false;
-
-    // Verifica se está entre 0 e o limite de alerta
-    return stock.quantidadeLitros > 0 && stock.quantidadeLitros < stock.minLitersAlert;
-  });
-
-  /**
-   * Verifica se há estoque insuficiente para a venda solicitada
-   * Retorna true se estoque está ativo E quantidade solicitada > estoque disponível
-   */
-  readonly hasInsufficientStock = computed<boolean>(() => {
-    const beerId = this.beerId.value;
-    if (!beerId) return false;
-
-    const cupSize = this.cupSize.value;
-    const quantity = this.quantity.value;
-    const eventId = this.selectedEventId();
-
-    // Busca o estoque da cerveja selecionada para o evento atual
-    const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
-
-    // Se não tem registro de estoque, estoque está desabilitado (permite venda)
-    if (!stock) return false;
-
-    // Calcula quantos litros serão vendidos
-    const litersToSell = (cupSize * quantity) / this.ML_TO_LITERS;
-
-    // Verifica se há estoque suficiente
-    return litersToSell > stock.quantidadeLitros;
-  });
+  // Mapas de estado de estoque por cerveja (para uso no template)
+  readonly lowStockBeers = signal<Set<number>>(new Set());
+  readonly depletedStockBeers = signal<Set<number>>(new Set());
+  readonly stockByBeer = signal<Map<number, number>>(new Map());
 
   // ==================== FORM CONTROL GETTERS TIPADOS ====================
   /**
@@ -228,6 +165,7 @@ export class SalesFormComponent implements OnInit {
     this.saleForm = this.createSaleForm();
     this.setupDatabaseEffect();
     this.setupTabRefreshListener();
+    this.setupStockValidationEffect();
   }
 
   // ==================== LIFECYCLE HOOKS ====================
@@ -285,17 +223,79 @@ export class SalesFormComponent implements OnInit {
     });
   }
 
+  /**
+   * Configura effect para atualizar estados de estoque quando form ou evento mudar
+   * Usa async para buscar dados do banco
+   */
+  private setupStockValidationEffect(): void {
+    effect(() => {
+      const beerId = this.beerId.value;
+      const cupSize = this.cupSize.value;
+      const quantity = this.quantity.value;
+      const eventId = this.selectedEventId();
+
+      // Executa validação async
+      this.updateStockSignals(beerId, cupSize, quantity, eventId);
+    });
+  }
+
+  /**
+   * Atualiza signals de estoque de forma assíncrona
+   */
+  private async updateStockSignals(
+    beerId: number | null,
+    cupSize: CupSize,
+    quantity: number,
+    eventId: number | null
+  ): Promise<void> {
+    // Correção: verifica null/undefined em vez de falsy (0 é ID válido)
+    if (beerId === null || beerId === undefined) {
+      this.hasStockDepleted.set(false);
+      this.currentStock.set(null);
+      this.hasLowStock.set(false);
+      this.hasInsufficientStock.set(false);
+      return;
+    }
+
+    try {
+      const stock = await this.dbService.getEventStockByBeerId(beerId, eventId);
+
+      if (!stock) {
+        this.hasStockDepleted.set(false);
+        this.currentStock.set(null);
+        this.hasLowStock.set(false);
+        this.hasInsufficientStock.set(false);
+        return;
+      }
+
+      // Atualiza estados de estoque
+      this.currentStock.set(stock.quantidadeLitros);
+      this.hasStockDepleted.set(stock.quantidadeLitros === 0);
+      this.hasLowStock.set(stock.quantidadeLitros > 0 && stock.quantidadeLitros < stock.minLitersAlert);
+
+      // Calcula se há estoque insuficiente para a quantidade solicitada
+      const litersToSell = (cupSize * quantity) / this.ML_TO_LITERS;
+      this.hasInsufficientStock.set(litersToSell > stock.quantidadeLitros);
+    } catch (error) {
+      console.error('❌ Erro ao atualizar signals de estoque:', error);
+    }
+  }
+
   // ==================== CARREGAMENTO DE DADOS ====================
   /**
    * Carrega tipos de cerveja do banco
    * MUDANÇA: Agora retorna BeerType com id: number
    */
-  private loadBeerTypes(): void {
+  private async loadBeerTypes(): Promise<void> {
     try {
-      const beers = this.dbService.executeQuery(
-        'SELECT * FROM beer_types ORDER BY name'
-      );
-      
+      const db = this.dbService.getDatabase();
+      if (!db) {
+        console.warn('⚠️ Database não disponível');
+        return;
+      }
+
+      const beers = await db.beerTypes.orderBy('name').toArray();
+
       // Garante que IDs são numbers
       const typedBeers: BeerType[] = beers.map(beer => ({
         id: Number(beer.id),              // ← Conversão explícita para number
@@ -303,13 +303,42 @@ export class SalesFormComponent implements OnInit {
         color: beer.color,
         description: beer.description
       }));
-      
+
       this.beerTypes.set(typedBeers);
       console.log('✅ Tipos de cerveja carregados:', typedBeers.length);
+
+      // Atualiza mapas de estado de estoque
+      await this.updateStockMaps(typedBeers);
     } catch (error) {
       console.error('❌ Erro ao carregar tipos de cerveja:', error);
       this.showError('Não foi possível carregar os tipos de cerveja.');
     }
+  }
+
+  /**
+   * Atualiza os mapas de estado de estoque para todas as cervejas
+   */
+  private async updateStockMaps(beers: BeerType[]): Promise<void> {
+    const eventId = this.selectedEventId();
+    const lowStock = new Set<number>();
+    const depletedStock = new Set<number>();
+    const stockMap = new Map<number, number>();
+
+    for (const beer of beers) {
+      const stock = await this.dbService.getEventStockByBeerId(beer.id, eventId);
+      if (stock) {
+        stockMap.set(beer.id, stock.quantidadeLitros);
+        if (stock.quantidadeLitros === 0) {
+          depletedStock.add(beer.id);
+        } else if (stock.quantidadeLitros > 0 && stock.quantidadeLitros < stock.minLitersAlert) {
+          lowStock.add(beer.id);
+        }
+      }
+    }
+
+    this.lowStockBeers.set(lowStock);
+    this.depletedStockBeers.set(depletedStock);
+    this.stockByBeer.set(stockMap);
   }
 
   // ==================== MÉTODOS PÚBLICOS DE MANIPULAÇÃO DO FORM ====================
@@ -344,8 +373,8 @@ export class SalesFormComponent implements OnInit {
    * Adiciona item ao carrinho
    * Valida estoque e busca preço do banco
    */
-  addToCart(): void {
-    if (!this.validateFormForCart()) return;
+  async addToCart(): Promise<void> {
+    if (!(await this.validateFormForCart())) return;
 
     const selectedBeer = this.getSelectedBeer();
     if (!selectedBeer) return;
@@ -353,7 +382,7 @@ export class SalesFormComponent implements OnInit {
     const { beerId, cupSize, quantity } = this.saleForm.value;
 
     // Busca o preço unitário do banco
-    const unitPrice = this.getPriceForCupSize(beerId, cupSize);
+    const unitPrice = await this.getPriceForCupSize(beerId, cupSize);
     if (unitPrice === null) {
       this.showError(`Preço não configurado para ${selectedBeer.name} (${cupSize}ml). Configure em Configurações > Vendas.`);
       return;
@@ -403,21 +432,22 @@ export class SalesFormComponent implements OnInit {
    * Valida formulário para adicionar ao carrinho
    * Similar ao validateForm() mas também considera estoque já no carrinho
    */
-  private validateFormForCart(): boolean {
+  private async validateFormForCart(): Promise<boolean> {
     if (this.saleForm.invalid) {
       this.showWarning('Selecione uma cerveja para continuar.');
       return false;
     }
 
     const beerId = this.beerId.value;
-    if (!beerId) {
+    // Correção: verifica null/undefined em vez de falsy (0 é ID válido)
+    if (beerId === null || beerId === undefined) {
       this.showWarning('Selecione uma cerveja.');
       return false;
     }
 
     const { cupSize, quantity } = this.saleForm.value;
     const eventId = this.selectedEventId();
-    const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
+    const stock = await this.dbService.getEventStockByBeerId(beerId, eventId);
 
     // Se não há registro de estoque, permite adicionar (modo normal)
     if (!stock) {
@@ -466,19 +496,14 @@ export class SalesFormComponent implements OnInit {
   /**
    * Busca o preço de uma cerveja para um tamanho de copo específico
    */
-  private getPriceForCupSize(beerId: number, cupSize: CupSize): number | null {
+  private async getPriceForCupSize(beerId: number, cupSize: CupSize): Promise<number | null> {
     try {
-      const result = this.dbService.executeQuery(
-        'SELECT * FROM sales_config WHERE beerId = ?',
-        [beerId]
-      );
+      const priceConfig = await this.dbService.getSalesConfigByBeerId(beerId);
 
-      if (result.length === 0) {
+      if (!priceConfig) {
         console.warn(`⚠️ Sem configuração de preço para beerId ${beerId}`);
         return null;
       }
-
-      const priceConfig = result[0];
 
       // Mapeia cupSize para coluna correspondente
       const priceColumn = cupSize === 300 ? 'price300ml' :
@@ -523,14 +548,14 @@ export class SalesFormComponent implements OnInit {
   /**
    * Incrementa a quantidade de um item do carrinho
    */
-  incrementCartItem(itemId: string): void {
+  async incrementCartItem(itemId: string): Promise<void> {
     const item = this.cartItems().find(i => i.id === itemId);
     if (!item) return;
 
     const eventId = this.selectedEventId();
 
     // Valida estoque antes de incrementar
-    const stock = this.dbService.getEventStockByBeerId(item.beerId, eventId);
+    const stock = await this.dbService.getEventStockByBeerId(item.beerId, eventId);
     if (stock) {
       const litersInCart = this.cartItems()
         .filter(i => i.beerId === item.beerId)
@@ -597,7 +622,7 @@ export class SalesFormComponent implements OnInit {
   /**
    * Finaliza a venda processando todos os itens do carrinho
    */
-  finalizeSale(): void {
+  async finalizeSale(): Promise<void> {
     if (!this.hasCartItems()) {
       this.showWarning('Adicione itens ao carrinho antes de finalizar a venda.');
       return;
@@ -611,7 +636,8 @@ export class SalesFormComponent implements OnInit {
     }
 
     // Valida estoque novamente antes de finalizar
-    if (!this.validateCartStock()) {
+    const isValid = await this.validateCartStock();
+    if (!isValid) {
       return;
     }
 
@@ -619,7 +645,8 @@ export class SalesFormComponent implements OnInit {
       const eventId = this.selectedEventId();
 
       // Registra cada item do carrinho como uma venda
-      this.cartItems().forEach(item => {
+      // Usa for...of para garantir execução sequencial com await
+      for (const item of this.cartItems()) {
         const sale: Omit<Sale, 'id'> = {
           beerId: item.beerId,
           beerName: item.beerName,
@@ -632,9 +659,9 @@ export class SalesFormComponent implements OnInit {
           eventId
         };
 
-        this.insertSaleIntoDatabase(sale);
-        this.updateEventStock(sale);
-      });
+        await this.insertSaleIntoDatabase(sale);
+        await this.updateEventStock(sale);
+      }
 
       // Mensagem de sucesso
       const totalItems = this.cartItems().reduce((sum, item) => sum + item.quantity, 0);
@@ -652,6 +679,9 @@ export class SalesFormComponent implements OnInit {
       this.clearCart();
       this.resetForm();
 
+      // Atualiza os signals de estoque para refletir a nova quantidade
+      await this.updateStockMaps(this.beerTypes());
+
       console.log('✅ Venda finalizada com sucesso');
     } catch (error) {
       this.handleSaleError(error);
@@ -662,11 +692,11 @@ export class SalesFormComponent implements OnInit {
    * Valida estoque para todos os itens do carrinho
    * Retorna false se algum item não tem estoque suficiente
    */
-  private validateCartStock(): boolean {
+  private async validateCartStock(): Promise<boolean> {
     const eventId = this.selectedEventId();
 
     for (const item of this.cartItems()) {
-      const stock = this.dbService.getEventStockByBeerId(item.beerId, eventId);
+      const stock = await this.dbService.getEventStockByBeerId(item.beerId, eventId);
 
       // Se não há controle de estoque, continua
       if (!stock) continue;
@@ -714,25 +744,24 @@ export class SalesFormComponent implements OnInit {
    * MUDANÇA V8: Inclui userId obrigatório para rastrear quem fez a venda
    * MUDANÇA V9: Inclui eventId opcional para vincular a eventos
    */
-  private insertSaleIntoDatabase(sale: Omit<Sale, 'id'>): void {
-    const query = `
-      INSERT INTO sales (beerId, beerName, cupSize, quantity, timestamp, totalVolume, comandaId, userId, eventId)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+  private async insertSaleIntoDatabase(sale: Omit<Sale, 'id'>): Promise<void> {
+    const db = this.dbService.getDatabase();
+    if (!db) {
+      throw new Error('Database não disponível');
+    }
 
-    // MUDANÇA: Removemos o ID da inserção
-    // O banco gera automaticamente via AUTOINCREMENT
-    this.dbService.executeRun(query, [
-      sale.beerId,        // ← number agora
-      sale.beerName,
-      sale.cupSize,
-      sale.quantity,
-      sale.timestamp,
-      sale.totalVolume,
-      sale.comandaId ?? null,  // ← NOVO V6: FK opcional para comandas
-      sale.userId,        // ← NOVO V8: FK obrigatória para users
-      sale.eventId ?? null  // ← NOVO V9: FK opcional para eventos
-    ]);
+    // Dexie adiciona o ID automaticamente
+    await db.sales.add({
+      beerId: sale.beerId,
+      beerName: sale.beerName,
+      cupSize: sale.cupSize,
+      quantity: sale.quantity,
+      timestamp: sale.timestamp,
+      totalVolume: sale.totalVolume,
+      comandaId: sale.comandaId ?? undefined,  // ← NOVO V6: FK opcional para comandas
+      userId: sale.userId,        // ← NOVO V8: FK obrigatória para users
+      eventId: sale.eventId ?? undefined  // ← NOVO V9: FK opcional para eventos
+    });
   }
 
   /**
@@ -740,13 +769,13 @@ export class SalesFormComponent implements OnInit {
    * Converte volume de ml para litros e subtrai do estoque
    * IMPORTANTE: Passa o eventId para subtrair do estoque correto
    */
-  private updateEventStock(sale: Omit<Sale, 'id'>): void {
+  private async updateEventStock(sale: Omit<Sale, 'id'>): Promise<void> {
     try {
       // Converte totalVolume (ml) para litros
       const litersToSubtract = sale.totalVolume / this.ML_TO_LITERS;
 
       // Tenta subtrair do estoque passando o eventId (retorna false se não há estoque configurado)
-      const wasSubtracted = this.dbService.subtractFromEventStock(
+      const wasSubtracted = await this.dbService.subtractFromEventStock(
         sale.beerId,
         litersToSubtract,
         sale.eventId ?? null  // ← CORREÇÃO: Passa o eventId da venda
@@ -756,7 +785,7 @@ export class SalesFormComponent implements OnInit {
         console.log(`📦 Estoque atualizado: -${litersToSubtract}L de ${sale.beerName} [eventId: ${sale.eventId || 'geral'}]`);
 
         // Verifica se está abaixo do limite de alerta
-        this.checkStockAlert(sale.beerId, sale.beerName, sale.eventId ?? null);
+        await this.checkStockAlert(sale.beerId, sale.beerName, sale.eventId ?? null);
       } else {
         console.log(`ℹ️ Sem controle de estoque para ${sale.beerName} [eventId: ${sale.eventId || 'geral'}]`);
       }
@@ -772,12 +801,12 @@ export class SalesFormComponent implements OnInit {
    * @param beerName Nome da cerveja
    * @param eventId ID do evento (null = estoque geral)
    */
-  private checkStockAlert(beerId: number, beerName: string, eventId: number | null = null): void {
+  private async checkStockAlert(beerId: number, beerName: string, eventId: number | null = null): Promise<void> {
     try {
-      const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
+      const stock = await this.dbService.getEventStockByBeerId(beerId, eventId);
       if (!stock) return;
 
-      const config = this.dbService.getStockAlertConfig();
+      const config = await this.dbService.getStockAlertConfig();
       const minLiters = config?.minLiters || 5.0;
 
       // Se estoque está acima do limite, não há alerta
@@ -889,7 +918,8 @@ export class SalesFormComponent implements OnInit {
    */
   getSelectedBeerName(): string {
     const beerId = this.beerId.value;
-    if (!beerId) return 'Nenhuma';
+    // Correção: verifica null/undefined em vez de falsy (0 é ID válido)
+    if (beerId === null || beerId === undefined) return 'Nenhuma';
 
     const beer = this.beerTypes().find(b => b.id === beerId);
     return beer?.name || 'Desconhecida';
@@ -900,34 +930,25 @@ export class SalesFormComponent implements OnInit {
    * @param beerId ID da cerveja a verificar
    * @returns true se estoque está ativo E 0 < quantidade < minLitersAlert
    */
+  /**
+   * Verifica se cerveja está com estoque baixo (usando signal)
+   */
   checkLowStockForBeer(beerId: number): boolean {
-    const eventId = this.selectedEventId();
-    const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
-    if (!stock) return false;
-    return stock.quantidadeLitros > 0 && stock.quantidadeLitros < stock.minLitersAlert;
+    return this.lowStockBeers().has(beerId);
   }
 
   /**
-   * Verifica se uma cerveja específica tem estoque esgotado
-   * @param beerId ID da cerveja a verificar
-   * @returns true se estoque está ativo E quantidade = 0
+   * Verifica se uma cerveja específica tem estoque esgotado (usando signal)
    */
   checkDepletedStockForBeer(beerId: number): boolean {
-    const eventId = this.selectedEventId();
-    const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
-    if (!stock) return false;
-    return stock.quantidadeLitros === 0;
+    return this.depletedStockBeers().has(beerId);
   }
 
   /**
-   * Retorna a quantidade de estoque de uma cerveja específica
-   * @param beerId ID da cerveja
-   * @returns Quantidade em litros ou null se não tem controle
+   * Retorna a quantidade de estoque de uma cerveja específica (usando signal)
    */
   getStockForBeer(beerId: number): number | null {
-    const eventId = this.selectedEventId();
-    const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
-    return stock ? stock.quantidadeLitros : null;
+    return this.stockByBeer().get(beerId) ?? null;
   }
 
   // ==================== MÉTODOS DE COMANDA ====================
@@ -935,8 +956,8 @@ export class SalesFormComponent implements OnInit {
   /**
    * Abre o modal para selecionar uma comanda
    */
-  protected openComandaDialog(): void {
-    this.loadAvailableComandas();
+  protected async openComandaDialog(): Promise<void> {
+    await this.loadAvailableComandas();
     this.isOpeningComanda.set(true);
   }
 
@@ -951,9 +972,9 @@ export class SalesFormComponent implements OnInit {
   /**
    * Carrega as comandas disponíveis E em uso do banco
    */
-  private loadAvailableComandas(): void {
-    const disponivel = this.comandaService.getAvailableComandas();
-    const emUso = this.comandaService.getInUseComandas();
+  private async loadAvailableComandas(): Promise<void> {
+    const disponivel = await this.comandaService.getAvailableComandas();
+    const emUso = await this.comandaService.getInUseComandas();
     const todasComandas = [...disponivel, ...emUso].sort((a, b) => a.numero - b.numero);
     this.availableComandas.set(todasComandas);
   }
@@ -968,7 +989,7 @@ export class SalesFormComponent implements OnInit {
   /**
    * Finaliza venda com comanda processando todos os itens do carrinho
    */
-  protected finalizeWithComanda(): void {
+  protected async finalizeWithComanda(): Promise<void> {
     const comandaNumero = this.selectedComandaNumero();
 
     if (!comandaNumero) {
@@ -989,12 +1010,13 @@ export class SalesFormComponent implements OnInit {
     }
 
     // Valida estoque novamente antes de finalizar
-    if (!this.validateCartStock()) {
+    const isValid = await this.validateCartStock();
+    if (!isValid) {
       return;
     }
 
     // Buscar a comanda pelo número
-    const comanda = this.dbService.getComandaByNumero(comandaNumero);
+    const comanda = await this.dbService.getComandaByNumero(comandaNumero);
     if (!comanda) {
       this.showError(`Comanda ${comandaNumero} não encontrada`);
       return;
@@ -1003,13 +1025,14 @@ export class SalesFormComponent implements OnInit {
     // Abrir a comanda se ainda estiver disponível
     try {
       if (comanda.status === 'disponivel') {
-        this.comandaService.openComanda(comandaNumero);
+        await this.comandaService.openComanda(comandaNumero);
       }
 
       const eventId = this.selectedEventId();
 
       // Processar todos os itens do carrinho vinculados à comanda
-      this.cartItems().forEach(item => {
+      // Usa for...of para garantir execução sequencial com await
+      for (const item of this.cartItems()) {
         const sale: Omit<Sale, 'id'> = {
           beerId: item.beerId,
           beerName: item.beerName,
@@ -1022,9 +1045,9 @@ export class SalesFormComponent implements OnInit {
           eventId
         };
 
-        this.insertSaleIntoDatabase(sale);
-        this.updateEventStock(sale);
-      });
+        await this.insertSaleIntoDatabase(sale);
+        await this.updateEventStock(sale);
+      }
 
       // Mensagem de sucesso
       const totalItems = this.cartItems().reduce((sum, item) => sum + item.quantity, 0);
@@ -1041,6 +1064,9 @@ export class SalesFormComponent implements OnInit {
       this.clearCart();
       this.resetForm();
       this.closeComandaDialog();
+
+      // Atualiza os signals de estoque para refletir a nova quantidade
+      await this.updateStockMaps(this.beerTypes());
 
       console.log('✅ Venda com comanda finalizada com sucesso');
     } catch (error: any) {

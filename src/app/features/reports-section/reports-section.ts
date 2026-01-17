@@ -105,25 +105,32 @@ export class ReportsSectionComponent implements OnInit {
   protected selectedSavedEmail = signal<string | null>(null);
 
   /**
-   * Signal para forçar refresh do relatório
-   * Incrementado toda vez que precisamos forçar recálculo
+   * Relatório completo carregado do banco de dados
+   * Signal que armazena o relatório atual
    */
-  private readonly refreshTrigger = signal<number>(0);
+  protected readonly report = signal<FullReport>({
+    summary: { totalSales: 0, totalVolumeLiters: 0 },
+    salesByCupSize: [],
+    salesByBeerType: []
+  });
 
   /**
-   * Relatório completo carregado do banco de dados
-   * Computed que reage a mudanças de filtro E ao refreshTrigger
+   * Signal para armazenar o valor total de receita (para uso no template)
    */
-  protected readonly report = computed<FullReport>(() => {
-    // Observa refreshTrigger para forçar recálculo quando necessário
-    this.refreshTrigger();
+  protected readonly totalRevenueSignal = signal<number>(0);
 
+  /**
+   * Carrega o relatório do banco de dados
+   */
+  private async loadReport(): Promise<void> {
     if (!this.dbService.isDbReady()) {
-      return {
+      this.report.set({
         summary: { totalSales: 0, totalVolumeLiters: 0 },
         salesByCupSize: [],
         salesByBeerType: []
-      };
+      });
+      this.totalRevenueSignal.set(0);
+      return;
     }
 
     const start = this.startDate();
@@ -131,12 +138,22 @@ export class ReportsSectionComponent implements OnInit {
     const eventId = this.selectedEventId();
 
     // DatabaseService.getFullReport já faz a filtragem no SQL
-    return this.dbService.getFullReport(
+    const reportData = await this.dbService.getFullReport(
+      start?.toISOString() ?? undefined,
+      end?.toISOString() ?? undefined,
+      eventId ?? undefined
+    );
+
+    this.report.set(reportData);
+
+    // Atualiza o total de receita
+    const totalRevenue = await this.salesService.getTotalRevenue(
       start ?? undefined,
       end ?? undefined,
       eventId ?? undefined
     );
-  });
+    this.totalRevenueSignal.set(totalRevenue);
+  }
   
   // ==================== CONFIGURAÇÕES DOS GRÁFICOS ====================
   
@@ -175,8 +192,8 @@ export class ReportsSectionComponent implements OnInit {
    * Usa dados já agregados do report.salesByBeerType
    */
   protected pieChartData = computed<ChartData<'pie'>>(() => {
-    const salesByBeer = this.report().salesByBeerType;
-    
+    const salesByBeer = this.report()?.salesByBeerType ?? [];
+
     if (salesByBeer.length === 0) {
       return {
         labels: [],
@@ -247,8 +264,8 @@ export class ReportsSectionComponent implements OnInit {
    * Usa dados já agregados do report.salesByCupSize
    */
   protected barChartData = computed<ChartData<'bar'>>(() => {
-    const salesBySize = this.report().salesByCupSize;
-    
+    const salesBySize = this.report()?.salesByCupSize ?? [];
+
     if (salesBySize.length === 0) {
       return {
         labels: [],
@@ -281,9 +298,12 @@ export class ReportsSectionComponent implements OnInit {
     };
   });
   
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     // Carrega eventos ao inicializar
-    this.eventService.loadEvents();
+    await this.eventService.loadEvents();
+
+    // Carrega relatório inicial
+    await this.loadReport();
 
     // Subscription para escutar quando a aba de Relatórios é ativada
     this.tabRefreshService.onMainTabActivated(MainTab.REPORTS).subscribe(() => {
@@ -298,76 +318,81 @@ export class ReportsSectionComponent implements OnInit {
    * Define o período de filtro rápido
    * Limpa filtro customizado ao usar filtro rápido
    */
-  protected setPeriod(period: 'today' | 'week' | 'month' | 'all'): void {
+  protected async setPeriod(period: 'today' | 'week' | 'month' | 'all'): Promise<void> {
     this.selectedPeriod.set(period);
-    
+
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
+
     switch (period) {
       case 'today':
         this.startDate.set(today);
         this.endDate.set(new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59));
         break;
-      
+
       case 'week':
         const weekAgo = new Date(today);
         weekAgo.setDate(weekAgo.getDate() - 7);
         this.startDate.set(weekAgo);
         this.endDate.set(new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59));
         break;
-      
+
       case 'month':
         const monthAgo = new Date(today);
         monthAgo.setDate(monthAgo.getDate() - 30);
         this.startDate.set(monthAgo);
         this.endDate.set(new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59));
         break;
-      
+
       case 'all':
       default:
         this.startDate.set(null);
         this.endDate.set(null);
         break;
     }
+
+    await this.loadReport();
   }
   
   /**
    * Aplica filtro por range customizado
    */
-  protected applyCustomFilter(): void {
+  protected async applyCustomFilter(): Promise<void> {
     const start = this.startDate();
     const end = this.endDate();
-    
+
     if (!start || !end) {
       alert('Selecione ambas as datas (inicial e final)');
       return;
     }
-    
+
     // Validação: data inicial não pode ser maior que data final
     if (start > end) {
       alert('Data inicial não pode ser maior que data final');
       return;
     }
-    
+
     // Normaliza as datas
     const normalizedStart = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 0, 0, 0);
     const normalizedEnd = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59);
-    
+
     this.startDate.set(normalizedStart);
     this.endDate.set(normalizedEnd);
-    
+
     // Limpa seleção de período rápido
     this.selectedPeriod.set('all');
+
+    await this.loadReport();
   }
   
   /**
    * Limpa filtro customizado
    */
-  protected clearCustomFilter(): void {
+  protected async clearCustomFilter(): Promise<void> {
     this.startDate.set(null);
     this.endDate.set(null);
     this.selectedPeriod.set('all');
+    await this.loadReport();
   }
   
   // ==================== MÉTODOS DE DADOS PARA O TEMPLATE ====================
@@ -376,26 +401,26 @@ export class ReportsSectionComponent implements OnInit {
    * Retorna o total de vendas
    */
   protected getTotalSales(): number {
-    return this.report().summary.totalSales;
+    return this.report()?.summary?.totalSales ?? 0;
   }
   
   /**
    * Retorna o volume total vendido em litros
    */
   protected getTotalVolume(): string {
-    return this.report().summary.totalVolumeLiters.toFixed(2);
+    return (this.report()?.summary?.totalVolumeLiters ?? 0).toFixed(2);
   }
   
   /**
    * Retorna a cerveja mais vendida
    */
   protected getTopBeer(): string {
-    const salesByBeer = this.report().salesByBeerType;
-    
-    if (salesByBeer.length === 0) {
+    const salesByBeer = this.report()?.salesByBeerType;
+
+    if (!salesByBeer || salesByBeer.length === 0) {
       return 'N/A';
     }
-    
+
     // Já vem ordenado por totalLiters DESC do banco
     const topBeer = salesByBeer[0];
     return topBeer.name;
@@ -405,9 +430,9 @@ export class ReportsSectionComponent implements OnInit {
    * Retorna o tamanho preferido
    */
   protected getPreferredSize(): number {
-    const salesBySize = this.report().salesByCupSize;
+    const salesBySize = this.report()?.salesByCupSize;
 
-    if (salesBySize.length === 0) {
+    if (!salesBySize || salesBySize.length === 0) {
       return 0;
     }
 
@@ -427,12 +452,12 @@ export class ReportsSectionComponent implements OnInit {
    * Retorna o valor total de vendas em Reais (R$)
    * Delega para o SalesService que encapsula a lógica de negócio
    */
-  protected getTotalRevenue(): number {
+  protected async getTotalRevenue(): Promise<number> {
     const start = this.startDate();
     const end = this.endDate();
     const eventId = this.selectedEventId();
 
-    return this.salesService.getTotalRevenue(
+    return await this.salesService.getTotalRevenue(
       start ?? undefined,
       end ?? undefined,
       eventId ?? undefined
@@ -442,8 +467,9 @@ export class ReportsSectionComponent implements OnInit {
   /**
    * Aplica filtro por evento
    */
-  protected setEventFilter(eventId: number | null): void {
+  protected async setEventFilter(eventId: number | null): Promise<void> {
     this.selectedEventId.set(eventId);
+    await this.loadReport();
   }
 
   /**
@@ -477,7 +503,7 @@ export class ReportsSectionComponent implements OnInit {
    * Retorna a contagem de vendas
    */
   protected getSalesCount(): number {
-    return this.report().summary.totalSales;
+    return this.report()?.summary?.totalSales ?? 0;
   }
   
   /**
@@ -499,9 +525,14 @@ export class ReportsSectionComponent implements OnInit {
    * - Inclui vendas sem evento vinculado
    * - Mantém compatibilidade com seções agregadas existentes
    */
-  private generateCSV(): File {
+  private async generateCSV(): Promise<File> {
     const report = this.report();
     const csvLines: string[] = [];
+
+    // Valores default se o report não estiver disponível
+    const summary = report?.summary ?? { totalSales: 0, totalVolumeLiters: 0 };
+    const salesByBeerType = report?.salesByBeerType ?? [];
+    const salesByCupSize = report?.salesByCupSize ?? [];
 
     // ===========================================
     // HEADER PRINCIPAL
@@ -513,10 +544,10 @@ export class ReportsSectionComponent implements OnInit {
     // ===========================================
     // RESUMO GERAL
     // ===========================================
-    const totalRevenue = this.getTotalRevenue();
+    const totalRevenue = await this.getTotalRevenue();
     csvLines.push('=== RESUMO GERAL ===');
     csvLines.push('Total vendas;Volume Total(Litros);Valor Total(R$)');
-    csvLines.push(`="${report.summary.totalSales}";"${report.summary.totalVolumeLiters.toFixed(2)}";"${totalRevenue.toFixed(2)}"`);
+    csvLines.push(`="${summary.totalSales}";"${summary.totalVolumeLiters.toFixed(2)}";"${totalRevenue.toFixed(2)}"`);
     csvLines.push(''); // Linha em branco
 
     // ===========================================
@@ -525,8 +556,8 @@ export class ReportsSectionComponent implements OnInit {
     csvLines.push('=== VENDAS POR TIPO DE CERVEJA ===');
     csvLines.push('Cerveja;Quantidade;Volume(Litros);Valor(R$)');
 
-    if (report.salesByBeerType.length > 0) {
-      report.salesByBeerType.forEach(beer => {
+    if (salesByBeerType.length > 0) {
+      salesByBeerType.forEach(beer => {
         csvLines.push(`${beer.name};"${beer.totalCups}";"${beer.totalLiters.toFixed(2)}";"${beer.totalRevenue.toFixed(2)}"`);
       });
     } else {
@@ -541,8 +572,8 @@ export class ReportsSectionComponent implements OnInit {
     csvLines.push('=== VENDAS POR TAMANHO DE COPO ===');
     csvLines.push('Tamanho(ml);Quantidade');
 
-    if (report.salesByCupSize.length > 0) {
-      const sortedSizes = [...report.salesByCupSize].sort((a, b) => a.cupSize - b.cupSize);
+    if (salesByCupSize.length > 0) {
+      const sortedSizes = [...salesByCupSize].sort((a, b) => a.cupSize - b.cupSize);
       sortedSizes.forEach(size => {
         csvLines.push(`"${size.cupSize}";"${size.count}"`);
       });
@@ -560,61 +591,60 @@ export class ReportsSectionComponent implements OnInit {
 
     const start = this.startDate();
     const end = this.endDate();
-    const salesByEvent = this.dbService.getSalesDetailedByEvent(
-      start ?? undefined,
-      end ?? undefined
-    );
-    const eventTotals = this.dbService.getEventTotals(
-      start ?? undefined,
-      end ?? undefined
-    );
+    const selectedEventId = this.selectedEventId();
 
-    if (salesByEvent.length > 0) {
-      // Agrupar vendas por evento
-      const groupedByEvent = this.groupByEvent(salesByEvent);
+    // Se há um evento selecionado, busca dados desse evento
+    if (selectedEventId) {
+      const salesByEvent = await this.dbService.getSalesDetailedByEvent(
+        selectedEventId,
+        start?.toISOString(),
+        end?.toISOString()
+      );
+      const eventTotals = await this.dbService.getEventTotals(selectedEventId);
 
-      // Iterar sobre cada evento
-      for (const [eventId, eventSales] of groupedByEvent.entries()) {
-        const firstRecord = eventSales[0];
-
-        // Cabeçalho do evento
-        csvLines.push(`EVENTO: ${firstRecord.nameEvent}`);
-        csvLines.push(`Local: ${firstRecord.localEvent}`);
-        csvLines.push(`Data do Evento: ${this.formatDateForCSV(firstRecord.dataEvent)}`);
+      if (salesByEvent && salesByEvent.event) {
+        const eventData = salesByEvent.event;
+        csvLines.push(`EVENTO: ${eventData.nameEvent}`);
+        csvLines.push(`Local: ${eventData.localEvent}`);
+        csvLines.push(`Data do Evento: ${this.formatDateForCSV(eventData.dataEvent)}`);
         csvLines.push('');
 
         // Tabela de vendas diárias
         csvLines.push('Data;Usuário;Nº Vendas;Volume (Litros);Receita (R$)');
 
-        eventSales.forEach(sale => {
-          csvLines.push(
-            `${this.formatDateForCSV(sale.saleDate)};` +
-            `${sale.username};` +
-            `"${sale.salesCount}";` +
-            `"${sale.totalLiters.toFixed(2)}";` +
-            `"${sale.totalRevenue.toFixed(2)}"`
-          );
-        });
+        if (salesByEvent.sales && salesByEvent.sales.length > 0) {
+          salesByEvent.sales.forEach((sale: any) => {
+            csvLines.push(
+              `${this.formatDateForCSV(sale.saleDate)};` +
+              `${sale.username};` +
+              `"${sale.salesCount}";` +
+              `"${sale.totalLiters.toFixed(2)}";` +
+              `"${sale.totalRevenue.toFixed(2)}"`
+            );
+          });
+        }
 
         // Totais do evento
-        const totals = eventTotals.find(t => t.eventId === eventId);
-        if (totals) {
+        if (eventTotals) {
           csvLines.push('');
           csvLines.push('TOTAL DO EVENTO;;;');
           csvLines.push(';Nº Vendas;Volume (Litros);Receita (R$)');
           csvLines.push(
-            `Total;"${totals.salesCount}";` +
-            `"${totals.totalLiters.toFixed(2)}";` +
-            `"${totals.totalRevenue.toFixed(2)}"`
+            `Total;"${eventTotals.totalSales}";` +
+            `"${eventTotals.totalLiters?.toFixed(2) || '0.00'}";` +
+            `"${eventTotals.totalRevenue?.toFixed(2) || '0.00'}"`
           );
         }
 
         csvLines.push('');
         csvLines.push('---');
         csvLines.push('');
+      } else {
+        csvLines.push('Nenhuma venda vinculada ao evento selecionado.');
+        csvLines.push('');
       }
     } else {
-      csvLines.push('Nenhuma venda vinculada a eventos no período.');
+      csvLines.push('Nenhum evento selecionado para detalhamento.');
       csvLines.push('');
     }
 
@@ -624,10 +654,11 @@ export class ReportsSectionComponent implements OnInit {
     csvLines.push('=== VENDAS SEM EVENTO VINCULADO ===');
     csvLines.push('');
 
-    const salesWithoutEvent = this.dbService.getSalesDetailedWithoutEvent(
-      start ?? undefined,
-      end ?? undefined
+    const salesWithoutEventData = await this.dbService.getSalesDetailedWithoutEvent(
+      start?.toISOString(),
+      end?.toISOString()
     );
+    const salesWithoutEvent = salesWithoutEventData?.sales || [];
 
     if (salesWithoutEvent.length > 0) {
       csvLines.push('Data;Usuário;Nº Vendas;Volume (Litros);Receita (R$)');
@@ -636,7 +667,7 @@ export class ReportsSectionComponent implements OnInit {
       let totalLiters = 0;
       let totalRevenue = 0;
 
-      salesWithoutEvent.forEach(sale => {
+      salesWithoutEvent.forEach((sale: any) => {
         csvLines.push(
           `${this.formatDateForCSV(sale.saleDate)};` +
           `${sale.username};` +
@@ -733,7 +764,7 @@ export class ReportsSectionComponent implements OnInit {
     }
 
     // Verificar se há dados no relatório
-    if (this.report().summary.totalSales === 0) {
+    if ((this.report()?.summary?.totalSales ?? 0) === 0) {
       this.showError('Não há dados para exportar. Faça algumas vendas primeiro.');
       return;
     }
@@ -743,7 +774,7 @@ export class ReportsSectionComponent implements OnInit {
       this.uploadProgress.set(0);
 
       // Gerar CSV
-      const csvFile = this.generateCSV();
+      const csvFile = await this.generateCSV();
 
       // Enviar via API
       this.emailService.sendEmailWithCSV({
@@ -796,14 +827,14 @@ export class ReportsSectionComponent implements OnInit {
   /**
    * Baixa o CSV localmente (sem enviar por email)
    */
-  protected downloadCSV(): void {
-    if (this.report().summary.totalSales === 0) {
+  protected async downloadCSV(): Promise<void> {
+    if ((this.report()?.summary?.totalSales ?? 0) === 0) {
       this.showError('Não há dados para exportar.');
       return;
     }
 
     try {
-      const csvFile = this.generateCSV();
+      const csvFile = await this.generateCSV();
       const url = URL.createObjectURL(csvFile);
       const link = document.createElement('a');
       link.href = url;
@@ -881,10 +912,10 @@ export class ReportsSectionComponent implements OnInit {
    * Carrega emails salvos do banco de dados (configurados no settings-user)
    * Chamado quando o dropdown é aberto
    */
-  protected loadSavedEmails(): void {
+  protected async loadSavedEmails(): Promise<void> {
     try {
       // Buscar emails configurados do banco via email service
-      const emails = this.emailService.getConfiguredEmailsFromDatabase();
+      const emails = await this.emailService.getConfiguredEmailsFromDatabase();
 
       if (emails.length > 0) {
         // Converter array de strings para formato do dropdown
@@ -945,19 +976,17 @@ export class ReportsSectionComponent implements OnInit {
 
   /**
    * Atualiza os dados do relatório
-   * Força re-computação do signal computed 'report'
    * Chamado quando a aba de relatórios é ativada
    */
-  public refreshData(): void {
+  public async refreshData(): Promise<void> {
     console.log('🔄 Atualizando dados de relatórios...');
 
-    // Incrementa o trigger para forçar recálculo do computed signal
-    // O computed 'report' observa este signal, então vai recalcular
-    this.refreshTrigger.update(n => n + 1);
+    // Recarrega o relatório
+    await this.loadReport();
 
     // Recarrega emails salvos
     this.loadSavedEmails();
 
-    console.log('✅ Refresh trigger ativado:', this.refreshTrigger());
+    console.log('✅ Dados de relatórios atualizados');
   }
 }

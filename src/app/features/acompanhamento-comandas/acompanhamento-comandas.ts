@@ -52,30 +52,30 @@ export class AcompanhamentoComandosComponent implements OnInit {
   /**
    * Carrega dados iniciais ao montar o componente
    */
-  private loadInitialData(): void {
-    this.refreshData();
+  private async loadInitialData(): Promise<void> {
+    await this.refreshData();
   }
 
   /**
    * Atualiza todos os dados das comandas
    */
-  protected refreshData(): void {
+  protected async refreshData(): Promise<void> {
     // Carregar comandas disponíveis
-    const disponiveis = this.comandaService.getAvailableComandas();
+    const disponiveis = await this.comandaService.getAvailableComandas();
     this.comandasDisponiveis.set(disponiveis);
 
     // Carregar comandas em uso com seus itens
-    const emUso = this.comandaService.getInUseComandas();
-    const emUsoWithItems = emUso
-      .map(c => this.comandaService.getComandaWithItems(c.id))
-      .filter(c => c !== null) as ComandaWithItems[];
+    const emUso = await this.comandaService.getInUseComandas();
+    const emUsoWithItemsPromises = emUso.map((c: any) => this.comandaService.getComandaWithItems(c.id));
+    const emUsoWithItemsRaw = await Promise.all(emUsoWithItemsPromises);
+    const emUsoWithItems = emUsoWithItemsRaw.filter((c: any) => c !== null) as ComandaWithItems[];
     this.comandasEmUso.set(emUsoWithItems);
 
     // Carregar comandas aguardando pagamento com seus itens
-    const aguardando = this.comandaService.getPendingPaymentComandas();
-    const aguardandoWithItems = aguardando
-      .map(c => this.comandaService.getComandaWithItems(c.id))
-      .filter(c => c !== null) as ComandaWithItems[];
+    const aguardando = await this.comandaService.getPendingPaymentComandas();
+    const aguardandoWithItemsPromises = aguardando.map((c: any) => this.comandaService.getComandaWithItems(c.id));
+    const aguardandoWithItemsRaw = await Promise.all(aguardandoWithItemsPromises);
+    const aguardandoWithItems = aguardandoWithItemsRaw.filter((c: any) => c !== null) as ComandaWithItems[];
     this.comandasAguardandoPagamento.set(aguardandoWithItems);
   }
 
@@ -83,10 +83,10 @@ export class AcompanhamentoComandosComponent implements OnInit {
    * Fecha uma comanda e move para aguardando pagamento
    * @param comandaId ID da comanda a ser fechada
    */
-  protected fecharComanda(comandaId: number): void {
+  protected async fecharComanda(comandaId: number): Promise<void> {
     try {
-      const total = this.comandaService.closeComanda(comandaId);
-      this.refreshData();
+      const total = await this.comandaService.closeComanda(comandaId);
+      await this.refreshData();
       this.showSuccess(`Comanda fechada! Total: R$ ${total.toFixed(2)}`);
     } catch (error: any) {
       this.showError(error.message || 'Erro ao fechar comanda');
@@ -97,10 +97,10 @@ export class AcompanhamentoComandosComponent implements OnInit {
    * Confirma o pagamento de uma comanda e a libera
    * @param comandaId ID da comanda
    */
-  protected confirmarPagamento(comandaId: number): void {
+  protected async confirmarPagamento(comandaId: number): Promise<void> {
     try {
-      this.comandaService.confirmPayment(comandaId);
-      this.refreshData();
+      await this.comandaService.confirmPayment(comandaId);
+      await this.refreshData();
       this.showSuccess('Pagamento confirmado! Comanda disponível novamente.');
     } catch (error: any) {
       this.showError(error.message || 'Erro ao confirmar pagamento');

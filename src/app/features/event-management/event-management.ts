@@ -82,6 +82,9 @@ export class EventManagementComponent implements OnInit {
   currentStatsEvent: Event | null = null;
   eventStats: any = null;
 
+  // Mapa de eventos com vendas (para uso no template)
+  eventsWithSales = signal<Set<number>>(new Set());
+
   // ==================== FORMULÁRIOS ====================
   eventForm: FormGroup;
   editForm: FormGroup;
@@ -123,6 +126,17 @@ export class EventManagementComponent implements OnInit {
   async loadEvents(): Promise<void> {
     await this.eventService.loadEvents();
     this.events.set(this.getFilteredEvents());
+
+    // Atualiza mapa de eventos com vendas
+    const eventsWithSalesSet = new Set<number>();
+    const allEvents = this.eventService.events();
+    for (const event of allEvents) {
+      const hasSales = await this.eventService.eventHasSales(event.id);
+      if (hasSales) {
+        eventsWithSalesSet.add(event.id);
+      }
+    }
+    this.eventsWithSales.set(eventsWithSalesSet);
   }
 
   /**
@@ -285,8 +299,8 @@ export class EventManagementComponent implements OnInit {
   /**
    * Confirma exclusão de evento
    */
-  confirmDelete(event: Event): void {
-    const validation = this.eventService.canDeleteEvent(event.id);
+  async confirmDelete(event: Event): Promise<void> {
+    const validation = await this.eventService.canDeleteEvent(event.id);
 
     if (!validation.canDelete) {
       this.showWarning(validation.reason || 'Não é possível deletar este evento.');
@@ -434,10 +448,10 @@ export class EventManagementComponent implements OnInit {
   }
 
   /**
-   * Verifica se evento tem vendas
+   * Verifica se evento tem vendas (usando cache do signal)
    */
   eventHasSales(eventId: number): boolean {
-    return this.eventService.eventHasSales(eventId);
+    return this.eventsWithSales().has(eventId);
   }
 
   // ==================== MENSAGENS ====================

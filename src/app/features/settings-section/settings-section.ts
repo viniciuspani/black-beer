@@ -150,18 +150,19 @@ export class SettingsSectionComponent implements OnInit, OnDestroy {
     // Effect para carregar configurações quando o banco estiver pronto
     effect(() => {
       if (this.dbService.isDbReady()) {
-        this.loadSettings();
-        this.updateDatabaseStats();
+        // Chama métodos de forma assíncrona (sem bloquear o effect)
+        void this.loadSettings();
+        void this.updateDatabaseStats();
       }
     }, { allowSignalWrites: true });
   }
 
   // ==================== LIFECYCLE HOOKS ====================
   
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     if (this.dbService.isDbReady()) {
-      this.loadSettings();
-      this.updateDatabaseStats();
+      await this.loadSettings();
+      await this.updateDatabaseStats();
     }
   }
 
@@ -205,10 +206,16 @@ export class SettingsSectionComponent implements OnInit, OnDestroy {
   /**
    * Atualiza as estatísticas do banco de dados
    */
-  private updateDatabaseStats(): void {
+  private async updateDatabaseStats(): Promise<void> {
     try {
-      const stats = this.dbService.getDatabaseStats();
-      this.dbStatsSignal.set(stats);
+      const stats = await this.dbService.getDatabaseStats();
+      // Converte para o formato esperado pela interface local
+      this.dbStatsSignal.set({
+        totalSales: stats.sales,
+        totalBeerTypes: stats.beerTypes,
+        hasSettings: stats.totalRecords > 0,
+        dbVersion: 2 // Versão do schema Dexie
+      });
     } catch (error) {
       console.error('❌ Erro ao atualizar estatísticas:', error);
       this.dbStatsSignal.set({
@@ -226,35 +233,41 @@ export class SettingsSectionComponent implements OnInit, OnDestroy {
    * Carrega as configurações do banco de dados
    * MUDANÇA: Converte string do banco para array de emails
    */
-  loadSettings(): void {
+  async loadSettings(): Promise<void> {
     try {
-      const result = this.dbService.executeQuery(
-        'SELECT id, email, isConfigured FROM settings LIMIT 1'
-      );
+      const db = this.dbService.getDatabase();
+      if (!db) {
+        console.warn('⚠️ Database não disponível');
+        this.resetSettingsState();
+        return;
+      }
+
+      // Pegar o primeiro registro da tabela settings
+      const result = await db.settings.limit(1).toArray();
 
       if (result && result.length > 0) {
         const row = result[0];
-        
+
         // Converte string do banco para array
         const emails = emailsFromDb(row.email);
-        
+
         const settings: AppSettings = {
           id: Number(row.id),
           emails: emails,
           isConfigured: toBooleanFromDb(row.isConfigured)
         };
-        
+
         console.log('✅ Settings carregadas:', settings);
-        
+
         // Atualiza signals
         this.currentSettingsId.set(settings.id || null);
         this.configuredEmails.set(settings.emails);
-        
+
         // IMPORTANTE: Campo fica VAZIO ao carregar
-        this.settingsForm.patchValue({ 
-          emailsInput: '' 
+        this.settingsForm.patchValue({
+          emailsInput: ''
         }, { emitEvent: false });
-        
+
       } else {
         console.log('ℹ️ Nenhuma configuração salva');
         this.resetSettingsState();
@@ -281,7 +294,7 @@ export class SettingsSectionComponent implements OnInit, OnDestroy {
    * Salva as configurações no banco de dados
    * MUDANÇA: Converte array de emails para string com ;
    */
-  saveSettings(): void {
+  async saveSettings(): Promise<void> {
     this.settingsForm.markAllAsTouched();
 
     if (this.settingsForm.invalid) {
@@ -290,7 +303,7 @@ export class SettingsSectionComponent implements OnInit, OnDestroy {
     }
 
     const input = this.settingsForm.value.emailsInput?.trim();
-    
+
     if (!input) {
       this.showErrorMessage('Digite pelo menos um email.');
       return;
@@ -299,7 +312,7 @@ export class SettingsSectionComponent implements OnInit, OnDestroy {
     // Parse e validação
     const emails = parseEmailInput(input);
     const validation = validateEmails(emails);
-    
+
     if (!validation.isValid) {
       this.showErrorMessage(validation.errors.join('. '));
       return;
@@ -307,33 +320,33 @@ export class SettingsSectionComponent implements OnInit, OnDestroy {
 
     try {
       const settingsId = this.currentSettingsId();
-      
+
       // Converte array para string com ;
       const emailString = emailsToDb(validation.validEmails);
-      
+
       if (settingsId !== null) {
         // UPDATE
-        this.updateExistingSettings(settingsId, emailString);
+        await this.updateExistingSettings(settingsId, emailString);
       } else {
         // INSERT
-        this.insertNewSettings(emailString);
+        await this.insertNewSettings(emailString);
       }
-      
+
       // Atualiza estado
       this.configuredEmails.set(validation.validEmails);
-      
+
       // Limpa o campo após salvar
       this.settingsForm.patchValue({ emailsInput: '' });
-      
-      this.updateDatabaseStats();
-      
+
+      await this.updateDatabaseStats();
+
       const count = validation.validEmails.length;
-      const message = count === 1 
-        ? '1 email configurado com sucesso!' 
+      const message = count === 1
+        ? '1 email configurado com sucesso!'
         : `${count} emails configurados com sucesso!`;
-      
+
       this.showSuccessMessage(message);
-      
+
     } catch (error) {
       console.error('❌ Erro ao salvar configurações:', error);
       this.showErrorMessage('Não foi possível salvar as configurações.');
@@ -365,33 +378,43 @@ export class SettingsSectionComponent implements OnInit, OnDestroy {
   /**
    * Atualiza configuração existente
    */
-  private updateExistingSettings(id: number, emailString: string): void {
-    this.dbService.executeRun(
-      'UPDATE settings SET email = ?, isConfigured = ? WHERE id = ?',
-      [emailString, toDbFromBoolean(true), id]
-    );
+  private async updateExistingSettings(id: number, emailString: string): Promise<void> {
+    const db = this.dbService.getDatabase();
+    if (!db) {
+      throw new Error('Database não disponível');
+    }
+
+    await db.settings.update(id, {
+      email: emailString,
+      isConfigured: true
+    });
+
     console.log('✅ Settings atualizadas (ID:', id, ')');
   }
 
   /**
    * Insere nova configuração
    */
-  private insertNewSettings(emailString: string): void {
-    this.dbService.executeRun(
-      'INSERT INTO settings (email, isConfigured) VALUES (?, ?)',
-      [emailString, toDbFromBoolean(true)]
-    );
-    
-    const insertedId = this.dbService.getLastInsertId();
+  private async insertNewSettings(emailString: string): Promise<void> {
+    const db = this.dbService.getDatabase();
+    if (!db) {
+      throw new Error('Database não disponível');
+    }
+
+    const insertedId = await db.settings.add({
+      email: emailString,
+      isConfigured: true
+    });
+
     this.currentSettingsId.set(insertedId);
-    
+
     console.log('✅ Settings criadas (ID:', insertedId, ')');
   }
 
   // ==================== LIMPAR BANCO ====================
 
-  openClearDialog(): void {
-    this.updateDatabaseStats();
+  async openClearDialog(): Promise<void> {
+    await this.updateDatabaseStats();
     this.showClearDialog.set(true);
   }
 
@@ -404,11 +427,11 @@ export class SettingsSectionComponent implements OnInit, OnDestroy {
 
   async clearDatabase(): Promise<void> {
     this.isClearing.set(true);
-    
+
     try {
       await this.dbService.clearDatabase();
       this.resetSettingsState();
-      this.updateDatabaseStats();
+      await this.updateDatabaseStats();
       
       this.showSuccessMessage(
         '✅ Banco de dados limpo com sucesso! Todos os dados foram removidos e o sistema foi reiniciado ao estado inicial.'

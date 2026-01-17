@@ -17,24 +17,27 @@ export class ComandaService {
    * Lista todas as comandas disponíveis para uso
    * @returns Array de comandas com status 'disponivel'
    */
-  public getAvailableComandas(): Comanda[] {
-    return this.dbService.getComandasByStatus(ComandaStatus.DISPONIVEL);
+  public async getAvailableComandas(): Promise<Comanda[]> {
+    const comandas = await this.dbService.getComandasByStatus(ComandaStatus.DISPONIVEL);
+    return comandas.filter(c => c.id !== undefined) as Comanda[];
   }
 
   /**
    * Lista comandas que estão em uso
    * @returns Array de comandas com status 'em_uso'
    */
-  public getInUseComandas(): Comanda[] {
-    return this.dbService.getComandasByStatus(ComandaStatus.EM_USO);
+  public async getInUseComandas(): Promise<Comanda[]> {
+    const comandas = await this.dbService.getComandasByStatus(ComandaStatus.EM_USO);
+    return comandas.filter(c => c.id !== undefined) as Comanda[];
   }
 
   /**
    * Lista comandas aguardando pagamento
    * @returns Array de comandas com status 'aguardando_pagamento'
    */
-  public getPendingPaymentComandas(): Comanda[] {
-    return this.dbService.getComandasByStatus(ComandaStatus.AGUARDANDO_PAGAMENTO);
+  public async getPendingPaymentComandas(): Promise<Comanda[]> {
+    const comandas = await this.dbService.getComandasByStatus(ComandaStatus.AGUARDANDO_PAGAMENTO);
+    return comandas.filter(c => c.id !== undefined) as Comanda[];
   }
 
   /**
@@ -42,8 +45,8 @@ export class ComandaService {
    * @param numero Número da comanda a ser aberta
    * @throws Error se comanda não estiver disponível
    */
-  public openComanda(numero: number): void {
-    const comanda = this.dbService.getComandaByNumero(numero);
+  public async openComanda(numero: number): Promise<void> {
+    const comanda = await this.dbService.getComandaByNumero(numero);
 
     if (!comanda) {
       throw new Error(`Comanda ${numero} não encontrada`);
@@ -53,7 +56,7 @@ export class ComandaService {
       throw new Error(`Comanda ${numero} não está disponível (status: ${comanda.status})`);
     }
 
-    this.dbService.openComanda(numero);
+    await this.dbService.openComanda(numero);
   }
 
   /**
@@ -62,8 +65,8 @@ export class ComandaService {
    * @returns Valor total da comanda em reais
    * @throws Error se comanda não estiver em uso
    */
-  public closeComanda(comandaId: number): number {
-    const comanda = this.dbService.getComandaById(comandaId);
+  public async closeComanda(comandaId: number): Promise<number> {
+    const comanda = await this.dbService.getComandaById(comandaId);
 
     if (!comanda) {
       throw new Error(`Comanda ID ${comandaId} não encontrada`);
@@ -74,15 +77,15 @@ export class ComandaService {
     }
 
     // Valida se há itens na comanda
-    const items = this.dbService.getComandaItems(comandaId);
+    const items = await this.dbService.getComandaItems(comandaId);
     if (items.length === 0) {
       throw new Error(`Comanda ${comanda.numero} não possui itens para fechar`);
     }
 
-    this.dbService.closeComanda(comandaId);
+    await this.dbService.closeComanda(comandaId);
 
     // Retorna o valor total calculado
-    const updatedComanda = this.dbService.getComandaById(comandaId);
+    const updatedComanda = await this.dbService.getComandaById(comandaId);
     return updatedComanda?.totalValue ?? 0;
   }
 
@@ -91,8 +94,8 @@ export class ComandaService {
    * @param comandaId ID da comanda
    * @throws Error se comanda não estiver aguardando pagamento
    */
-  public confirmPayment(comandaId: number): void {
-    const comanda = this.dbService.getComandaById(comandaId);
+  public async confirmPayment(comandaId: number): Promise<void> {
+    const comanda = await this.dbService.getComandaById(comandaId);
 
     if (!comanda) {
       throw new Error(`Comanda ID ${comandaId} não encontrada`);
@@ -102,7 +105,7 @@ export class ComandaService {
       throw new Error(`Comanda ${comanda.numero} não está aguardando pagamento`);
     }
 
-    this.dbService.confirmPayment(comandaId);
+    await this.dbService.confirmPayment(comandaId);
   }
 
   /**
@@ -110,8 +113,8 @@ export class ComandaService {
    * @param comandaId ID da comanda
    * @returns Comanda com array de itens ou null se não encontrada
    */
-  public getComandaWithItems(comandaId: number): ComandaWithItems | null {
-    return this.dbService.getComandaWithItems(comandaId);
+  public async getComandaWithItems(comandaId: number): Promise<ComandaWithItems | null> {
+    return await this.dbService.getComandaWithItems(comandaId);
   }
 
   /**
@@ -119,8 +122,8 @@ export class ComandaService {
    * @param comandaId ID da comanda
    * @returns true se todos os itens têm preços, false caso contrário
    */
-  public validateComandaPricing(comandaId: number): boolean {
-    const items = this.dbService.getComandaItems(comandaId);
+  public async validateComandaPricing(comandaId: number): Promise<boolean> {
+    const items = await this.dbService.getComandaItems(comandaId);
 
     if (items.length === 0) {
       return true; // Comanda vazia é válida
@@ -135,8 +138,12 @@ export class ComandaService {
    * @param numero Número da comanda
    * @returns Comanda ou null se não encontrada
    */
-  public getComandaByNumero(numero: number): Comanda | null {
-    return this.dbService.getComandaByNumero(numero);
+  public async getComandaByNumero(numero: number): Promise<Comanda | null> {
+    const comanda = await this.dbService.getComandaByNumero(numero);
+    if (comanda && comanda.id !== undefined) {
+      return comanda as Comanda;
+    }
+    return null;
   }
 
   /**
@@ -144,15 +151,20 @@ export class ComandaService {
    * @param id ID da comanda
    * @returns Comanda ou null se não encontrada
    */
-  public getComandaById(id: number): Comanda | null {
-    return this.dbService.getComandaById(id);
+  public async getComandaById(id: number): Promise<Comanda | null> {
+    const comanda = await this.dbService.getComandaById(id);
+    if (comanda && comanda.id !== undefined) {
+      return comanda as Comanda;
+    }
+    return null;
   }
 
   /**
    * Lista todas as comandas do sistema
    * @returns Array com todas as comandas
    */
-  public getAllComandas(): Comanda[] {
-    return this.dbService.getAllComandas();
+  public async getAllComandas(): Promise<Comanda[]> {
+    const comandas = await this.dbService.getAllComandas();
+    return comandas.filter(c => c.id !== undefined) as Comanda[];
   }
 }

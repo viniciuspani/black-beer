@@ -118,16 +118,16 @@ export class SettingsUserComponent implements OnInit, OnDestroy {
     // Effect para carregar configurações quando o banco estiver pronto
     effect(() => {
       if (this.dbService.isDbReady()) {
-        this.loadSettings();
+        void this.loadSettings();
       }
     }, { allowSignalWrites: true });
   }
 
   // ==================== LIFECYCLE HOOKS ====================
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     if (this.dbService.isDbReady()) {
-      this.loadSettings();
+      await this.loadSettings();
     }
   }
 
@@ -171,11 +171,16 @@ export class SettingsUserComponent implements OnInit, OnDestroy {
   /**
    * Carrega as configurações do banco de dados
    */
-  loadSettings(): void {
+  async loadSettings(): Promise<void> {
     try {
-      const result = this.dbService.executeQuery(
-        'SELECT id, email, isConfigured FROM settings LIMIT 1'
-      );
+      const db = this.dbService.getDatabase();
+      if (!db) {
+        console.warn('⚠️ Database não disponível');
+        this.resetSettingsState();
+        return;
+      }
+
+      const result = await db.settings.limit(1).toArray();
 
       if (result && result.length > 0) {
         const row = result[0];
@@ -225,7 +230,7 @@ export class SettingsUserComponent implements OnInit, OnDestroy {
   /**
    * Salva as configurações no banco de dados
    */
-  saveSettings(): void {
+  async saveSettings(): Promise<void> {
     this.settingsForm.markAllAsTouched();
 
     if (this.settingsForm.invalid) {
@@ -257,10 +262,10 @@ export class SettingsUserComponent implements OnInit, OnDestroy {
 
       if (settingsId !== null) {
         // UPDATE
-        this.updateExistingSettings(settingsId, emailString);
+        await this.updateExistingSettings(settingsId, emailString);
       } else {
         // INSERT
-        this.insertNewSettings(emailString);
+        await this.insertNewSettings(emailString);
       }
 
       // Atualiza estado
@@ -307,24 +312,34 @@ export class SettingsUserComponent implements OnInit, OnDestroy {
   /**
    * Atualiza configuração existente
    */
-  private updateExistingSettings(id: number, emailString: string): void {
-    this.dbService.executeRun(
-      'UPDATE settings SET email = ?, isConfigured = ? WHERE id = ?',
-      [emailString, toDbFromBoolean(true), id]
-    );
+  private async updateExistingSettings(id: number, emailString: string): Promise<void> {
+    const db = this.dbService.getDatabase();
+    if (!db) {
+      throw new Error('Database não disponível');
+    }
+
+    await db.settings.update(id, {
+      email: emailString,
+      isConfigured: true
+    });
+
     console.log('✅ Settings atualizadas (ID:', id, ')');
   }
 
   /**
    * Insere nova configuração
    */
-  private insertNewSettings(emailString: string): void {
-    this.dbService.executeRun(
-      'INSERT INTO settings (email, isConfigured) VALUES (?, ?)',
-      [emailString, toDbFromBoolean(true)]
-    );
+  private async insertNewSettings(emailString: string): Promise<void> {
+    const db = this.dbService.getDatabase();
+    if (!db) {
+      throw new Error('Database não disponível');
+    }
 
-    const insertedId = this.dbService.getLastInsertId();
+    const insertedId = await db.settings.add({
+      email: emailString,
+      isConfigured: true
+    });
+
     this.currentSettingsId.set(insertedId);
 
     console.log('✅ Settings criadas (ID:', insertedId, ')');

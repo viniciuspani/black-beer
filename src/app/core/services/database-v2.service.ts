@@ -1,5 +1,5 @@
 /**
- * DatabaseService - Implementação com Dexie.js e IndexedDB
+ * DatabaseV2Service - Implementação com Dexie.js e IndexedDB
  * Sistema: Black Beer - Gestão de Vendas
  * Versão: 2.0.0
  *
@@ -52,7 +52,7 @@ import { SecureIdGeneratorService } from './sync/secure-id-generator.service';
 /**
  * Classe principal do banco de dados Dexie
  */
-export class BlackBeerDexieDatabase extends Dexie {
+export class BlackBeerDatabase extends Dexie {
   // ✅ Tabelas principais
   beerTypes!: Table<BeerType, number>;
   sales!: Table<Sale, number>;
@@ -279,8 +279,8 @@ export class BlackBeerDexieDatabase extends Dexie {
 @Injectable({
   providedIn: 'root'
 })
-export class DatabaseService {
-  private db!: BlackBeerDexieDatabase;
+export class DatabaseV2Service {
+  private db!: BlackBeerDatabase;
   private isBrowser: boolean;
 
   // ✅ Signal para indicar quando DB está pronto
@@ -294,22 +294,22 @@ export class DatabaseService {
 
     // Só inicializar Dexie no browser (IndexedDB não existe no SSR)
     if (!this.isBrowser) {
-      console.log('⚠️ DatabaseService: SSR detectado, Dexie não será inicializado');
+      console.log('⚠️ DatabaseV2Service: SSR detectado, Dexie não será inicializado');
       return;
     }
 
-    console.log('🚀 DatabaseService: Inicializando Dexie.js...');
+    console.log('🚀 DatabaseV2Service: Inicializando Dexie.js...');
 
-    this.db = new BlackBeerDexieDatabase(idGenerator);
+    this.db = new BlackBeerDatabase(idGenerator);
 
     // Abrir banco e marcar como pronto
     this.db.open()
       .then(() => {
         this.isDbReady.set(true);
-        console.log('✅ DatabaseService: Banco Dexie.js pronto!');
+        console.log('✅ DatabaseV2Service: Banco Dexie.js pronto!');
       })
       .catch(err => {
-        console.error('❌ DatabaseService: Erro ao abrir banco:', err);
+        console.error('❌ DatabaseV2Service: Erro ao abrir banco:', err);
         this.isDbReady.set(false);
       });
   }
@@ -318,9 +318,9 @@ export class DatabaseService {
    * Obtém instância do banco Dexie
    * Use para queries avançadas
    */
-  getDatabase(): BlackBeerDexieDatabase {
+  getDatabase(): BlackBeerDatabase {
     if (!this.isBrowser) {
-      throw new Error('DatabaseService: Dexie não está disponível no SSR');
+      throw new Error('DatabaseV2Service: Dexie não está disponível no SSR');
     }
     return this.db;
   }
@@ -337,7 +337,7 @@ export class DatabaseService {
    */
   async waitForReady(): Promise<void> {
     if (!this.isBrowser) {
-      console.warn('DatabaseService: Tentativa de aguardar DB no SSR, ignorando');
+      console.warn('DatabaseV2Service: Tentativa de aguardar DB no SSR, ignorando');
       return Promise.resolve();
     }
 
@@ -404,7 +404,7 @@ export class DatabaseService {
    */
   async clearAllData(): Promise<void> {
     if (!this.isBrowser || !this.db) {
-      console.warn('DatabaseService: clearAllData chamado no SSR, ignorando');
+      console.warn('DatabaseV2Service: clearAllData chamado no SSR, ignorando');
       return;
     }
 
@@ -423,7 +423,7 @@ export class DatabaseService {
    */
   async deleteDatabase(): Promise<void> {
     if (!this.isBrowser || !this.db) {
-      console.warn('DatabaseService: deleteDatabase chamado no SSR, ignorando');
+      console.warn('DatabaseV2Service: deleteDatabase chamado no SSR, ignorando');
       return;
     }
 
@@ -437,7 +437,7 @@ export class DatabaseService {
    */
   async exportToJSON(): Promise<string> {
     if (!this.isBrowser || !this.db) {
-      console.warn('DatabaseService: exportToJSON chamado no SSR, retornando vazio');
+      console.warn('DatabaseV2Service: exportToJSON chamado no SSR, retornando vazio');
       return JSON.stringify({ exportedAt: new Date().toISOString(), ssr: true }, null, 2);
     }
 
@@ -812,25 +812,6 @@ export class DatabaseService {
     } catch (error) {
       console.error('❌ Erro ao buscar vendas do evento:', error);
       return [];
-    }
-  }
-
-  /**
-   * Verifica se um evento tem vendas associadas
-   * @param eventId ID do evento
-   * @returns Promise com true se o evento tem vendas, false caso contrário
-   */
-  async eventHasSales(eventId: number): Promise<boolean> {
-    if (!this.isBrowser || !this.db) {
-      return false;
-    }
-
-    try {
-      const count = await this.db.sales.where('eventId').equals(eventId).count();
-      return count > 0;
-    } catch (error) {
-      console.error('❌ Erro ao verificar vendas do evento:', error);
-      return false;
     }
   }
 
@@ -1594,33 +1575,21 @@ export class DatabaseService {
 
   /**
    * Busca relatório completo com todas as estatísticas
-   * Retorna no formato da interface FullReport
    * @param startDate Data inicial (opcional)
    * @param endDate Data final (opcional)
    * @param eventId ID do evento (opcional)
-   * @returns Promise com relatório completo no formato FullReport
+   * @returns Promise com relatório completo
    */
-  async getFullReport(startDate?: string, endDate?: string, eventId?: number): Promise<{
-    summary: { totalSales: number; totalVolumeLiters: number };
-    salesByCupSize: Array<{ cupSize: number; count: number }>;
-    salesByBeerType: Array<{
-      beerId: number;
-      name: string;
-      color: string;
-      description: string;
-      totalLiters: number;
-      totalCups: number;
-      totalRevenue: number;
-    }>;
-  }> {
-    const emptyReport = {
-      summary: { totalSales: 0, totalVolumeLiters: 0 },
-      salesByCupSize: [],
-      salesByBeerType: []
-    };
-
+  async getFullReport(startDate?: string, endDate?: string, eventId?: number): Promise<any> {
     if (!this.isBrowser || !this.db) {
-      return emptyReport;
+      return {
+        totalSales: 0,
+        totalVolume: 0,
+        totalRevenue: 0,
+        salesByBeer: [],
+        salesByCupSize: [],
+        period: { startDate, endDate }
+      };
     }
 
     try {
@@ -1641,67 +1610,21 @@ export class DatabaseService {
         sales = sales.filter(s => s.timestamp <= endDate);
       }
 
-      // Se não houver vendas, retorna relatório vazio
-      if (sales.length === 0) {
-        return emptyReport;
-      }
-
-      // Buscar configurações de preço e tipos de cerveja
+      // Buscar configurações de preço
       const beerIds = [...new Set(sales.map(s => s.beerId))];
-
-      // Buscar preços por beerId (sem eventId específico, usa preço geral)
-      const salesConfigs = await this.db.salesConfig
-        .where('beerId')
-        .anyOf(beerIds)
-        .toArray();
-
-      // Buscar tipos de cerveja
-      const beerTypes = await this.db.beerTypes
-        .where('id')
-        .anyOf(beerIds)
-        .toArray();
-
-      // Criar mapa de preços (prioriza preço específico do evento se existir)
+      const salesConfigs = await this.db.salesConfig.bulkGet(beerIds);
       const priceMap = new Map<number, SalesConfig>();
-      for (const config of salesConfigs) {
-        const existingConfig = priceMap.get(config.beerId);
-        // Se já tem config e a atual é geral (sem eventId), não sobrescreve
-        if (existingConfig && (config.eventId === null || config.eventId === undefined)) {
-          continue;
-        }
-        // Se config atual é do evento específico ou não existe config ainda, usa
-        if (config.eventId === eventId || !existingConfig) {
-          priceMap.set(config.beerId, config);
-        }
-      }
-
-      const beerMap = new Map<number, { name: string; color: string; description: string }>();
-      beerTypes.forEach(b => beerMap.set(b.id!, {
-        name: b.name,
-        color: b.color,
-        description: b.description
-      }));
+      salesConfigs.filter(c => c).forEach(c => priceMap.set(c!.beerId, c!));
 
       // Calcular estatísticas
-      let totalSales = 0;
-      let totalVolumeLiters = 0;
-      const salesByBeerMap = new Map<number, {
-        beerId: number;
-        name: string;
-        color: string;
-        description: string;
-        totalLiters: number;
-        totalCups: number;
-        totalRevenue: number;
-      }>();
-      const salesByCupSizeMap = new Map<number, { cupSize: number; count: number }>();
+      let totalRevenue = 0;
+      const salesByBeerMap = new Map<string, any>();
+      const salesByCupSizeMap = new Map<number, any>();
 
       for (const sale of sales) {
         const config = priceMap.get(sale.beerId);
-        const beerInfo = beerMap.get(sale.beerId);
         let saleRevenue = 0;
 
-        // Calcular receita da venda
         if (config) {
           switch (sale.cupSize) {
             case 300:
@@ -1716,51 +1639,61 @@ export class DatabaseService {
           }
         }
 
-        // Acumular totais gerais
-        totalSales += sale.quantity;
-        totalVolumeLiters += sale.totalVolume / 1000; // Converter ml para litros
+        totalRevenue += saleRevenue;
 
-        // Agrupar por cerveja (usando beerId como chave)
-        if (!salesByBeerMap.has(sale.beerId)) {
-          salesByBeerMap.set(sale.beerId, {
-            beerId: sale.beerId,
-            name: beerInfo?.name || sale.beerName,
-            color: beerInfo?.color || '#fbbf24',
-            description: beerInfo?.description || '',
-            totalLiters: 0,
-            totalCups: 0,
-            totalRevenue: 0
+        // Agrupar por cerveja
+        if (!salesByBeerMap.has(sale.beerName)) {
+          salesByBeerMap.set(sale.beerName, {
+            beerName: sale.beerName,
+            salesCount: 0,
+            totalQuantity: 0,
+            totalVolume: 0,
+            revenue: 0
           });
         }
 
-        const beerStats = salesByBeerMap.get(sale.beerId)!;
-        beerStats.totalCups += sale.quantity;
-        beerStats.totalLiters += sale.totalVolume / 1000; // Converter ml para litros
-        beerStats.totalRevenue += saleRevenue;
+        const beerStats = salesByBeerMap.get(sale.beerName);
+        beerStats.salesCount++;
+        beerStats.totalQuantity += sale.quantity;
+        beerStats.totalVolume += sale.totalVolume;
+        beerStats.revenue += saleRevenue;
 
         // Agrupar por tamanho de copo
         if (!salesByCupSizeMap.has(sale.cupSize)) {
           salesByCupSizeMap.set(sale.cupSize, {
             cupSize: sale.cupSize,
-            count: 0
+            salesCount: 0,
+            totalQuantity: 0,
+            totalVolume: 0,
+            revenue: 0
           });
         }
 
-        const cupStats = salesByCupSizeMap.get(sale.cupSize)!;
-        cupStats.count += sale.quantity;
+        const cupStats = salesByCupSizeMap.get(sale.cupSize);
+        cupStats.salesCount++;
+        cupStats.totalQuantity += sale.quantity;
+        cupStats.totalVolume += sale.totalVolume;
+        cupStats.revenue += saleRevenue;
       }
 
       return {
-        summary: {
-          totalSales,
-          totalVolumeLiters
-        },
+        totalSales: sales.length,
+        totalVolume: sales.reduce((sum, s) => sum + s.totalVolume, 0),
+        totalRevenue,
+        salesByBeer: Array.from(salesByBeerMap.values()).sort((a, b) => b.revenue - a.revenue),
         salesByCupSize: Array.from(salesByCupSizeMap.values()).sort((a, b) => a.cupSize - b.cupSize),
-        salesByBeerType: Array.from(salesByBeerMap.values()).sort((a, b) => b.totalLiters - a.totalLiters)
+        period: { startDate, endDate }
       };
     } catch (error) {
       console.error('❌ Erro ao gerar relatório completo:', error);
-      return emptyReport;
+      return {
+        totalSales: 0,
+        totalVolume: 0,
+        totalRevenue: 0,
+        salesByBeer: [],
+        salesByCupSize: [],
+        period: { startDate, endDate }
+      };
     }
   }
 
@@ -1778,8 +1711,7 @@ export class DatabaseService {
 
     try {
       const report = await this.getFullReport(startDate, endDate, eventId);
-      // Calcular receita total somando totalRevenue de cada tipo de cerveja
-      return report.salesByBeerType.reduce((sum, beer) => sum + beer.totalRevenue, 0);
+      return report.totalRevenue;
     } catch (error) {
       console.error('❌ Erro ao calcular receita total:', error);
       return 0;
@@ -1808,11 +1740,13 @@ export class DatabaseService {
 
     try {
       const event = await this.getEventById(eventId);
+      const statistics = await this.getEventStatistics(eventId);
 
       let sales = await this.db.sales
         .where('eventId')
         .equals(eventId)
-        .toArray();
+        .reverse()
+        .sortBy('timestamp');
 
       // Aplicar filtros de data
       if (startDate) {
@@ -1822,86 +1756,20 @@ export class DatabaseService {
         sales = sales.filter(s => s.timestamp <= endDate);
       }
 
-      // Buscar usernames e preços
+      // Buscar usernames
       const userIds = [...new Set(sales.map(s => s.userId))];
-      const beerIds = [...new Set(sales.map(s => s.beerId))];
+      const users = await this.db.users.bulkGet(userIds);
+      const userMap = new Map(users.filter(u => u).map(u => [u!.id!, u!.username]));
 
-      const [users, salesConfigs] = await Promise.all([
-        this.db.users.where('id').anyOf(userIds).toArray(),
-        this.db.salesConfig.where('beerId').anyOf(beerIds).toArray()
-      ]);
-
-      const userMap = new Map(users.map(u => [u.id!, u.username]));
-      const priceMap = new Map<number, SalesConfig>();
-      for (const config of salesConfigs) {
-        // Prioriza config do evento específico, senão usa geral
-        const existing = priceMap.get(config.beerId);
-        if (!existing || config.eventId === eventId) {
-          priceMap.set(config.beerId, config);
-        }
-      }
-
-      // Agrupar por data + usuário
-      const groupedMap = new Map<string, {
-        saleDate: string;
-        username: string;
-        salesCount: number;
-        totalLiters: number;
-        totalRevenue: number;
-      }>();
-
-      for (const sale of sales) {
-        const saleDate = sale.timestamp.split('T')[0]; // YYYY-MM-DD
-        const username = userMap.get(sale.userId) || 'Desconhecido';
-        const key = `${saleDate}|${username}`;
-
-        // Calcular receita da venda
-        const config = priceMap.get(sale.beerId);
-        let saleRevenue = 0;
-        if (config) {
-          switch (sale.cupSize) {
-            case 300:
-              saleRevenue = sale.quantity * (config.price300ml || 0);
-              break;
-            case 500:
-              saleRevenue = sale.quantity * (config.price500ml || 0);
-              break;
-            case 1000:
-              saleRevenue = sale.quantity * (config.price1000ml || 0);
-              break;
-          }
-        }
-
-        if (!groupedMap.has(key)) {
-          groupedMap.set(key, {
-            saleDate,
-            username,
-            salesCount: 0,
-            totalLiters: 0,
-            totalRevenue: 0
-          });
-        }
-
-        const group = groupedMap.get(key)!;
-        group.salesCount += sale.quantity;
-        group.totalLiters += sale.totalVolume / 1000;
-        group.totalRevenue += saleRevenue;
-      }
-
-      // Converter para array e ordenar por data
-      const groupedSales = Array.from(groupedMap.values())
-        .sort((a, b) => b.saleDate.localeCompare(a.saleDate));
-
-      // Calcular estatísticas totais
-      const statistics = {
-        totalSales: groupedSales.reduce((sum, g) => sum + g.salesCount, 0),
-        totalVolume: groupedSales.reduce((sum, g) => sum + g.totalLiters, 0),
-        totalRevenue: groupedSales.reduce((sum, g) => sum + g.totalRevenue, 0)
-      };
+      // Adicionar username às vendas
+      const salesWithUsers = sales.map(sale => ({
+        ...sale,
+        username: userMap.get(sale.userId) || 'Desconhecido'
+      }));
 
       return {
         event,
-        sales: groupedSales,
+        sales: salesWithUsers,
         statistics
       };
     } catch (error) {
@@ -1920,7 +1788,6 @@ export class DatabaseService {
 
   /**
    * Busca vendas detalhadas sem vínculo com evento
-   * Retorna dados agrupados por data e usuário
    * @param startDate Data inicial (opcional)
    * @param endDate Data final (opcional)
    * @returns Promise com relatório detalhado
@@ -1950,42 +1817,29 @@ export class DatabaseService {
         sales = sales.filter(s => s.timestamp <= endDate);
       }
 
-      // Buscar usernames e preços
+      // Ordenar por timestamp (mais recentes primeiro)
+      sales.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+
+      // Buscar usernames
       const userIds = [...new Set(sales.map(s => s.userId))];
+      const users = await this.db.users.bulkGet(userIds);
+      const userMap = new Map(users.filter(u => u).map(u => [u!.id!, u!.username]));
+
+      // Calcular estatísticas
+      const totalSales = sales.length;
+      const totalVolume = sales.reduce((sum, s) => sum + s.totalVolume, 0);
+
+      // Buscar preços para calcular receita
       const beerIds = [...new Set(sales.map(s => s.beerId))];
-
-      const [users, salesConfigs] = await Promise.all([
-        this.db.users.where('id').anyOf(userIds).toArray(),
-        this.db.salesConfig.where('beerId').anyOf(beerIds).toArray()
-      ]);
-
-      const userMap = new Map(users.map(u => [u.id!, u.username]));
+      const salesConfigs = await this.db.salesConfig.bulkGet(beerIds);
       const priceMap = new Map<number, SalesConfig>();
-      for (const config of salesConfigs) {
-        // Prioriza config geral (sem eventId) para vendas sem evento
-        const existing = priceMap.get(config.beerId);
-        if (!existing || config.eventId === null || config.eventId === undefined) {
-          priceMap.set(config.beerId, config);
-        }
-      }
+      salesConfigs.filter(c => c).forEach(c => priceMap.set(c!.beerId, c!));
 
-      // Agrupar por data + usuário
-      const groupedMap = new Map<string, {
-        saleDate: string;
-        username: string;
-        salesCount: number;
-        totalLiters: number;
-        totalRevenue: number;
-      }>();
-
-      for (const sale of sales) {
-        const saleDate = sale.timestamp.split('T')[0]; // YYYY-MM-DD
-        const username = userMap.get(sale.userId) || 'Desconhecido';
-        const key = `${saleDate}|${username}`;
-
-        // Calcular receita da venda
+      let totalRevenue = 0;
+      const salesWithUsers = sales.map(sale => {
         const config = priceMap.get(sale.beerId);
         let saleRevenue = 0;
+
         if (config) {
           switch (sale.cupSize) {
             case 300:
@@ -2000,36 +1854,22 @@ export class DatabaseService {
           }
         }
 
-        if (!groupedMap.has(key)) {
-          groupedMap.set(key, {
-            saleDate,
-            username,
-            salesCount: 0,
-            totalLiters: 0,
-            totalRevenue: 0
-          });
-        }
+        totalRevenue += saleRevenue;
 
-        const group = groupedMap.get(key)!;
-        group.salesCount += sale.quantity;
-        group.totalLiters += sale.totalVolume / 1000;
-        group.totalRevenue += saleRevenue;
-      }
-
-      // Converter para array e ordenar por data
-      const groupedSales = Array.from(groupedMap.values())
-        .sort((a, b) => b.saleDate.localeCompare(a.saleDate));
-
-      // Calcular estatísticas totais
-      const statistics = {
-        totalSales: groupedSales.reduce((sum, g) => sum + g.salesCount, 0),
-        totalVolume: groupedSales.reduce((sum, g) => sum + g.totalLiters, 0),
-        totalRevenue: groupedSales.reduce((sum, g) => sum + g.totalRevenue, 0)
-      };
+        return {
+          ...sale,
+          username: userMap.get(sale.userId) || 'Desconhecido',
+          revenue: saleRevenue
+        };
+      });
 
       return {
-        sales: groupedSales,
-        statistics
+        sales: salesWithUsers,
+        statistics: {
+          totalSales,
+          totalVolume,
+          totalRevenue
+        }
       };
     } catch (error) {
       console.error('❌ Erro ao buscar vendas sem evento:', error);
@@ -2123,83 +1963,5 @@ export class DatabaseService {
     } catch (error) {
       return false;
     }
-  }
-
-  // ==================== COMPATIBILITY METHODS (Legacy SQL.js API) ====================
-
-  /**
-   * @deprecated Método de compatibilidade com SQL.js - NÃO USE EM CÓDIGO NOVO
-   * Execute queries SQL diretamente não é suportado no Dexie
-   * Migre para métodos específicos do DatabaseService
-   */
-  executeQuery(sql: string): any[] {
-    console.error('❌ executeQuery() não é suportado em Dexie/IndexedDB');
-    console.error('   SQL:', sql);
-    console.error('   Migre para métodos específicos do DatabaseService');
-    console.error('   Exemplo: executeQuery("SELECT * FROM events") → getAllEvents()');
-    throw new Error('executeQuery() deprecated - use métodos específicos do DatabaseService');
-  }
-
-  /**
-   * @deprecated Método de compatibilidade com SQL.js - NÃO USE EM CÓDIGO NOVO
-   * Execute comandos SQL diretamente não é suportado no Dexie
-   * Migre para métodos específicos do DatabaseService
-   */
-  executeRun(sql: string): void {
-    console.error('❌ executeRun() não é suportado em Dexie/IndexedDB');
-    console.error('   SQL:', sql);
-    console.error('   Migre para métodos específicos do DatabaseService');
-    console.error('   Exemplo: executeRun("INSERT INTO events...") → createEvent(data)');
-    throw new Error('executeRun() deprecated - use métodos específicos do DatabaseService');
-  }
-
-  /**
-   * Limpa todos os dados do banco
-   * Alias para clearAllData() para compatibilidade
-   */
-  async clearDatabase(): Promise<void> {
-    return this.clearAllData();
-  }
-
-  /**
-   * Wrapper de compatibilidade: setEventStock com 5 parâmetros
-   * @deprecated Use setEventStock(data) com objeto
-   */
-  async setEventStockLegacy(
-    beerId: number,
-    beerName: string,
-    quantidadeLitros: number,
-    minLitersAlert: number = 5.0,
-    eventId: number | null = null
-  ): Promise<void> {
-    return this.setEventStock({
-      beerId,
-      beerName,
-      quantidadeLitros,
-      minLitersAlert,
-      eventId
-    });
-  }
-
-  /**
-   * Wrapper de compatibilidade: setSalesConfig com 6 parâmetros
-   * @deprecated Use setSalesConfig(data) com objeto
-   */
-  async setSalesConfigLegacy(
-    beerId: number,
-    beerName: string,
-    price300ml: number,
-    price500ml: number,
-    price1000ml: number,
-    eventId: number | null = null
-  ): Promise<void> {
-    return this.setSalesConfig({
-      beerId,
-      beerName,
-      price300ml,
-      price500ml,
-      price1000ml,
-      eventId
-    });
   }
 }

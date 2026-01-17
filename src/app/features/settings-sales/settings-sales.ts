@@ -150,11 +150,15 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
   /**
    * Carrega tipos de cerveja do banco
    */
-  private loadBeerTypes(): void {
+  private async loadBeerTypes(): Promise<void> {
     try {
-      const beers = this.dbService.executeQuery(
-        'SELECT * FROM beer_types ORDER BY name'
-      );
+      const db = this.dbService.getDatabase();
+      if (!db) {
+        console.warn('⚠️ Database não disponível');
+        return;
+      }
+
+      const beers = await db.beerTypes.orderBy('name').toArray();
 
       const typedBeers: BeerType[] = beers.map(beer => ({
         id: Number(beer.id),
@@ -164,8 +168,8 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
       }));
 
       this.beerTypes.set(typedBeers);
-      this.loadBeerStocks(typedBeers);
-      this.loadBeerPrices(typedBeers);
+      await this.loadBeerStocks(typedBeers);
+      await this.loadBeerPrices(typedBeers);
     } catch (error) {
       console.error('❌ Erro ao carregar tipos de cerveja:', error);
       this.showError('Não foi possível carregar os tipos de cerveja.');
@@ -177,11 +181,11 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
    * IMPORTANTE: originalQuantity > 0 OU existência de eventStock indica controle ativo
    * Se eventStock existe no banco, há controle ativo, mesmo que quantidade seja 0
    */
-  private loadBeerStocks(beers: BeerType[]): void {
+  private async loadBeerStocks(beers: BeerType[]): Promise<void> {
     try {
       const eventId = this.selectedEventId();
-      const stocks: BeerStock[] = beers.map(beer => {
-        const eventStock = this.dbService.getEventStockByBeerId(beer.id, eventId);
+      const stocksPromises = beers.map(async beer => {
+        const eventStock = await this.dbService.getEventStockByBeerId(beer.id, eventId);
 
         // Se não há registro no banco, não há controle ativo
         if (!eventStock) {
@@ -217,6 +221,7 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
         };
       });
 
+      const stocks = await Promise.all(stocksPromises);
       this.beerStocks.set(stocks);
       console.log('✅ Estoques carregados:', stocks);
     } catch (error) {
@@ -228,11 +233,11 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
   /**
    * Carrega preços configurados para cada cerveja
    */
-  private loadBeerPrices(beers: BeerType[]): void {
+  private async loadBeerPrices(beers: BeerType[]): Promise<void> {
     try {
       const eventId = this.selectedEventId();
-      const prices: BeerPrice[] = beers.map(beer => {
-        const salesConfig = this.dbService.getSalesConfigByBeerId(beer.id, eventId);
+      const pricesPromises = beers.map(async beer => {
+        const salesConfig = await this.dbService.getSalesConfigByBeerId(beer.id, eventId);
         const price300ml = salesConfig?.price300ml || 0;
         const price500ml = salesConfig?.price500ml || 0;
         const price1000ml = salesConfig?.price1000ml || 0;
@@ -250,6 +255,7 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
         };
       });
 
+      const prices = await Promise.all(pricesPromises);
       this.beerPrices.set(prices);
       console.log('✅ Preços carregados:', prices);
     } catch (error) {
@@ -261,9 +267,9 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
   /**
    * Carrega configuração de alerta de estoque baixo
    */
-  private loadAlertConfig(): void {
+  private async loadAlertConfig(): Promise<void> {
     try {
-      const config = this.dbService.getStockAlertConfig();
+      const config = await this.dbService.getStockAlertConfig();
       const minLiters = config?.minLiters || this.DEFAULT_MIN_LITERS;
 
       this.minLitersAlert.set(minLiters);
@@ -277,9 +283,9 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
   /**
    * Verifica se há alertas de estoque baixo
    */
-  checkStockAlerts(): void {
+  async checkStockAlerts(): Promise<void> {
     try {
-      const alerts = this.dbService.getStockAlerts();
+      const alerts = await this.dbService.getStockAlerts();
       this.stockAlerts.set(alerts);
 
       if (alerts.length > 0) {
@@ -294,10 +300,10 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
   /**
    * Salva a quantidade de litros e limite de alerta de uma cerveja
    */
-  saveStockForBeer(stock: BeerStock): void {
+  async saveStockForBeer(stock: BeerStock): Promise<void> {
     try {
       const eventId = this.selectedEventId();
-      this.dbService.setEventStock(
+      await this.dbService.setEventStockLegacy(
         stock.beerId,
         stock.beerName,
         stock.quantidadeLitros,
@@ -314,7 +320,7 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
       this.beerStocks.set(updatedStocks);
 
       this.showSuccess(`Estoque de ${stock.beerName} salvo: ${stock.quantidadeLitros}L (alerta: ${stock.minLitersAlert}L)`);
-      this.checkStockAlerts();
+      await this.checkStockAlerts();
     } catch (error) {
       console.error('❌ Erro ao salvar estoque:', error);
       this.showError(`Não foi possível salvar o estoque de ${stock.beerName}`);
@@ -324,19 +330,21 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
   /**
    * Salva todos os estoques de uma vez
    */
-  saveAllStocks(): void {
+  async saveAllStocks(): Promise<void> {
     this.isSaving.set(true);
     let savedCount = 0;
 
     try {
       const eventId = this.selectedEventId();
-      this.beerStocks().forEach(stock => {
+
+      // Usar for...of para await funcionar corretamente
+      for (const stock of this.beerStocks()) {
         const hasChanges =
           stock.quantidadeLitros !== stock.originalQuantity ||
           stock.minLitersAlert !== stock.originalMinLitersAlert;
 
         if (hasChanges) {
-          this.dbService.setEventStock(
+          await this.dbService.setEventStockLegacy(
             stock.beerId,
             stock.beerName,
             stock.quantidadeLitros,
@@ -345,7 +353,7 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
           );
           savedCount++;
         }
-      });
+      }
 
       // Atualiza valores originais
       const updatedStocks = this.beerStocks().map(s => ({
@@ -357,7 +365,7 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
 
       if (savedCount > 0) {
         this.showSuccess(`${savedCount} estoque(s) salvo(s) com sucesso!`);
-        this.checkStockAlerts();
+        await this.checkStockAlerts();
       } else {
         this.showInfo('Nenhuma alteração detectada.');
       }
@@ -372,7 +380,7 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
   /**
    * Salva configuração de alerta de estoque baixo
    */
-  saveAlertConfig(): void {
+  async saveAlertConfig(): Promise<void> {
     try {
       const minLiters = this.minLitersAlert();
 
@@ -381,10 +389,10 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
         return;
       }
 
-      this.dbService.setStockAlertConfig(minLiters);
+      await this.dbService.setStockAlertConfig(minLiters);
       this.originalMinLiters.set(minLiters);
       this.showSuccess(`Alerta configurado para ${minLiters}L`);
-      this.checkStockAlerts();
+      await this.checkStockAlerts();
     } catch (error) {
       console.error('❌ Erro ao salvar configuração de alerta:', error);
       this.showError('Não foi possível salvar a configuração de alerta.');
@@ -394,10 +402,10 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
   /**
    * Salva a configuração de preços de uma cerveja
    */
-  savePriceForBeer(price: BeerPrice): void {
+  async savePriceForBeer(price: BeerPrice): Promise<void> {
     try {
       const eventId = this.selectedEventId();
-      this.dbService.setSalesConfig(
+      await this.dbService.setSalesConfigLegacy(
         price.beerId,
         price.beerName,
         price.price300ml,
@@ -429,20 +437,22 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
   /**
    * Salva todos os preços de uma vez
    */
-  saveAllPrices(): void {
+  async saveAllPrices(): Promise<void> {
     this.isSaving.set(true);
     let savedCount = 0;
 
     try {
       const eventId = this.selectedEventId();
-      this.beerPrices().forEach(price => {
+
+      // Usar for...of para await funcionar corretamente
+      for (const price of this.beerPrices()) {
         const hasChanges =
           price.price300ml !== price.originalPrice300ml ||
           price.price500ml !== price.originalPrice500ml ||
           price.price1000ml !== price.originalPrice1000ml;
 
         if (hasChanges) {
-          this.dbService.setSalesConfig(
+          await this.dbService.setSalesConfigLegacy(
             price.beerId,
             price.beerName,
             price.price300ml,
@@ -452,7 +462,7 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
           );
           savedCount++;
         }
-      });
+      }
 
       // Atualiza valores originais
       const updatedPrices = this.beerPrices().map(p => ({
@@ -491,7 +501,7 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
    * Reseta o estoque de uma cerveja (remove do banco, volta ao modo normal)
    * Este método só deve ser chamado quando o usuário clicar no botão "Remover Controle"
    */
-  resetStockForBeer(stock: BeerStock): void {
+  async resetStockForBeer(stock: BeerStock): Promise<void> {
     try {
       // Verifica se há controle ativo (originalQuantity > 0 OU quantidadeLitros > 0)
       if (stock.originalQuantity === 0 && stock.quantidadeLitros === 0) {
@@ -500,7 +510,7 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
       }
 
       // Remove do banco de dados
-      this.dbService.removeEventStock(stock.beerId);
+      await this.dbService.removeEventStock(stock.beerId);
 
       // Atualiza para valores padrão (sem controle)
       const updatedStocks = this.beerStocks().map(s =>
@@ -511,7 +521,7 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
       this.beerStocks.set(updatedStocks);
 
       this.showSuccess(`Controle de estoque removido para ${stock.beerName}`);
-      this.checkStockAlerts();
+      await this.checkStockAlerts();
     } catch (error) {
       console.error('❌ Erro ao resetar estoque:', error);
       this.showError('Erro ao resetar estoque.');

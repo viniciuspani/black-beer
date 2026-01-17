@@ -116,12 +116,16 @@ export class BeerManagementComponent implements OnInit {
    * Carrega tipos de cerveja do banco
    * MUDANÇA: IDs agora são numbers, converte explicitamente
    */
-  loadBeerTypes(): void {
+  async loadBeerTypes(): Promise<void> {
     try {
-      const beers = this.dbService.executeQuery(
-        'SELECT * FROM beer_types ORDER BY name'
-      );
-      
+      const db = this.dbService.getDatabase();
+      if (!db) {
+        console.warn('⚠️ Database não disponível');
+        return;
+      }
+
+      const beers = await db.beerTypes.orderBy('name').toArray();
+
       // Conversão explícita para garantir type safety
       const typedBeers: BeerType[] = beers.map(beer => ({
         id: Number(beer.id),           // ← Garante que é number
@@ -129,7 +133,7 @@ export class BeerManagementComponent implements OnInit {
         color: beer.color,
         description: beer.description
       }));
-      
+
       this.beerTypes.set(typedBeers);
       console.log('✅ Beer types carregados:', typedBeers.length);
     } catch (error) {
@@ -163,7 +167,7 @@ export class BeerManagementComponent implements OnInit {
    * Handler para adicionar nova cerveja
    * MUDANÇA CRÍTICA: Não gera mais ID manualmente, banco faz via AUTOINCREMENT
    */
-  handleAddBeer(): void {
+  async handleAddBeer(): Promise<void> {
     if (this.beerForm.invalid) {
       this.showWarning('Por favor, preencha todos os campos obrigatórios.');
       return;
@@ -173,7 +177,8 @@ export class BeerManagementComponent implements OnInit {
     const beerName = formValue.name.trim();
 
     // Validação: verifica se já existe cerveja com este nome
-    if (this.beerNameExists(beerName)) {
+    const nameExists = await this.beerNameExists(beerName);
+    if (nameExists) {
       this.showError('Uma cerveja com este nome já existe.');
       return;
     }
@@ -183,21 +188,20 @@ export class BeerManagementComponent implements OnInit {
       name: beerName,
       description: formValue.description?.trim() || `Cerveja ${beerName}`,
       color: formValue.color
-    };
+    } as any;
 
     try {
-      // INSERT sem ID - banco gera via AUTOINCREMENT
-      this.dbService.executeRun(
-        'INSERT INTO beer_types (name, description, color) VALUES (?, ?, ?)',
-        [newBeer.name, newBeer.description, newBeer.color]
-      );
+      const db = this.dbService.getDatabase();
+      if (!db) {
+        throw new Error('Database não disponível');
+      }
 
-      // Obtém o ID gerado pelo banco
-      const insertedId = this.dbService.getLastInsertId();
+      // Dexie adiciona o ID automaticamente
+      const insertedId = await db.beerTypes.add(newBeer);
       console.log('✅ Cerveja adicionada com ID:', insertedId);
 
       this.showSuccess(`${newBeer.name} adicionada com sucesso!`);
-      this.loadBeerTypes();
+      await this.loadBeerTypes();
       this.toggleAddForm();
 
       // Notifica sales-form para recarregar lista de cervejas
@@ -210,18 +214,21 @@ export class BeerManagementComponent implements OnInit {
 
   /**
    * Verifica se já existe uma cerveja com o nome fornecido
-   * MUDANÇA: Usa query SQL direta em vez de gerar ID e comparar
-   * 
+   * MUDANÇA: Usa query Dexie em vez de SQL direto
+   *
    * @param name Nome da cerveja a verificar
    * @returns true se o nome já existe
    */
-  private beerNameExists(name: string): boolean {
+  private async beerNameExists(name: string): Promise<boolean> {
     try {
-      const existing = this.dbService.executeQuery(
-        'SELECT id FROM beer_types WHERE LOWER(name) = LOWER(?)',
-        [name.trim()]
-      );
-      return existing.length > 0;
+      const db = this.dbService.getDatabase();
+      if (!db) return false;
+
+      const nameLower = name.trim().toLowerCase();
+      const count = await db.beerTypes
+        .filter(beer => beer.name.toLowerCase() === nameLower)
+        .count();
+      return count > 0;
     } catch (error) {
       console.error('❌ Erro ao verificar nome da cerveja:', error);
       return false;
@@ -255,7 +262,7 @@ export class BeerManagementComponent implements OnInit {
   /**
    * Salva a edição da cerveja no banco de dados
    */
-  handleUpdateBeer(): void {
+  async handleUpdateBeer(): Promise<void> {
     if (this.editForm.invalid || !this.currentEditingBeer) {
       this.showWarning('Por favor, preencha todos os campos obrigatórios.');
       return;
@@ -265,7 +272,8 @@ export class BeerManagementComponent implements OnInit {
     const beerName = formValue.name.trim();
 
     // Validação: verifica se já existe outra cerveja com este nome
-    if (beerName.toLowerCase() !== this.currentEditingBeer.name.toLowerCase() && this.beerNameExists(beerName)) {
+    const nameChanged = beerName.toLowerCase() !== this.currentEditingBeer.name.toLowerCase();
+    if (nameChanged && await this.beerNameExists(beerName)) {
       this.showError('Uma cerveja com este nome já existe.');
       return;
     }
@@ -277,16 +285,18 @@ export class BeerManagementComponent implements OnInit {
     };
 
     try {
-      // UPDATE no banco de dados
-      this.dbService.executeRun(
-        'UPDATE beer_types SET name = ?, description = ?, color = ? WHERE id = ?',
-        [updatedBeer.name, updatedBeer.description, updatedBeer.color, this.currentEditingBeer.id]
-      );
+      const db = this.dbService.getDatabase();
+      if (!db) {
+        throw new Error('Database não disponível');
+      }
+
+      // UPDATE usando Dexie
+      await db.beerTypes.update(this.currentEditingBeer.id, updatedBeer);
 
       console.log('✅ Cerveja atualizada:', updatedBeer.name, '(ID:', this.currentEditingBeer.id, ')');
 
       this.showSuccess(`${updatedBeer.name} foi atualizada com sucesso!`);
-      this.loadBeerTypes();
+      await this.loadBeerTypes();
       this.closeEditDialog();
 
       // Notifica sales-form para recarregar lista de cervejas
@@ -320,30 +330,29 @@ export class BeerManagementComponent implements OnInit {
   /**
    * Deleta a cerveja e suas vendas relacionadas
    * MUDANÇA: beerId agora é number (FK cascade já remove vendas)
-   * 
+   *
    * @param beer Cerveja a ser removida
    */
-  private handleDeleteBeer(beer: BeerType): void {
+  private async handleDeleteBeer(beer: BeerType): Promise<void> {
     try {
-      // CASCADE DELETE já configurado no schema remove vendas automaticamente
+      const db = this.dbService.getDatabase();
+      if (!db) {
+        throw new Error('Database não disponível');
+      }
+
+      // CASCADE DELETE já configurado no schema Dexie remove vendas automaticamente
       // Mas por segurança, fazemos explicitamente:
-      
+
       // 1. Remove vendas relacionadas
-      this.dbService.executeRun(
-        'DELETE FROM sales WHERE beerId = ?', 
-        [beer.id]  // ← number agora
-      );
-      
+      await db.sales.where('beerId').equals(beer.id).delete();
+
       // 2. Remove a cerveja
-      this.dbService.executeRun(
-        'DELETE FROM beer_types WHERE id = ?', 
-        [beer.id]  // ← number agora
-      );
+      await db.beerTypes.delete(beer.id);
 
       console.log('✅ Cerveja removida:', beer.name, '(ID:', beer.id, ')');
 
       this.showSuccess(`${beer.name} foi removida com sucesso.`);
-      this.loadBeerTypes();
+      await this.loadBeerTypes();
 
       // Notifica sales-form para recarregar lista de cervejas
       this.tabRefreshService.notifyMainTabActivated(MainTab.SALES);

@@ -31,17 +31,17 @@ export class ClientConfigService {
     // Aguarda o banco estar pronto antes de carregar
     effect(() => {
       if (this.db.isDbReady()) {
-        this.loadConfig();
+        void this.loadConfig();
       }
     });
   }
 
   /**
-   * Carrega a configuração do SQLite
+   * Carrega a configuração do IndexedDB
    */
-  private loadConfig(): void {
+  private async loadConfig(): Promise<void> {
     try {
-      const config = this.getConfig();
+      const config = await this.getConfig();
       this.clientConfigSignal.set(config);
     } catch (error) {
       console.error('Erro ao carregar configuração do cliente:', error);
@@ -50,20 +50,19 @@ export class ClientConfigService {
   }
 
   /**
-   * Obtém a configuração do cliente do SQLite
+   * Obtém a configuração do cliente do IndexedDB
    */
-  getConfig(): ClientConfig | null {
+  async getConfig(): Promise<ClientConfig | null> {
     try {
-      const results = this.db.executeQuery(
-        'SELECT * FROM client_config WHERE id = ? LIMIT 1',
-        [this.CONFIG_ID]
-      );
+      const database = this.db.getDatabase();
+      if (!database) return null;
 
-      if (results.length === 0) {
+      const row = await database.clientConfig.get(this.CONFIG_ID);
+
+      if (!row) {
         return null;
       }
 
-      const row = results[0];
       return {
         id: Number(row.id),
         companyName: row.companyName || undefined,
@@ -102,7 +101,7 @@ export class ClientConfigService {
       // Converte imagem para base64
       const reader = new FileReader();
 
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
           const base64 = e.target?.result as string;
 
@@ -115,7 +114,7 @@ export class ClientConfigService {
             updatedAt: new Date()
           };
 
-          this.saveConfig(config);
+          await this.saveConfig(config);
           this.clientConfigSignal.set(config);
           resolve();
         } catch (error) {
@@ -132,44 +131,36 @@ export class ClientConfigService {
   }
 
   /**
-   * Salva a configuração no SQLite
+   * Salva a configuração no IndexedDB
    */
-  private saveConfig(config: ClientConfig): void {
+  private async saveConfig(config: ClientConfig): Promise<void> {
     try {
-      const exists = this.db.executeQuery(
-        'SELECT id FROM client_config WHERE id = ? LIMIT 1',
-        [this.CONFIG_ID]
-      );
+      const database = this.db.getDatabase();
+      if (!database) {
+        throw new Error('Database não disponível');
+      }
 
-      if (exists.length > 0) {
+      const exists = await database.clientConfig.get(this.CONFIG_ID);
+
+      if (exists) {
         // UPDATE
-        this.db.executeRun(
-          `UPDATE client_config
-           SET companyName = ?, logoBase64 = ?, logoMimeType = ?, logoFileName = ?, updatedAt = ?
-           WHERE id = ?`,
-          [
-            config.companyName || null,
-            config.logoBase64 || null,
-            config.logoMimeType || null,
-            config.logoFileName || null,
-            config.updatedAt.toISOString(),
-            this.CONFIG_ID
-          ]
-        );
+        await database.clientConfig.update(this.CONFIG_ID, {
+          companyName: config.companyName || undefined,
+          logoBase64: config.logoBase64 || undefined,
+          logoMimeType: config.logoMimeType || undefined,
+          logoFileName: config.logoFileName || undefined,
+          updatedAt: config.updatedAt.toISOString()
+        });
       } else {
         // INSERT
-        this.db.executeRun(
-          `INSERT INTO client_config (id, companyName, logoBase64, logoMimeType, logoFileName, updatedAt)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [
-            this.CONFIG_ID,
-            config.companyName || null,
-            config.logoBase64 || null,
-            config.logoMimeType || null,
-            config.logoFileName || null,
-            config.updatedAt.toISOString()
-          ]
-        );
+        await database.clientConfig.add({
+          id: this.CONFIG_ID,
+          companyName: config.companyName || undefined,
+          logoBase64: config.logoBase64 || undefined,
+          logoMimeType: config.logoMimeType || undefined,
+          logoFileName: config.logoFileName || undefined,
+          updatedAt: config.updatedAt.toISOString()
+        });
       }
     } catch (error) {
       console.error('Erro ao salvar configuração:', error);
@@ -180,9 +171,9 @@ export class ClientConfigService {
   /**
    * Remove a logo da empresa
    */
-  removeLogo(): void {
+  async removeLogo(): Promise<void> {
     try {
-      const currentConfig = this.getConfig();
+      const currentConfig = await this.getConfig();
 
       if (currentConfig) {
         const updatedConfig: ClientConfig = {
@@ -193,7 +184,7 @@ export class ClientConfigService {
           updatedAt: new Date()
         };
 
-        this.saveConfig(updatedConfig);
+        await this.saveConfig(updatedConfig);
         this.clientConfigSignal.set(updatedConfig);
       }
     } catch (error) {
@@ -205,9 +196,9 @@ export class ClientConfigService {
   /**
    * Atualiza o nome da empresa
    */
-  updateCompanyName(companyName: string): void {
+  async updateCompanyName(companyName: string): Promise<void> {
     try {
-      const currentConfig = this.getConfig();
+      const currentConfig = await this.getConfig();
 
       const updatedConfig: ClientConfig = {
         id: this.CONFIG_ID,
@@ -218,7 +209,7 @@ export class ClientConfigService {
         updatedAt: new Date()
       };
 
-      this.saveConfig(updatedConfig);
+      await this.saveConfig(updatedConfig);
       this.clientConfigSignal.set(updatedConfig);
     } catch (error) {
       console.error('Erro ao atualizar nome da empresa:', error);

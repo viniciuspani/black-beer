@@ -107,12 +107,12 @@ export class EventService {
     this._lastError.set(null);
 
     try {
-      const rawEvents = this.dbService.getAllEvents();
+      const rawEvents = await this.dbService.getAllEvents();
 
       // Valida e filtra eventos
       const validEvents = rawEvents
         .filter(isValidEvent)
-        .sort((a, b) => {
+        .sort((a: any, b: any) => {
           // Ordena por data (mais recentes primeiro)
           return new Date(b.dataEvent).getTime() - new Date(a.dataEvent).getTime();
         });
@@ -198,7 +198,7 @@ export class EventService {
         }
       });
 
-      const success = this.dbService.updateEvent(eventData.id, updateData);
+      const success = await this.dbService.updateEvent(eventData.id, updateData);
 
       if (success) {
         await this.loadEvents();
@@ -224,13 +224,13 @@ export class EventService {
 
     try {
       // Verifica se há vendas vinculadas
-      const hasSales = this.dbService.eventHasSales(eventId);
+      const hasSales = await this.dbService.eventHasSales(eventId);
       if (hasSales) {
         this._lastError.set('Este evento possui vendas associadas e não pode ser deletado');
         return false;
       }
 
-      const success = this.dbService.deleteEvent(eventId);
+      const success = await this.dbService.deleteEvent(eventId);
 
       if (success) {
         await this.loadEvents();
@@ -319,7 +319,7 @@ export class EventService {
     this._lastError.set(null);
 
     try {
-      const success = this.dbService.updateEventStatus(eventId, newStatus);
+      const success = await this.dbService.updateEventStatus(eventId, newStatus);
 
       if (success) {
         await this.loadEvents();
@@ -359,14 +359,14 @@ export class EventService {
    * @param eventId ID do evento
    * @returns Estatísticas do evento
    */
-  public getEventStatistics(eventId: number): {
+  public async getEventStatistics(eventId: number): Promise<{
     totalSales: number;
     totalVolume: number;
     totalRevenue: number;
     salesByBeer: any[];
-  } {
+  }> {
     try {
-      return this.dbService.getEventStatistics(eventId);
+      return await this.dbService.getEventStatistics(eventId);
     } catch (error) {
       console.error('❌ Erro ao obter estatísticas do evento:', error);
       return {
@@ -381,19 +381,19 @@ export class EventService {
   /**
    * Verifica se um evento tem vendas associadas
    * @param eventId ID do evento
-   * @returns true se tem vendas
+   * @returns Promise com true se tem vendas
    */
-  public eventHasSales(eventId: number): boolean {
-    return this.dbService.eventHasSales(eventId);
+  public async eventHasSales(eventId: number): Promise<boolean> {
+    return await this.dbService.eventHasSales(eventId);
   }
 
   /**
    * Obtém todas as vendas de um evento
    * @param eventId ID do evento
-   * @returns Array de vendas
+   * @returns Promise com array de vendas
    */
-  public getEventSales(eventId: number): any[] {
-    return this.dbService.getSalesByEvent(eventId);
+  public async getEventSales(eventId: number): Promise<any[]> {
+    return await this.dbService.getSalesByEvent(eventId);
   }
 
   // ==================== MÉTODOS PÚBLICOS - VALIDAÇÃO ====================
@@ -415,10 +415,10 @@ export class EventService {
   /**
    * Valida se é possível deletar um evento
    * @param eventId ID do evento
-   * @returns { canDelete: boolean, reason?: string }
+   * @returns Promise com { canDelete: boolean, reason?: string }
    */
-  public canDeleteEvent(eventId: number): { canDelete: boolean; reason?: string } {
-    const hasSales = this.dbService.eventHasSales(eventId);
+  public async canDeleteEvent(eventId: number): Promise<{ canDelete: boolean; reason?: string }> {
+    const hasSales = await this.dbService.eventHasSales(eventId);
 
     if (hasSales) {
       return {

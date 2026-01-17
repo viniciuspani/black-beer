@@ -38,7 +38,9 @@
     "@angular/service-worker": "^20.2.0",
     "@angular/ssr": "^20.2.1",
     "@primeuix/themes": "^1.2.3",
+    "@types/uuid": "^10.0.0",
     "chart.js": "^4.5.1",
+    "dexie": "^3.2.7",
     "express": "^5.1.0",
     "ng2-charts": "^8.0.0",
     "primeicons": "^7.0.0",
@@ -46,6 +48,7 @@
     "rxjs": "~7.8.0",
     "sql.js": "^1.13.0",
     "tslib": "^2.3.0",
+    "uuid": "^13.0.0",
     "zone.js": "~0.15.0"
   },
   "devDependencies": {

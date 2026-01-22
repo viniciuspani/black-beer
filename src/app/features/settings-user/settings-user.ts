@@ -174,26 +174,26 @@ export class SettingsUserComponent implements OnInit, OnDestroy {
   loadSettings(): void {
     try {
       const result = this.dbService.executeQuery(
-        'SELECT id, email, isConfigured FROM settings LIMIT 1'
+        'SELECT num_id, desc_email, num_is_configured FROM config_settings LIMIT 1'
       );
 
       if (result && result.length > 0) {
         const row = result[0];
 
         // Converte string do banco para array
-        const emails = emailsFromDb(row.email);
+        const emails = emailsFromDb(row.desc_email);
 
         const settings: AppSettings = {
-          id: Number(row.id),
-          emails: emails,
-          isConfigured: toBooleanFromDb(row.isConfigured)
+          num_id: Number(row.num_id),
+          desc_emails: emails,
+          num_is_configured: toBooleanFromDb(row.num_is_configured)
         };
 
         console.log('✅ Settings carregadas:', settings);
 
         // Atualiza signals
-        this.currentSettingsId.set(settings.id || null);
-        this.configuredEmails.set(settings.emails);
+        this.currentSettingsId.set(settings.num_id || null);
+        this.configuredEmails.set(settings.desc_emails);
 
         // Campo fica VAZIO ao carregar
         this.settingsForm.patchValue({
@@ -309,7 +309,7 @@ export class SettingsUserComponent implements OnInit, OnDestroy {
    */
   private updateExistingSettings(id: number, emailString: string): void {
     this.dbService.executeRun(
-      'UPDATE settings SET email = ?, isConfigured = ? WHERE id = ?',
+      'UPDATE config_settings SET desc_email = ?, num_is_configured = ? WHERE num_id = ?',
       [emailString, toDbFromBoolean(true), id]
     );
     console.log('✅ Settings atualizadas (ID:', id, ')');
@@ -320,7 +320,7 @@ export class SettingsUserComponent implements OnInit, OnDestroy {
    */
   private insertNewSettings(emailString: string): void {
     this.dbService.executeRun(
-      'INSERT INTO settings (email, isConfigured) VALUES (?, ?)',
+      'INSERT INTO config_settings (desc_email, num_is_configured) VALUES (?, ?)',
       [emailString, toDbFromBoolean(true)]
     );
 

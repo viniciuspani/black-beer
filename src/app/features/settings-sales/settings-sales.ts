@@ -153,14 +153,14 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
   private loadBeerTypes(): void {
     try {
       const beers = this.dbService.executeQuery(
-        'SELECT * FROM beer_types ORDER BY name'
+        'SELECT * FROM prd_beer_types ORDER BY desc_name'
       );
 
       const typedBeers: BeerType[] = beers.map(beer => ({
-        id: Number(beer.id),
-        name: beer.name,
-        color: beer.color,
-        description: beer.description
+        num_id: Number(beer.num_id),
+        desc_name: beer.desc_name,
+        desc_color: beer.desc_color,
+        desc_description: beer.desc_description
       }));
 
       this.beerTypes.set(typedBeers);
@@ -181,14 +181,14 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
     try {
       const eventId = this.selectedEventId();
       const stocks: BeerStock[] = beers.map(beer => {
-        const eventStock = this.dbService.getEventStockByBeerId(beer.id, eventId);
+        const eventStock = this.dbService.getEventStockByBeerId(beer.num_id, eventId);
 
         // Se não há registro no banco, não há controle ativo
         if (!eventStock) {
           return {
-            beerId: beer.id,
-            beerName: beer.name,
-            color: beer.color,
+            beerId: beer.num_id,
+            beerName: beer.desc_name,
+            color: beer.desc_color,
             quantidadeLitros: 0,
             minLitersAlert: 5.0,
             originalQuantity: 0,
@@ -198,8 +198,8 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
 
         // Se há registro no banco, há controle ativo (mesmo que quantidade seja 0)
         // Para indicar controle ativo quando quantidade é 0, usamos um valor sentinela
-        const quantity = eventStock.quantidadeLitros;
-        const minAlert = eventStock.minLitersAlert || 5.0;
+        const quantity = eventStock.num_quantidade_litros;
+        const minAlert = eventStock.num_min_liters_alert || 5.0;
 
         // SOLUÇÃO: Se quantidade é 0 mas há registro no banco,
         // originalQuantity deve ser > 0 para indicar controle ativo
@@ -207,9 +207,9 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
         const originalQty = quantity === 0 ? 0.001 : quantity;
 
         return {
-          beerId: beer.id,
-          beerName: beer.name,
-          color: beer.color,
+          beerId: beer.num_id,
+          beerName: beer.desc_name,
+          color: beer.desc_color,
           quantidadeLitros: quantity,
           minLitersAlert: minAlert,
           originalQuantity: originalQty,
@@ -232,15 +232,15 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
     try {
       const eventId = this.selectedEventId();
       const prices: BeerPrice[] = beers.map(beer => {
-        const salesConfig = this.dbService.getSalesConfigByBeerId(beer.id, eventId);
+        const salesConfig = this.dbService.getSalesConfigByBeerId(beer.num_id, eventId);
         const price300ml = salesConfig?.price300ml || 0;
         const price500ml = salesConfig?.price500ml || 0;
         const price1000ml = salesConfig?.price1000ml || 0;
 
         return {
-          beerId: beer.id,
-          beerName: beer.name,
-          color: beer.color,
+          beerId: beer.num_id,
+          beerName: beer.desc_name,
+          color: beer.desc_color,
           price300ml,
           price500ml,
           price1000ml,

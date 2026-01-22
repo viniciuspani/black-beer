@@ -76,7 +76,7 @@
    BOTTOM NAVIGATION BAR (MOBILE)
    ======================================== */
 
-/* 
+/*
  * Bottom nav é fixo na parte inferior em mobile
  * Usa grid 4 colunas para distribuir igualmente
  */
@@ -91,10 +91,10 @@ nav button {
   position: relative;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
-  
+
   /* Área de toque mínima: 72px altura */
   min-height: 72px;
-  
+
   /* Feedback tátil visual */
   &:active {
     background-color: rgba(251, 191, 36, 0.1);
@@ -167,7 +167,7 @@ main {
   /* Permite scroll vertical suave */
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  
+
   /* Esconde scrollbar mas mantém funcionalidade */
   scrollbar-width: thin;
   scrollbar-color: rgba(251, 191, 36, 0.3) transparent;
@@ -196,12 +196,12 @@ main::-webkit-scrollbar-thumb:hover {
 
 @media (min-width: 640px) and (max-width: 767px) {
   /* Tablets em orientação portrait */
-  
+
   /* Aumenta tamanho dos ícones da bottom nav */
   nav button i {
     font-size: 1.75rem; /* 28px */
   }
-  
+
   /* Aumenta tamanho do texto */
   nav button span {
     font-size: 0.875rem; /* 14px */
@@ -307,7 +307,7 @@ nav button:focus:not(:focus-visible) {
     padding-bottom: env(safe-area-inset-bottom);
     height: calc(72px + env(safe-area-inset-bottom));
   }
-  
+
   main {
     /* Compensa altura extra da bottom nav com safe area */
     margin-bottom: calc(72px + env(safe-area-inset-bottom));
@@ -351,10 +351,10 @@ nav button:focus:not(:focus-visible) {
 }
 
 /* ========================================
-   BADGE "BB" - POWERED BY BLACK BEER
+   LOGO BLACK BEER - POWERED BY BLACK BEER
    ======================================== */
 
-.bb-badge-container {
+.bb-logo-container {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -362,36 +362,25 @@ nav button:focus:not(:focus-visible) {
   transition: transform 0.3s ease;
 
   &:hover {
-    transform: scale(1.1);
+    transform: scale(1.05);
   }
 }
 
-.bb-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  background: rgba(255, 255, 255, 0.2);
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  border-radius: 50%;
-  font-weight: 800;
-  font-size: 0.875rem;
-  letter-spacing: 0.05em;
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+.bb-logo-image {
+  height: 8rem;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
   transition: all 0.3s ease;
+  margin: -2.5rem 0; /* Margem negativa para "vazar" sem aumentar o header */
 
-  .bb-badge-container:hover & {
-    background: rgba(255, 255, 255, 0.3);
-    border-color: rgba(255, 255, 255, 0.8);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  .bb-logo-container:hover & {
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
   }
 
   @media (max-width: 640px) {
-    width: 2rem;
-    height: 2rem;
-    font-size: 0.75rem;
+    height: 6rem;
+    margin: -1.75rem 0;
   }
 }
 

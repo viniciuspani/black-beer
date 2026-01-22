@@ -4,35 +4,36 @@
 
 /**
  * Resumo geral das vendas
- * SEM MUDANÇAS - estrutura mantida
+ * Convenção de nomenclatura:
+ * - num_ : Colunas INTEGER e REAL
  */
 export interface SalesSummary {
-  totalSales: number;
-  totalVolumeLiters: number;
+  num_total_sales: number;
+  num_total_volume_liters: number;
 }
 
 /**
  * Vendas agrupadas por tamanho de copo
- * SEM MUDANÇAS - estrutura mantida
  */
 export interface SalesByCupSize {
-  cupSize: number;
-  count: number;
+  num_cup_size: number;
+  num_count: number;
 }
 
 /**
  * Vendas agrupadas por tipo de cerveja
- * MUDANÇA: beerId agora é number (INTEGER)
- * MUDANÇA V5: Adicionado totalRevenue para valor monetário
+ * Convenção de nomenclatura:
+ * - num_ : Colunas INTEGER e REAL
+ * - desc_ : Colunas TEXT (dados gerais)
  */
 export interface SalesByBeerType {
-  beerId: number;          // ← MUDANÇA: number em vez de string
-  name: string;
-  color: string;
-  description: string;
-  totalLiters: number;
-  totalCups: number;
-  totalRevenue: number;    // ← NOVO: valor total em R$ deste tipo de cerveja
+  num_beer_id: number;
+  desc_name: string;
+  desc_color: string;
+  desc_description: string;
+  num_total_liters: number;
+  num_total_cups: number;
+  num_total_revenue: number;    // valor total em R$ deste tipo de cerveja
 }
 
 /**
@@ -161,18 +162,17 @@ export function formatDateRange(range: DateRange): string {
 
 /**
  * Type guard para SalesByBeerType
- * NOVO: Validação com beerId como number
  */
 export function isSalesByBeerType(obj: any): obj is SalesByBeerType {
   return (
     typeof obj === 'object' &&
     obj !== null &&
-    typeof obj.beerId === 'number' &&
-    typeof obj.name === 'string' &&
-    typeof obj.color === 'string' &&
-    typeof obj.description === 'string' &&
-    typeof obj.totalLiters === 'number' &&
-    typeof obj.totalCups === 'number'
+    typeof obj.num_beer_id === 'number' &&
+    typeof obj.desc_name === 'string' &&
+    typeof obj.desc_color === 'string' &&
+    typeof obj.desc_description === 'string' &&
+    typeof obj.num_total_liters === 'number' &&
+    typeof obj.num_total_cups === 'number'
   );
 }
 

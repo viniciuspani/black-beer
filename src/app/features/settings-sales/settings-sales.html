@@ -43,16 +43,16 @@
         </button>
 
         <!-- Botões de eventos ativos -->
-        @for (event of availableEvents(); track event.id) {
+        @for (event of availableEvents(); track event.num_id) {
           <button
             type="button"
             class="event-button"
-            [class.event-button-active]="selectedEventId() === event.id"
-            (click)="onEventChange(event.id)">
+            [class.event-button-active]="selectedEventId() === event.num_id"
+            (click)="onEventChange(event.num_id)">
             <i class="pi pi-calendar-plus"></i>
             <div class="event-button-content">
-              <span class="event-button-title">{{ event.nameEvent }}</span>
-              <span class="event-button-subtitle">{{ event.localEvent }}</span>
+              <span class="event-button-title">{{ event.desc_name_event }}</span>
+              <span class="event-button-subtitle">{{ event.desc_local_event }}</span>
             </div>
           </button>
         }

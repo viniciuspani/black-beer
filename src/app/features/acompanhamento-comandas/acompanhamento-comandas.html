@@ -41,9 +41,9 @@
         </div>
 
         <div class="comandas-grid-simple">
-          @for (comanda of comandasDisponiveis(); track comanda.id) {
+          @for (comanda of comandasDisponiveis(); track comanda.num_id) {
             <div class="comanda-card-simple disponivel">
-              <span class="comanda-numero">{{ comanda.numero }}</span>
+              <span class="comanda-numero">{{ comanda.num_numero }}</span>
             </div>
           }
           @empty {
@@ -62,25 +62,25 @@
         </div>
 
         <div class="comandas-grid-detailed">
-          @for (comanda of comandasEmUso(); track comanda.id) {
+          @for (comanda of comandasEmUso(); track comanda.num_id) {
             <div class="comanda-card-detailed em-uso">
               <div class="comanda-card-header">
-                <span class="comanda-numero-large">{{ comanda.numero }}</span>
+                <span class="comanda-numero-large">{{ comanda.num_numero }}</span>
                 <p-tag value="Em Uso" severity="warning"></p-tag>
               </div>
 
               <div class="comanda-items">
-                @for (item of comanda.items; track item.saleId) {
+                @for (item of comanda.items; track item.num_sale_id) {
                   <div class="item-row">
-                    <span class="item-name">{{ item.quantity }}x {{ item.beerName }} ({{ item.cupSize }}ml)</span>
-                    <span class="item-price">R$ {{ item.totalPrice.toFixed(2) }}</span>
+                    <span class="item-name">{{ item.num_quantity }}x {{ item.desc_beer_name }} ({{ item.num_cup_size }}ml)</span>
+                    <span class="item-price">R$ {{ item.num_total_price.toFixed(2) }}</span>
                   </div>
                 }
               </div>
 
               <div class="comanda-footer">
                 <span class="total-label">Total:</span>
-                <span class="total-value">R$ {{ comanda.totalValue.toFixed(2) }}</span>
+                <span class="total-value">R$ {{ comanda.num_total_value.toFixed(2) }}</span>
               </div>
 
               <p-button
@@ -88,7 +88,7 @@
                 icon="pi pi-lock"
                 severity="secondary"
                 styleClass="w-full"
-                (onClick)="fecharComanda(comanda.id)">
+                (onClick)="fecharComanda(comanda.num_id)">
               </p-button>
             </div>
           }
@@ -108,25 +108,25 @@
         </div>
 
         <div class="comandas-grid-detailed">
-          @for (comanda of comandasAguardandoPagamento(); track comanda.id) {
+          @for (comanda of comandasAguardandoPagamento(); track comanda.num_id) {
             <div class="comanda-card-detailed aguardando">
               <div class="comanda-card-header">
-                <span class="comanda-numero-large">{{ comanda.numero }}</span>
+                <span class="comanda-numero-large">{{ comanda.num_numero }}</span>
                 <p-tag value="Aguardando" severity="danger"></p-tag>
               </div>
 
               <div class="comanda-items">
-                @for (item of comanda.items; track item.saleId) {
+                @for (item of comanda.items; track item.num_sale_id) {
                   <div class="item-row">
-                    <span class="item-name">{{ item.quantity }}x {{ item.beerName }} ({{ item.cupSize }}ml)</span>
-                    <span class="item-price">R$ {{ item.totalPrice.toFixed(2) }}</span>
+                    <span class="item-name">{{ item.num_quantity }}x {{ item.desc_beer_name }} ({{ item.num_cup_size }}ml)</span>
+                    <span class="item-price">R$ {{ item.num_total_price.toFixed(2) }}</span>
                   </div>
                 }
               </div>
 
               <div class="comanda-footer">
                 <span class="total-label">Total a Pagar:</span>
-                <span class="total-value total-value-highlight">R$ {{ comanda.totalValue.toFixed(2) }}</span>
+                <span class="total-value total-value-highlight">R$ {{ comanda.num_total_value.toFixed(2) }}</span>
               </div>
 
               <p-button
@@ -134,7 +134,7 @@
                 icon="pi pi-check"
                 severity="success"
                 styleClass="w-full"
-                (onClick)="confirmarPagamento(comanda.id)">
+                (onClick)="confirmarPagamento(comanda.num_id)">
               </p-button>
             </div>
           }

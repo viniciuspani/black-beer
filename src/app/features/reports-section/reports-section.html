@@ -38,14 +38,14 @@
               <span>Todos os Eventos</span>
             </button>
 
-            @for (event of availableEvents(); track event.id) {
+            @for (event of availableEvents(); track event.num_id) {
               <button
                 type="button"
                 class="filter-button"
-                [class.filter-button-active]="selectedEventId() === event.id"
-                (click)="setEventFilter(event.id)">
+                [class.filter-button-active]="selectedEventId() === event.num_id"
+                (click)="setEventFilter(event.num_id)">
                 <i class="pi pi-calendar-plus"></i>
-                <span>{{ event.nameEvent }}</span>
+                <span>{{ event.desc_name_event }}</span>
               </button>
             }
           </div>
@@ -322,16 +322,16 @@
               Vendas por Cerveja
             </h4>
             <div class="data-card-content">
-              @for (beer of report().salesByBeerType; track beer.beerId) {
+              @for (beer of report().salesByBeerType; track beer.num_beer_id) {
                 <div class="data-row">
                   <div class="data-row-left">
-                    <div class="beer-color-dot" [style.background-color]="beer.color"></div>
-                    <span class="data-row-name">{{ beer.name }}</span>
+                    <div class="beer-color-dot" [style.background-color]="beer.desc_color"></div>
+                    <span class="data-row-name">{{ beer.desc_name }}</span>
                   </div>
                   <div class="data-row-right">
-                    <span class="data-row-value">{{ beer.totalCups }} copos</span>
-                    <span class="data-row-subvalue">{{ beer.totalLiters.toFixed(2) }}L</span>
-                    <span class="data-row-revenue">{{ beer.totalRevenue | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+                    <span class="data-row-value">{{ beer.num_total_cups }} copos</span>
+                    <span class="data-row-subvalue">{{ beer.num_total_liters.toFixed(2) }}L</span>
+                    <span class="data-row-revenue">{{ beer.num_total_revenue | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
                   </div>
                 </div>
               } @empty {
@@ -347,14 +347,14 @@
               Vendas por Tamanho
             </h4>
             <div class="data-card-content">
-              @for (size of report().salesByCupSize; track size.cupSize) {
+              @for (size of report().salesByCupSize; track size.num_cup_size) {
                 <div class="data-row">
                   <div class="data-row-left">
                     <i class="pi pi-box size-icon"></i>
-                    <span class="data-row-name">{{ size.cupSize }}ml</span>
+                    <span class="data-row-name">{{ size.num_cup_size }}ml</span>
                   </div>
                   <div class="data-row-right">
-                    <span class="data-row-value">{{ size.count }} copos</span>
+                    <span class="data-row-value">{{ size.num_count }} copos</span>
                   </div>
                 </div>
               } @empty {
@@ -373,16 +373,16 @@
               Vendas por Cerveja
             </h4>
             <div class="data-card-content">
-              @for (beer of report().salesByBeerType; track beer.beerId) {
+              @for (beer of report().salesByBeerType; track beer.num_beer_id) {
                 <div class="data-row">
                   <div class="data-row-left">
-                    <div class="beer-color-dot" [style.background-color]="beer.color"></div>
-                    <span class="data-row-name">{{ beer.name }}</span>
+                    <div class="beer-color-dot" [style.background-color]="beer.desc_color"></div>
+                    <span class="data-row-name">{{ beer.desc_name }}</span>
                   </div>
                   <div class="data-row-right">
-                    <span class="data-row-value">{{ beer.totalCups }} copos</span>
-                    <span class="data-row-subvalue">{{ beer.totalLiters.toFixed(2) }}L</span>
-                    <span class="data-row-revenue">{{ beer.totalRevenue | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+                    <span class="data-row-value">{{ beer.num_total_cups }} copos</span>
+                    <span class="data-row-subvalue">{{ beer.num_total_liters.toFixed(2) }}L</span>
+                    <span class="data-row-revenue">{{ beer.num_total_revenue | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
                   </div>
                 </div>
               } @empty {
@@ -398,14 +398,14 @@
               Vendas por Tamanho
             </h4>
             <div class="data-card-content">
-              @for (size of report().salesByCupSize; track size.cupSize) {
+              @for (size of report().salesByCupSize; track size.num_cup_size) {
                 <div class="data-row">
                   <div class="data-row-left">
                     <i class="pi pi-box size-icon"></i>
-                    <span class="data-row-name">{{ size.cupSize }}ml</span>
+                    <span class="data-row-name">{{ size.num_cup_size }}ml</span>
                   </div>
                   <div class="data-row-right">
-                    <span class="data-row-value">{{ size.count }} copos</span>
+                    <span class="data-row-value">{{ size.num_count }} copos</span>
                   </div>
                 </div>
               } @empty {

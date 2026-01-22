@@ -119,17 +119,17 @@ export class BeerManagementComponent implements OnInit {
   loadBeerTypes(): void {
     try {
       const beers = this.dbService.executeQuery(
-        'SELECT * FROM beer_types ORDER BY name'
+        'SELECT * FROM prd_beer_types ORDER BY desc_name'
       );
-      
+
       // Conversão explícita para garantir type safety
       const typedBeers: BeerType[] = beers.map(beer => ({
-        id: Number(beer.id),           // ← Garante que é number
-        name: beer.name,
-        color: beer.color,
-        description: beer.description
+        num_id: Number(beer.num_id),
+        desc_name: beer.desc_name,
+        desc_color: beer.desc_color,
+        desc_description: beer.desc_description
       }));
-      
+
       this.beerTypes.set(typedBeers);
       console.log('✅ Beer types carregados:', typedBeers.length);
     } catch (error) {
@@ -180,23 +180,23 @@ export class BeerManagementComponent implements OnInit {
 
     // MUDANÇA: Não criamos objeto com ID, deixamos o banco gerar
     const newBeer = {
-      name: beerName,
-      description: formValue.description?.trim() || `Cerveja ${beerName}`,
-      color: formValue.color
+      desc_name: beerName,
+      desc_description: formValue.description?.trim() || `Cerveja ${beerName}`,
+      desc_color: formValue.color
     };
 
     try {
       // INSERT sem ID - banco gera via AUTOINCREMENT
       this.dbService.executeRun(
-        'INSERT INTO beer_types (name, description, color) VALUES (?, ?, ?)',
-        [newBeer.name, newBeer.description, newBeer.color]
+        'INSERT INTO prd_beer_types (desc_name, desc_description, desc_color) VALUES (?, ?, ?)',
+        [newBeer.desc_name, newBeer.desc_description, newBeer.desc_color]
       );
 
       // Obtém o ID gerado pelo banco
       const insertedId = this.dbService.getLastInsertId();
       console.log('✅ Cerveja adicionada com ID:', insertedId);
 
-      this.showSuccess(`${newBeer.name} adicionada com sucesso!`);
+      this.showSuccess(`${newBeer.desc_name} adicionada com sucesso!`);
       this.loadBeerTypes();
       this.toggleAddForm();
 
@@ -218,7 +218,7 @@ export class BeerManagementComponent implements OnInit {
   private beerNameExists(name: string): boolean {
     try {
       const existing = this.dbService.executeQuery(
-        'SELECT id FROM beer_types WHERE LOWER(name) = LOWER(?)',
+        'SELECT num_id FROM prd_beer_types WHERE LOWER(desc_name) = LOWER(?)',
         [name.trim()]
       );
       return existing.length > 0;
@@ -236,9 +236,9 @@ export class BeerManagementComponent implements OnInit {
   openEditDialog(beer: BeerType): void {
     this.currentEditingBeer = beer;
     this.editForm.patchValue({
-      name: beer.name,
-      description: beer.description,
-      color: beer.color
+      name: beer.desc_name,
+      description: beer.desc_description,
+      color: beer.desc_color
     });
     this.isEditing.set(true);
   }
@@ -265,27 +265,27 @@ export class BeerManagementComponent implements OnInit {
     const beerName = formValue.name.trim();
 
     // Validação: verifica se já existe outra cerveja com este nome
-    if (beerName.toLowerCase() !== this.currentEditingBeer.name.toLowerCase() && this.beerNameExists(beerName)) {
+    if (beerName.toLowerCase() !== this.currentEditingBeer.desc_name.toLowerCase() && this.beerNameExists(beerName)) {
       this.showError('Uma cerveja com este nome já existe.');
       return;
     }
 
     const updatedBeer = {
-      name: beerName,
-      description: formValue.description?.trim() || `Cerveja ${beerName}`,
-      color: formValue.color
+      desc_name: beerName,
+      desc_description: formValue.description?.trim() || `Cerveja ${beerName}`,
+      desc_color: formValue.color
     };
 
     try {
       // UPDATE no banco de dados
       this.dbService.executeRun(
-        'UPDATE beer_types SET name = ?, description = ?, color = ? WHERE id = ?',
-        [updatedBeer.name, updatedBeer.description, updatedBeer.color, this.currentEditingBeer.id]
+        'UPDATE prd_beer_types SET desc_name = ?, desc_description = ?, desc_color = ? WHERE num_id = ?',
+        [updatedBeer.desc_name, updatedBeer.desc_description, updatedBeer.desc_color, this.currentEditingBeer.num_id]
       );
 
-      console.log('✅ Cerveja atualizada:', updatedBeer.name, '(ID:', this.currentEditingBeer.id, ')');
+      console.log('✅ Cerveja atualizada:', updatedBeer.desc_name, '(ID:', this.currentEditingBeer.num_id, ')');
 
-      this.showSuccess(`${updatedBeer.name} foi atualizada com sucesso!`);
+      this.showSuccess(`${updatedBeer.desc_name} foi atualizada com sucesso!`);
       this.loadBeerTypes();
       this.closeEditDialog();
 
@@ -305,7 +305,7 @@ export class BeerManagementComponent implements OnInit {
    */
   confirmDelete(beer: BeerType): void {
     this.confirmationService.confirm({
-      message: `Você tem certeza que deseja remover a cerveja "${beer.name}"? Todas as vendas relacionadas também serão removidas.`,
+      message: `Você tem certeza que deseja remover a cerveja "${beer.desc_name}"? Todas as vendas relacionadas também serão removidas.`,
       header: 'Confirmação de Exclusão',
       icon: 'pi pi-info-circle',
       acceptLabel: 'Sim, remover',
@@ -327,22 +327,22 @@ export class BeerManagementComponent implements OnInit {
     try {
       // CASCADE DELETE já configurado no schema remove vendas automaticamente
       // Mas por segurança, fazemos explicitamente:
-      
+
       // 1. Remove vendas relacionadas
       this.dbService.executeRun(
-        'DELETE FROM sales WHERE beerId = ?', 
-        [beer.id]  // ← number agora
+        'DELETE FROM prd_sales WHERE num_beer_id = ?',
+        [beer.num_id]
       );
-      
+
       // 2. Remove a cerveja
       this.dbService.executeRun(
-        'DELETE FROM beer_types WHERE id = ?', 
-        [beer.id]  // ← number agora
+        'DELETE FROM prd_beer_types WHERE num_id = ?',
+        [beer.num_id]
       );
 
-      console.log('✅ Cerveja removida:', beer.name, '(ID:', beer.id, ')');
+      console.log('✅ Cerveja removida:', beer.desc_name, '(ID:', beer.num_id, ')');
 
-      this.showSuccess(`${beer.name} foi removida com sucesso.`);
+      this.showSuccess(`${beer.desc_name} foi removida com sucesso.`);
       this.loadBeerTypes();
 
       // Notifica sales-form para recarregar lista de cervejas
@@ -402,7 +402,7 @@ export class BeerManagementComponent implements OnInit {
    * Retorna o número de cervejas customizadas (não-padrão)
    */
   getCustomBeerTypesCount(): number {
-    return this.beerTypes().filter(beer => !this.isDefaultBeer(beer.id)).length;
+    return this.beerTypes().filter(beer => !this.isDefaultBeer(beer.num_id)).length;
   }
 
   /**
@@ -419,14 +419,14 @@ export class BeerManagementComponent implements OnInit {
    * Retorna lista de cervejas padrão
    */
   getDefaultBeers(): BeerType[] {
-    return this.beerTypes().filter(beer => this.isDefaultBeer(beer.id));
+    return this.beerTypes().filter(beer => this.isDefaultBeer(beer.num_id));
   }
 
   /**
    * Retorna lista de cervejas customizadas
    */
   getCustomBeers(): BeerType[] {
-    return this.beerTypes().filter(beer => !this.isDefaultBeer(beer.id));
+    return this.beerTypes().filter(beer => !this.isDefaultBeer(beer.num_id));
   }
 
   /**

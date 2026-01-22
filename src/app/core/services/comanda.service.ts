@@ -49,8 +49,8 @@ export class ComandaService {
       throw new Error(`Comanda ${numero} não encontrada`);
     }
 
-    if (comanda.status !== ComandaStatus.DISPONIVEL) {
-      throw new Error(`Comanda ${numero} não está disponível (status: ${comanda.status})`);
+    if (comanda.desc_status !== ComandaStatus.DISPONIVEL) {
+      throw new Error(`Comanda ${numero} não está disponível (status: ${comanda.desc_status})`);
     }
 
     this.dbService.openComanda(numero);
@@ -69,21 +69,21 @@ export class ComandaService {
       throw new Error(`Comanda ID ${comandaId} não encontrada`);
     }
 
-    if (comanda.status !== ComandaStatus.EM_USO) {
-      throw new Error(`Comanda ${comanda.numero} não está em uso`);
+    if (comanda.desc_status !== ComandaStatus.EM_USO) {
+      throw new Error(`Comanda ${comanda.num_numero} não está em uso`);
     }
 
     // Valida se há itens na comanda
     const items = this.dbService.getComandaItems(comandaId);
     if (items.length === 0) {
-      throw new Error(`Comanda ${comanda.numero} não possui itens para fechar`);
+      throw new Error(`Comanda ${comanda.num_numero} não possui itens para fechar`);
     }
 
     this.dbService.closeComanda(comandaId);
 
     // Retorna o valor total calculado
     const updatedComanda = this.dbService.getComandaById(comandaId);
-    return updatedComanda?.totalValue ?? 0;
+    return updatedComanda?.num_total_value ?? 0;
   }
 
   /**
@@ -98,8 +98,8 @@ export class ComandaService {
       throw new Error(`Comanda ID ${comandaId} não encontrada`);
     }
 
-    if (comanda.status !== ComandaStatus.AGUARDANDO_PAGAMENTO) {
-      throw new Error(`Comanda ${comanda.numero} não está aguardando pagamento`);
+    if (comanda.desc_status !== ComandaStatus.AGUARDANDO_PAGAMENTO) {
+      throw new Error(`Comanda ${comanda.num_numero} não está aguardando pagamento`);
     }
 
     this.dbService.confirmPayment(comandaId);
@@ -127,7 +127,7 @@ export class ComandaService {
     }
 
     // Verifica se todos os itens têm preço unitário maior que zero
-    return items.every(item => item.unitPrice > 0);
+    return items.every(item => item.num_unit_price > 0);
   }
 
   /**

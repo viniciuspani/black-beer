@@ -35,19 +35,19 @@ export class EmailService {
   getConfiguredEmails(): string[] {
     try {
       const result = this.dbService.executeQuery(
-        'SELECT email, isConfigured FROM settings LIMIT 1'
+        'SELECT desc_email, num_is_configured FROM config_settings LIMIT 1'
       );
 
       if (result && result.length > 0) {
         const row = result[0];
-        const isConfigured = toBooleanFromDb(row.isConfigured);
-        
-        if (isConfigured && row.email) {
-          const emails = emailsFromDb(row.email);
+        const isConfigured = toBooleanFromDb(row.num_is_configured);
+
+        if (isConfigured && row.desc_email) {
+          const emails = emailsFromDb(row.desc_email);
           return emails;
         }
       }
-      
+
       return [];
     } catch (error) {
       console.error('❌ Erro ao obter emails configurados:', error);
@@ -82,8 +82,8 @@ export class EmailService {
     
     // ========== SEÇÃO 1: RESUMO GERAL ==========
     lines.push('# RESUMO GERAL');
-    lines.push('Total de Vendas,' + report.summary.totalSales);
-    lines.push('Volume Total (Litros),' + report.summary.totalVolumeLiters.toFixed(2));
+    lines.push('Total de Vendas,' + report.summary.num_total_sales);
+    lines.push('Volume Total (Litros),' + report.summary.num_total_volume_liters.toFixed(2));
     lines.push('');
     
     // ========== SEÇÃO 2: VENDAS POR TAMANHO ==========
@@ -92,7 +92,7 @@ export class EmailService {
     
     if (report.salesByCupSize.length > 0) {
       report.salesByCupSize.forEach(item => {
-        lines.push(`${item.cupSize}ml,${item.count}`);
+        lines.push(`${item.num_cup_size}ml,${item.num_count}`);
       });
     } else {
       lines.push('Nenhuma venda registrada,0');
@@ -105,7 +105,7 @@ export class EmailService {
     
     if (report.salesByBeerType.length > 0) {
       report.salesByBeerType.forEach(item => {
-        lines.push(`${item.name},${item.totalLiters.toFixed(2)},${item.totalCups}`);
+        lines.push(`${item.desc_name},${item.num_total_liters.toFixed(2)},${item.num_total_cups}`);
       });
     } else {
       lines.push('Nenhuma venda registrada,0.00,0');
@@ -246,7 +246,7 @@ export class EmailService {
     if (!report) return false;
     
     // Verifica se há pelo menos uma venda
-    return report.summary.totalSales > 0;
+    return report.summary.num_total_sales > 0;
   }
 
   /**

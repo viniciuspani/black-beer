@@ -4,55 +4,48 @@
 
 /**
  * Interface para tipos de cerveja
- * MUDANÇA: id agora é number (INTEGER) em vez de string
+ * Convenção de nomenclatura:
+ * - num_ : Colunas INTEGER e REAL
+ * - desc_ : Colunas TEXT (dados gerais)
+ * - dt_ : Colunas TEXT com DEFAULT CURRENT_TIMESTAMP
  */
 export interface BeerType {
-  id: number;              // ← MUDANÇA: number em vez de string
-  name: string;
-  color: string;
-  description: string;
+  num_id: number;
+  desc_name: string;
+  desc_color: string;
+  desc_description: string;
 }
 
 /**
  * Interface para registro de vendas
- * MUDANÇAS:
- * - id: string → number
- * - beerId: string → number (mantém FK para beer_types)
- * - comandaId: Nova coluna opcional (V6) para vincular vendas a comandas
- * - userId: Nova coluna obrigatória (V8) para rastrear qual usuário fez a venda
- * - eventId: Nova coluna opcional (V9) para vincular vendas a eventos
+ * Convenção de nomenclatura:
+ * - num_ : Colunas INTEGER e REAL
+ * - desc_ : Colunas TEXT (dados gerais)
+ * - dt_ : Colunas TEXT com DEFAULT CURRENT_TIMESTAMP
  */
 export interface Sale {
-  id: number;              // ← MUDANÇA: number em vez de string
-  beerId: number;          // ← MUDANÇA: number (FK para beer_types.id)
-  beerName: string;
-  cupSize: 300 | 500 | 1000; // em ml
-  quantity: number;
-  timestamp: string;       // ISO string para SQLite
-  totalVolume: number;     // em ml
-  comandaId?: number | null; // ← NOVO (V6): FK opcional para comandas
-  userId: number;          // ← NOVO (V8): FK obrigatória para users.id
-  eventId?: number | null; // ← NOVO (V9): FK opcional para eventos
+  num_id: number;
+  num_beer_id: number;           // FK para prd_beer_types.num_id
+  desc_beer_name: string;
+  num_cup_size: 300 | 500 | 1000; // em ml
+  num_quantity: number;
+  dt_timestamp: string;          // ISO string para SQLite
+  num_total_volume: number;      // em ml
+  num_comanda_id?: number | null; // FK opcional para prd_comandas
+  num_user_id: number;           // FK obrigatória para prd_users.num_id
+  num_event_id?: number | null;  // FK opcional para prd_events
 }
 
 /**
  * Interface para configurações da aplicação
- * MUDANÇA COMPLETA: Nova estrutura refletindo tabela settings v2
- * 
- * ANTES (v1):
- * - emailSettings: { email: string, isConfigured: boolean }
- * 
- * DEPOIS (v2):
- * - Estrutura plana que espelha a tabela do banco
- */
-/**
- * Interface para configurações da aplicação
- * MUDANÇA: Agora suporta múltiplos emails (array)
+ * Convenção de nomenclatura:
+ * - num_ : Colunas INTEGER e REAL
+ * - desc_ : Colunas TEXT (dados gerais)
  */
 export interface AppSettings {
-  id?: number;
-  emails: string[];          // ← MUDANÇA: Array de emails (1 a 10)
-  isConfigured: boolean;
+  num_id?: number;
+  desc_emails: string[];        // Array de emails (1 a 10)
+  num_is_configured: boolean;
 }
 
 /**
@@ -66,50 +59,47 @@ export interface DateRange {
 
 /**
  * Type guard para validar BeerType
- * NOVO: Ajuda a garantir type safety em runtime
  */
 export function isBeerType(obj: any): obj is BeerType {
   return (
     typeof obj === 'object' &&
     obj !== null &&
-    typeof obj.id === 'number' &&
-    typeof obj.name === 'string' &&
-    typeof obj.color === 'string' &&
-    typeof obj.description === 'string'
+    typeof obj.num_id === 'number' &&
+    typeof obj.desc_name === 'string' &&
+    typeof obj.desc_color === 'string' &&
+    typeof obj.desc_description === 'string'
   );
 }
 
 /**
  * Type guard para validar Sale
- * NOVO: Validação em runtime para dados do banco
  */
 export function isSale(obj: any): obj is Sale {
   return (
     typeof obj === 'object' &&
     obj !== null &&
-    typeof obj.id === 'number' &&
-    typeof obj.beerId === 'number' &&
-    typeof obj.beerName === 'string' &&
-    (obj.cupSize === 300 || obj.cupSize === 500 || obj.cupSize === 1000) &&
-    typeof obj.quantity === 'number' &&
-    typeof obj.timestamp === 'string' &&
-    typeof obj.totalVolume === 'number' &&
-    typeof obj.userId === 'number' &&
-    (obj.eventId === undefined || obj.eventId === null || typeof obj.eventId === 'number')
+    typeof obj.num_id === 'number' &&
+    typeof obj.num_beer_id === 'number' &&
+    typeof obj.desc_beer_name === 'string' &&
+    (obj.num_cup_size === 300 || obj.num_cup_size === 500 || obj.num_cup_size === 1000) &&
+    typeof obj.num_quantity === 'number' &&
+    typeof obj.dt_timestamp === 'string' &&
+    typeof obj.num_total_volume === 'number' &&
+    typeof obj.num_user_id === 'number' &&
+    (obj.num_event_id === undefined || obj.num_event_id === null || typeof obj.num_event_id === 'number')
   );
 }
 
 /**
  * Type guard para validar AppSettings
- * NOVO: Validação da nova estrutura de settings
  */
 export function isAppSettings(obj: any): obj is AppSettings {
   return (
     typeof obj === 'object' &&
     obj !== null &&
-    (obj.id === undefined || typeof obj.id === 'number') &&
-    typeof obj.email === 'string' &&
-    typeof obj.isConfigured === 'boolean'
+    (obj.num_id === undefined || typeof obj.num_id === 'number') &&
+    Array.isArray(obj.desc_emails) &&
+    typeof obj.num_is_configured === 'boolean'
   );
 }
 

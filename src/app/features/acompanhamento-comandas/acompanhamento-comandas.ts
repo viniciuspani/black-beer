@@ -67,14 +67,14 @@ export class AcompanhamentoComandosComponent implements OnInit {
     // Carregar comandas em uso com seus itens
     const emUso = this.comandaService.getInUseComandas();
     const emUsoWithItems = emUso
-      .map(c => this.comandaService.getComandaWithItems(c.id))
+      .map(c => this.comandaService.getComandaWithItems(c.num_id))
       .filter(c => c !== null) as ComandaWithItems[];
     this.comandasEmUso.set(emUsoWithItems);
 
     // Carregar comandas aguardando pagamento com seus itens
     const aguardando = this.comandaService.getPendingPaymentComandas();
     const aguardandoWithItems = aguardando
-      .map(c => this.comandaService.getComandaWithItems(c.id))
+      .map(c => this.comandaService.getComandaWithItems(c.num_id))
       .filter(c => c !== null) as ComandaWithItems[];
     this.comandasAguardandoPagamento.set(aguardandoWithItems);
   }

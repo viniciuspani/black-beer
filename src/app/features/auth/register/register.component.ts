@@ -178,10 +178,10 @@ export class RegisterComponent implements OnInit {
       const { username, email, password } = this.registerForm.value;
 
       const response = await this.authService.register({
-        username: username.trim(),
-        email: email.trim().toLowerCase(),
-        password,
-        role: 'user'  // Novo usuário sempre começa como 'user'
+        desc_username: username.trim(),
+        desc_email: email.trim().toLowerCase(),
+        desc_password: password,
+        desc_role: 'user'  // Novo usuário sempre começa como 'user'
       });
 
       if (response.success) {

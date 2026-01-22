@@ -226,10 +226,10 @@
           <ng-template pTemplate="body" let-beer>
             <tr>
               <td>
-                <div class="w-6 h-6 rounded-full border-2" [style.backgroundColor]="beer.color"></div>
+                <div class="w-6 h-6 rounded-full border-2" [style.backgroundColor]="beer.desc_color"></div>
               </td>
-              <td>{{ beer.name }}</td>
-              <td>{{ beer.description }}</td>
+              <td>{{ beer.desc_name }}</td>
+              <td>{{ beer.desc_description }}</td>
               <td>
                 <div class="action-buttons">
                   <p-button
@@ -267,27 +267,27 @@
         
         <!-- Grid de cards -->
         <div class="cards-grid">
-          @for (beer of beerTypes(); track beer.id) {
+          @for (beer of beerTypes(); track beer.num_id) {
             <article class="beer-card">
 
               <!-- Header do card -->
               <div class="beer-card-header">
                 <!-- Cor e nome -->
                 <div class="beer-card-title">
-                  <div class="beer-color-indicator" [style.background-color]="beer.color"></div>
-                  <h3 class="beer-name">{{ beer.name }}</h3>
+                  <div class="beer-color-indicator" [style.background-color]="beer.desc_color"></div>
+                  <h3 class="beer-name">{{ beer.desc_name }}</h3>
                 </div>
               </div>
 
               <!-- Descrição -->
-              <p class="beer-description">{{ beer.description }}</p>
+              <p class="beer-description">{{ beer.desc_description }}</p>
 
               <!-- Footer com ações -->
               <div class="beer-card-footer">
                 <!-- Info adicional -->
                 <div class="beer-card-info">
                   <i class="pi pi-palette text-gray-400"></i>
-                  <span class="beer-color-code">{{ beer.color }}</span>
+                  <span class="beer-color-code">{{ beer.desc_color }}</span>
                 </div>
 
                 <!-- Botões de ação -->
@@ -296,7 +296,7 @@
                     type="button"
                     class="edit-button"
                     (click)="openEditDialog(beer)"
-                    [attr.aria-label]="'Editar cerveja ' + beer.name">
+                    [attr.aria-label]="'Editar cerveja ' + beer.desc_name">
                     <i class="pi pi-pencil"></i>
                     <span>Editar</span>
                   </button>
@@ -305,7 +305,7 @@
                     type="button"
                     class="delete-button"
                     (click)="confirmDelete(beer)"
-                    [attr.aria-label]="'Remover cerveja ' + beer.name">
+                    [attr.aria-label]="'Remover cerveja ' + beer.desc_name">
                     <i class="pi pi-trash"></i>
                     <span>Remover</span>
                   </button>

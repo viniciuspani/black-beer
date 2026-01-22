@@ -92,22 +92,22 @@ export class EventManagementComponent implements OnInit {
   constructor() {
     // Formulário de criação
     this.eventForm = this.fb.group({
-      nameEvent: ['', [Validators.required, Validators.maxLength(100)]],
-      localEvent: ['', [Validators.required, Validators.maxLength(200)]],
-      dataEvent: [new Date(), [Validators.required]],
-      contactEvent: ['', [Validators.maxLength(50)]],
-      nameContactEvent: ['', [Validators.maxLength(100)]],
-      status: ['planejamento' as EventStatus, [Validators.required]]
+      desc_name_event: ['', [Validators.required, Validators.maxLength(100)]],
+      desc_local_event: ['', [Validators.required, Validators.maxLength(200)]],
+      dt_data_event: [new Date(), [Validators.required]],
+      desc_contact_event: ['', [Validators.maxLength(50)]],
+      desc_name_contact_event: ['', [Validators.maxLength(100)]],
+      desc_status: ['planejamento' as EventStatus, [Validators.required]]
     });
 
     // Formulário de edição
     this.editForm = this.fb.group({
-      nameEvent: ['', [Validators.required, Validators.maxLength(100)]],
-      localEvent: ['', [Validators.required, Validators.maxLength(200)]],
-      dataEvent: [new Date(), [Validators.required]],
-      contactEvent: ['', [Validators.maxLength(50)]],
-      nameContactEvent: ['', [Validators.maxLength(100)]],
-      status: ['planejamento' as EventStatus, [Validators.required]]
+      desc_name_event: ['', [Validators.required, Validators.maxLength(100)]],
+      desc_local_event: ['', [Validators.required, Validators.maxLength(200)]],
+      dt_data_event: [new Date(), [Validators.required]],
+      desc_contact_event: ['', [Validators.maxLength(50)]],
+      desc_name_contact_event: ['', [Validators.maxLength(100)]],
+      desc_status: ['planejamento' as EventStatus, [Validators.required]]
     });
   }
 
@@ -136,7 +136,7 @@ export class EventManagementComponent implements OnInit {
       return allEvents;
     }
 
-    return allEvents.filter(e => e.status === filter);
+    return allEvents.filter(e => e.desc_status === filter);
   }
 
   /**
@@ -156,8 +156,8 @@ export class EventManagementComponent implements OnInit {
     this.isAdding.update(v => !v);
     if (!this.isAdding()) {
       this.eventForm.reset({
-        status: 'planejamento',
-        dataEvent: new Date()
+        desc_status: 'planejamento',
+        dt_data_event: new Date()
       });
     }
   }
@@ -174,26 +174,26 @@ export class EventManagementComponent implements OnInit {
     const formValue = this.eventForm.value;
 
     // Verifica duplicidade de nome
-    if (this.eventService.eventNameExists(formValue.nameEvent)) {
-      this.showWarning(`Já existe um evento com o nome "${formValue.nameEvent}".`);
+    if (this.eventService.eventNameExists(formValue.desc_name_event)) {
+      this.showWarning(`Já existe um evento com o nome "${formValue.desc_name_event}".`);
       return;
     }
 
     try {
       const eventData: CreateEventDto = {
-        nameEvent: formValue.nameEvent.trim(),
-        localEvent: formValue.localEvent.trim(),
-        dataEvent: this.formatDateToISO(formValue.dataEvent),
-        contactEvent: formValue.contactEvent?.trim() || undefined,
-        nameContactEvent: formValue.nameContactEvent?.trim() || undefined,
-        status: formValue.status
+        desc_name_event: formValue.desc_name_event.trim(),
+        desc_local_event: formValue.desc_local_event.trim(),
+        dt_data_event: this.formatDateToISO(formValue.dt_data_event),
+        desc_contact_event: formValue.desc_contact_event?.trim() || undefined,
+        desc_name_contact_event: formValue.desc_name_contact_event?.trim() || undefined,
+        desc_status: formValue.desc_status
       };
 
       const eventId = await this.eventService.createEvent(eventData);
       console.log('✅ Evento criado com ID:', eventId);
 
       if (eventId) {
-        this.showSuccess(`Evento "${eventData.nameEvent}" criado com sucesso!`);
+        this.showSuccess(`Evento "${eventData.desc_name_event}" criado com sucesso!`);
         await this.loadEvents();
         this.toggleAddForm();
       } else {
@@ -217,12 +217,12 @@ export class EventManagementComponent implements OnInit {
 
     // Preenche formulário com dados do evento
     this.editForm.patchValue({
-      nameEvent: event.nameEvent,
-      localEvent: event.localEvent,
-      dataEvent: new Date(event.dataEvent),
-      contactEvent: event.contactEvent || '',
-      nameContactEvent: event.nameContactEvent || '',
-      status: event.status
+      desc_name_event: event.desc_name_event,
+      desc_local_event: event.desc_local_event,
+      dt_data_event: new Date(event.dt_data_event),
+      desc_contact_event: event.desc_contact_event || '',
+      desc_name_contact_event: event.desc_name_contact_event || '',
+      desc_status: event.desc_status
     });
   }
 
@@ -248,26 +248,26 @@ export class EventManagementComponent implements OnInit {
 
     // Verifica duplicidade de nome (excluindo o evento atual)
     if (
-      formValue.nameEvent !== this.currentEditingEvent.nameEvent &&
-      this.eventService.eventNameExists(formValue.nameEvent, this.currentEditingEvent.id)
+      formValue.desc_name_event !== this.currentEditingEvent.desc_name_event &&
+      this.eventService.eventNameExists(formValue.desc_name_event, this.currentEditingEvent.num_id)
     ) {
-      this.showWarning(`Já existe um evento com o nome "${formValue.nameEvent}".`);
+      this.showWarning(`Já existe um evento com o nome "${formValue.desc_name_event}".`);
       return;
     }
 
     try {
       const success = await this.eventService.updateEvent({
-        id: this.currentEditingEvent.id,
-        nameEvent: formValue.nameEvent.trim(),
-        localEvent: formValue.localEvent.trim(),
-        dataEvent: this.formatDateToISO(formValue.dataEvent),
-        contactEvent: formValue.contactEvent?.trim() || undefined,
-        nameContactEvent: formValue.nameContactEvent?.trim() || undefined,
-        status: formValue.status
+        num_id: this.currentEditingEvent.num_id,
+        desc_name_event: formValue.desc_name_event.trim(),
+        desc_local_event: formValue.desc_local_event.trim(),
+        dt_data_event: this.formatDateToISO(formValue.dt_data_event),
+        desc_contact_event: formValue.desc_contact_event?.trim() || undefined,
+        desc_name_contact_event: formValue.desc_name_contact_event?.trim() || undefined,
+        desc_status: formValue.desc_status
       });
 
       if (success) {
-        this.showSuccess(`Evento "${formValue.nameEvent}" atualizado com sucesso!`);
+        this.showSuccess(`Evento "${formValue.desc_name_event}" atualizado com sucesso!`);
         await this.loadEvents();
         this.closeEditDialog();
       } else {
@@ -286,7 +286,7 @@ export class EventManagementComponent implements OnInit {
    * Confirma exclusão de evento
    */
   confirmDelete(event: Event): void {
-    const validation = this.eventService.canDeleteEvent(event.id);
+    const validation = this.eventService.canDeleteEvent(event.num_id);
 
     if (!validation.canDelete) {
       this.showWarning(validation.reason || 'Não é possível deletar este evento.');
@@ -294,7 +294,7 @@ export class EventManagementComponent implements OnInit {
     }
 
     this.confirmationService.confirm({
-      message: `Você tem certeza que deseja remover o evento "${event.nameEvent}"? As configurações de estoque e preços vinculadas também serão removidas.`,
+      message: `Você tem certeza que deseja remover o evento "${event.desc_name_event}"? As configurações de estoque e preços vinculadas também serão removidas.`,
       header: 'Confirmação de Exclusão',
       icon: 'pi pi-info-circle',
       acceptLabel: 'Sim, remover',
@@ -311,10 +311,10 @@ export class EventManagementComponent implements OnInit {
    */
   async deleteEvent(event: Event): Promise<void> {
     try {
-      const success = await this.eventService.deleteEvent(event.id);
+      const success = await this.eventService.deleteEvent(event.num_id);
 
       if (success) {
-        this.showSuccess(`Evento "${event.nameEvent}" removido com sucesso.`);
+        this.showSuccess(`Evento "${event.desc_name_event}" removido com sucesso.`);
         await this.loadEvents();
       } else {
         const error = this.eventService.lastError();
@@ -333,7 +333,7 @@ export class EventManagementComponent implements OnInit {
    */
   async changeEventStatus(event: Event, newStatus: EventStatus): Promise<void> {
     try {
-      const success = await this.eventService.changeEventStatus(event.id, newStatus);
+      const success = await this.eventService.changeEventStatus(event.num_id, newStatus);
 
       if (success) {
         this.showSuccess(`Status do evento alterado para "${getEventStatusLabel(newStatus)}"`);
@@ -355,7 +355,7 @@ export class EventManagementComponent implements OnInit {
    */
   openStatsDialog(event: Event): void {
     this.currentStatsEvent = event;
-    this.eventStats = this.eventService.getEventStatistics(event.id);
+    this.eventStats = this.eventService.getEventStatistics(event.num_id);
     this.isViewingStats.set(true);
   }
 

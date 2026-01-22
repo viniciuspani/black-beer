@@ -126,14 +126,14 @@
             </button>
 
             <!-- Botões de eventos ativos -->
-            @for (event of availableEvents(); track event.id) {
+            @for (event of availableEvents(); track event.num_id) {
               <button
                 type="button"
                 class="event-btn-compact"
-                [class.event-btn-active]="selectedEventId() === event.id"
-                (click)="onEventChange(event.id)">
+                [class.event-btn-active]="selectedEventId() === event.num_id"
+                (click)="onEventChange(event.num_id)">
                 <i class="pi pi-calendar-plus"></i>
-                <span>{{ event.nameEvent }}</span>
+                <span>{{ event.desc_name_event }}</span>
               </button>
             }
           </div>
@@ -148,39 +148,39 @@
 
           <!-- Grid responsivo: 1 col mobile, 2 cols tablet+ -->
           <div class="beer-grid">
-            @for (beer of beerTypes(); track beer.id) {
+            @for (beer of beerTypes(); track beer.num_id) {
               <button
                 type="button"
-                (click)="selectBeer(beer.id)"
+                (click)="selectBeer(beer.num_id)"
                 class="beer-button"
-                [class.beer-button-active]="beerId.value === beer.id"
-                [attr.aria-pressed]="beerId.value === beer.id"
-                [attr.aria-label]="'Selecionar cerveja ' + beer.name">
+                [class.beer-button-active]="beerId.value === beer.num_id"
+                [attr.aria-pressed]="beerId.value === beer.num_id"
+                [attr.aria-label]="'Selecionar cerveja ' + beer.desc_name">
 
                 <!-- Indicador visual de seleção -->
                 <div class="beer-button-indicator">
-                  @if (beerId.value === beer.id) {
+                  @if (beerId.value === beer.num_id) {
                     <i class="pi pi-check-circle"></i>
                   } @else {
-                    <div class="beer-color-dot" [style.background-color]="beer.color"></div>
+                    <div class="beer-color-dot" [style.background-color]="beer.desc_color"></div>
                   }
                 </div>
 
                 <!-- Conteúdo do botão -->
                 <div class="beer-button-content">
-                  <span class="beer-name">{{ beer.name }}</span>
-                  <span class="beer-description">{{ beer.description }}</span>
+                  <span class="beer-name">{{ beer.desc_name }}</span>
+                  <span class="beer-description">{{ beer.desc_description }}</span>
 
                   <!-- Alerta de Estoque Baixo -->
-                  @if (checkLowStockForBeer(beer.id)) {
+                  @if (checkLowStockForBeer(beer.num_id)) {
                     <div class="stock-low-alert">
                       <i class="pi pi-exclamation-circle"></i>
-                      <span>Estoque Baixo ({{ getStockForBeer(beer.id) }}L restantes)</span>
+                      <span>Estoque Baixo ({{ getStockForBeer(beer.num_id) }}L restantes)</span>
                     </div>
                   }
 
                   <!-- Alerta de Estoque Esgotado -->
-                  @if (checkDepletedStockForBeer(beer.id)) {
+                  @if (checkDepletedStockForBeer(beer.num_id)) {
                     <div class="stock-depleted-alert">
                       <i class="pi pi-exclamation-triangle"></i>
                       <span>Estoque Esgotado</span>
@@ -418,16 +418,16 @@
     (onHide)="closeComandaDialog()">
 
     <div class="comandas-grid">
-      @for (comanda of availableComandas(); track comanda.id) {
+      @for (comanda of availableComandas(); track comanda.num_id) {
         <button
           type="button"
           class="comanda-button"
-          [class.comanda-button-active]="selectedComandaNumero() === comanda.numero"
-          [class.comanda-button-em-uso]="comanda.status === 'em_uso'"
-          (click)="selectComanda(comanda.numero)">
-          <span class="comanda-numero">{{ comanda.numero }}</span>
+          [class.comanda-button-active]="selectedComandaNumero() === comanda.num_numero"
+          [class.comanda-button-em-uso]="comanda.desc_status === 'em_uso'"
+          (click)="selectComanda(comanda.num_numero)">
+          <span class="comanda-numero">{{ comanda.num_numero }}</span>
           <span class="comanda-label">Comanda</span>
-          @if (comanda.status === 'em_uso') {
+          @if (comanda.desc_status === 'em_uso') {
             <p-tag
               value="Em Uso"
               severity="warning"

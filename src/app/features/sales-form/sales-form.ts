@@ -114,14 +114,14 @@ export class SalesFormComponent implements OnInit {
     const { beerId, cupSize, quantity } = this.saleForm.value;
 
     // MUDANÇA: beerId agora é number, não string
-    const selectedBeer = this.beerTypes().find(b => b.id === beerId);
+    const selectedBeer = this.beerTypes().find(b => b.num_id === beerId);
 
     if (!selectedBeer) return null;
 
     const totalVolume = (cupSize * quantity) / this.ML_TO_LITERS;
 
     return {
-      beerName: selectedBeer.name,
+      beerName: selectedBeer.desc_name,
       cupSize,
       quantity,
       totalVolume: totalVolume.toFixed(1)
@@ -146,7 +146,7 @@ export class SalesFormComponent implements OnInit {
     if (!stock) return false;
 
     // Verifica se quantidade está zerada
-    return stock.quantidadeLitros === 0;
+    return stock.num_quantidade_litros === 0;
   });
 
   /**
@@ -158,7 +158,7 @@ export class SalesFormComponent implements OnInit {
 
     const eventId = this.selectedEventId();
     const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
-    return stock ? stock.quantidadeLitros : null;
+    return stock ? stock.num_quantidade_litros : null;
   });
 
   /**
@@ -178,7 +178,7 @@ export class SalesFormComponent implements OnInit {
     if (!stock) return false;
 
     // Verifica se está entre 0 e o limite de alerta
-    return stock.quantidadeLitros > 0 && stock.quantidadeLitros < stock.minLitersAlert;
+    return stock.num_quantidade_litros > 0 && stock.num_quantidade_litros < stock.num_min_liters_alert;
   });
 
   /**
@@ -203,7 +203,7 @@ export class SalesFormComponent implements OnInit {
     const litersToSell = (cupSize * quantity) / this.ML_TO_LITERS;
 
     // Verifica se há estoque suficiente
-    return litersToSell > stock.quantidadeLitros;
+    return litersToSell > stock.num_quantidade_litros;
   });
 
   // ==================== FORM CONTROL GETTERS TIPADOS ====================
@@ -293,17 +293,17 @@ export class SalesFormComponent implements OnInit {
   private loadBeerTypes(): void {
     try {
       const beers = this.dbService.executeQuery(
-        'SELECT * FROM beer_types ORDER BY name'
+        'SELECT * FROM prd_beer_types ORDER BY desc_name'
       );
-      
+
       // Garante que IDs são numbers
       const typedBeers: BeerType[] = beers.map(beer => ({
-        id: Number(beer.id),              // ← Conversão explícita para number
-        name: beer.name,
-        color: beer.color,
-        description: beer.description
+        num_id: Number(beer.num_id),
+        desc_name: beer.desc_name,
+        desc_color: beer.desc_color,
+        desc_description: beer.desc_description
       }));
-      
+
       this.beerTypes.set(typedBeers);
       console.log('✅ Tipos de cerveja carregados:', typedBeers.length);
     } catch (error) {
@@ -355,7 +355,7 @@ export class SalesFormComponent implements OnInit {
     // Busca o preço unitário do banco
     const unitPrice = this.getPriceForCupSize(beerId, cupSize);
     if (unitPrice === null) {
-      this.showError(`Preço não configurado para ${selectedBeer.name} (${cupSize}ml). Configure em Configurações > Vendas.`);
+      this.showError(`Preço não configurado para ${selectedBeer.desc_name} (${cupSize}ml). Configure em Configurações > Vendas.`);
       return;
     }
 
@@ -374,8 +374,8 @@ export class SalesFormComponent implements OnInit {
       const newItem: CartItem = {
         id: cartItemId,
         beerId,
-        beerName: selectedBeer.name,
-        beerColor: selectedBeer.color,
+        beerName: selectedBeer.desc_name,
+        beerColor: selectedBeer.desc_color,
         cupSize,
         quantity,
         totalVolume,
@@ -391,7 +391,7 @@ export class SalesFormComponent implements OnInit {
     this.messageService.add({
       severity: 'success',
       summary: 'Adicionado ao Carrinho',
-      detail: `${quantity}x ${selectedBeer.name} (${cupSize}ml)`,
+      detail: `${quantity}x ${selectedBeer.desc_name} (${cupSize}ml)`,
       life: 2000
     });
 
@@ -425,8 +425,8 @@ export class SalesFormComponent implements OnInit {
       return true;
     }
 
-    const selectedBeer = this.beerTypes().find(b => b.id === beerId);
-    const beerName = selectedBeer?.name || 'desta cerveja';
+    const selectedBeer = this.beerTypes().find(b => b.num_id === beerId);
+    const beerName = selectedBeer?.desc_name || 'desta cerveja';
 
     // Calcula quantos litros já estão no carrinho para esta cerveja
     const litersInCart = this.cartItems()
@@ -440,7 +440,7 @@ export class SalesFormComponent implements OnInit {
     const totalLitersNeeded = litersInCart + litersToAdd;
 
     // Validação de estoque esgotado
-    if (stock.quantidadeLitros === 0) {
+    if (stock.num_quantidade_litros === 0) {
       console.log(`❌ Estoque esgotado para beerId ${beerId} (0L) [eventId: ${eventId || 'geral'}]`);
       this.showStockError(
         'Estoque Esgotado!',
@@ -450,16 +450,16 @@ export class SalesFormComponent implements OnInit {
     }
 
     // Validação de estoque insuficiente (considerando o que já está no carrinho)
-    if (totalLitersNeeded > stock.quantidadeLitros) {
-      console.log(`❌ Estoque insuficiente para beerId ${beerId}: necessário ${totalLitersNeeded}L (${litersInCart}L no carrinho + ${litersToAdd}L agora), disponível ${stock.quantidadeLitros}L [eventId: ${eventId || 'geral'}]`);
+    if (totalLitersNeeded > stock.num_quantidade_litros) {
+      console.log(`❌ Estoque insuficiente para beerId ${beerId}: necessário ${totalLitersNeeded}L (${litersInCart}L no carrinho + ${litersToAdd}L agora), disponível ${stock.num_quantidade_litros}L [eventId: ${eventId || 'geral'}]`);
       this.showStockError(
         'Estoque Insuficiente!',
-        `Você já tem ${litersInCart.toFixed(1)}L de ${beerName} no carrinho.\n\nTentando adicionar mais ${litersToAdd.toFixed(1)}L = ${totalLitersNeeded.toFixed(1)}L total.\n\nEstoque disponível: ${stock.quantidadeLitros.toFixed(1)}L\n\nPor favor, ajuste a quantidade ou reponha o estoque.`
+        `Você já tem ${litersInCart.toFixed(1)}L de ${beerName} no carrinho.\n\nTentando adicionar mais ${litersToAdd.toFixed(1)}L = ${totalLitersNeeded.toFixed(1)}L total.\n\nEstoque disponível: ${stock.num_quantidade_litros.toFixed(1)}L\n\nPor favor, ajuste a quantidade ou reponha o estoque.`
       );
       return false;
     }
 
-    console.log(`✅ Validação OK: ${litersToAdd}L sendo adicionado (${litersInCart}L já no carrinho, ${stock.quantidadeLitros}L disponíveis) [eventId: ${eventId || 'geral'}]`);
+    console.log(`✅ Validação OK: ${litersToAdd}L sendo adicionado (${litersInCart}L já no carrinho, ${stock.num_quantidade_litros}L disponíveis) [eventId: ${eventId || 'geral'}]`);
     return true;
   }
 
@@ -469,7 +469,7 @@ export class SalesFormComponent implements OnInit {
   private getPriceForCupSize(beerId: number, cupSize: CupSize): number | null {
     try {
       const result = this.dbService.executeQuery(
-        'SELECT * FROM sales_config WHERE beerId = ?',
+        'SELECT * FROM config_sales WHERE num_beer_id = ?',
         [beerId]
       );
 
@@ -481,9 +481,9 @@ export class SalesFormComponent implements OnInit {
       const priceConfig = result[0];
 
       // Mapeia cupSize para coluna correspondente
-      const priceColumn = cupSize === 300 ? 'price300ml' :
-                         cupSize === 500 ? 'price500ml' :
-                         'price1000ml';
+      const priceColumn = cupSize === 300 ? 'num_price_300ml' :
+                         cupSize === 500 ? 'num_price_500ml' :
+                         'num_price_1000ml';
 
       const price = priceConfig[priceColumn];
 
@@ -539,8 +539,8 @@ export class SalesFormComponent implements OnInit {
       const litersToAdd = item.cupSize / this.ML_TO_LITERS;
       const totalNeeded = litersInCart + litersToAdd;
 
-      if (totalNeeded > stock.quantidadeLitros) {
-        this.showError(`Estoque insuficiente. Disponível: ${stock.quantidadeLitros.toFixed(1)}L`);
+      if (totalNeeded > stock.num_quantidade_litros) {
+        this.showError(`Estoque insuficiente. Disponível: ${stock.num_quantidade_litros.toFixed(1)}L`);
         return;
       }
     }
@@ -620,16 +620,16 @@ export class SalesFormComponent implements OnInit {
 
       // Registra cada item do carrinho como uma venda
       this.cartItems().forEach(item => {
-        const sale: Omit<Sale, 'id'> = {
-          beerId: item.beerId,
-          beerName: item.beerName,
-          cupSize: item.cupSize,
-          quantity: item.quantity,
-          timestamp: new Date().toISOString(),
-          totalVolume: item.totalVolume,
-          comandaId: null,
-          userId: currentUser.userId,
-          eventId
+        const sale: Omit<Sale, 'num_id'> = {
+          num_beer_id: item.beerId,
+          desc_beer_name: item.beerName,
+          num_cup_size: item.cupSize,
+          num_quantity: item.quantity,
+          dt_timestamp: new Date().toISOString(),
+          num_total_volume: item.totalVolume,
+          num_comanda_id: null,
+          num_user_id: currentUser.num_user_id,
+          num_event_id: eventId
         };
 
         this.insertSaleIntoDatabase(sale);
@@ -675,10 +675,10 @@ export class SalesFormComponent implements OnInit {
       const litersNeeded = item.totalVolume / this.ML_TO_LITERS;
 
       // Verifica se há estoque suficiente
-      if (litersNeeded > stock.quantidadeLitros) {
+      if (litersNeeded > stock.num_quantidade_litros) {
         this.showStockError(
           'Estoque Insuficiente!',
-          `${item.beerName}: necessário ${litersNeeded.toFixed(1)}L, disponível ${stock.quantidadeLitros.toFixed(1)}L.\n\nPor favor, ajuste o carrinho ou reponha o estoque.`
+          `${item.beerName}: necessário ${litersNeeded.toFixed(1)}L, disponível ${stock.num_quantidade_litros.toFixed(1)}L.\n\nPor favor, ajuste o carrinho ou reponha o estoque.`
         );
         return false;
       }
@@ -696,7 +696,7 @@ export class SalesFormComponent implements OnInit {
     const { beerId } = this.saleForm.value;
 
     // beerId agora é number
-    const selectedBeer = this.beerTypes().find(b => b.id === beerId);
+    const selectedBeer = this.beerTypes().find(b => b.num_id === beerId);
 
     if (!selectedBeer) {
       this.showError('Cerveja selecionada não encontrada.');
@@ -714,24 +714,24 @@ export class SalesFormComponent implements OnInit {
    * MUDANÇA V8: Inclui userId obrigatório para rastrear quem fez a venda
    * MUDANÇA V9: Inclui eventId opcional para vincular a eventos
    */
-  private insertSaleIntoDatabase(sale: Omit<Sale, 'id'>): void {
+  private insertSaleIntoDatabase(sale: Omit<Sale, 'num_id'>): void {
     const query = `
-      INSERT INTO sales (beerId, beerName, cupSize, quantity, timestamp, totalVolume, comandaId, userId, eventId)
+      INSERT INTO prd_sales (num_beer_id, desc_beer_name, num_cup_size, num_quantity, dt_timestamp, num_total_volume, num_comanda_id, num_user_id, num_event_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     // MUDANÇA: Removemos o ID da inserção
     // O banco gera automaticamente via AUTOINCREMENT
     this.dbService.executeRun(query, [
-      sale.beerId,        // ← number agora
-      sale.beerName,
-      sale.cupSize,
-      sale.quantity,
-      sale.timestamp,
-      sale.totalVolume,
-      sale.comandaId ?? null,  // ← NOVO V6: FK opcional para comandas
-      sale.userId,        // ← NOVO V8: FK obrigatória para users
-      sale.eventId ?? null  // ← NOVO V9: FK opcional para eventos
+      sale.num_beer_id,
+      sale.desc_beer_name,
+      sale.num_cup_size,
+      sale.num_quantity,
+      sale.dt_timestamp,
+      sale.num_total_volume,
+      sale.num_comanda_id ?? null,
+      sale.num_user_id,
+      sale.num_event_id ?? null
     ]);
   }
 
@@ -740,25 +740,25 @@ export class SalesFormComponent implements OnInit {
    * Converte volume de ml para litros e subtrai do estoque
    * IMPORTANTE: Passa o eventId para subtrair do estoque correto
    */
-  private updateEventStock(sale: Omit<Sale, 'id'>): void {
+  private updateEventStock(sale: Omit<Sale, 'num_id'>): void {
     try {
       // Converte totalVolume (ml) para litros
-      const litersToSubtract = sale.totalVolume / this.ML_TO_LITERS;
+      const litersToSubtract = sale.num_total_volume / this.ML_TO_LITERS;
 
       // Tenta subtrair do estoque passando o eventId (retorna false se não há estoque configurado)
       const wasSubtracted = this.dbService.subtractFromEventStock(
-        sale.beerId,
+        sale.num_beer_id,
         litersToSubtract,
-        sale.eventId ?? null  // ← CORREÇÃO: Passa o eventId da venda
+        sale.num_event_id ?? null
       );
 
       if (wasSubtracted) {
-        console.log(`📦 Estoque atualizado: -${litersToSubtract}L de ${sale.beerName} [eventId: ${sale.eventId || 'geral'}]`);
+        console.log(`📦 Estoque atualizado: -${litersToSubtract}L de ${sale.desc_beer_name} [eventId: ${sale.num_event_id || 'geral'}]`);
 
         // Verifica se está abaixo do limite de alerta
-        this.checkStockAlert(sale.beerId, sale.beerName, sale.eventId ?? null);
+        this.checkStockAlert(sale.num_beer_id, sale.desc_beer_name, sale.num_event_id ?? null);
       } else {
-        console.log(`ℹ️ Sem controle de estoque para ${sale.beerName} [eventId: ${sale.eventId || 'geral'}]`);
+        console.log(`ℹ️ Sem controle de estoque para ${sale.desc_beer_name} [eventId: ${sale.num_event_id || 'geral'}]`);
       }
     } catch (error) {
       // Não propaga o erro - venda já foi registrada com sucesso
@@ -781,10 +781,10 @@ export class SalesFormComponent implements OnInit {
       const minLiters = config?.minLiters || 5.0;
 
       // Se estoque está acima do limite, não há alerta
-      if (stock.quantidadeLitros >= minLiters) return;
+      if (stock.num_quantidade_litros >= minLiters) return;
 
       // Estoque baixo - exibe aviso
-      const remainingLiters = stock.quantidadeLitros.toFixed(1);
+      const remainingLiters = stock.num_quantidade_litros.toFixed(1);
       this.messageService.add({
         severity: 'warn',
         summary: 'Estoque Baixo!',
@@ -891,8 +891,8 @@ export class SalesFormComponent implements OnInit {
     const beerId = this.beerId.value;
     if (!beerId) return 'Nenhuma';
 
-    const beer = this.beerTypes().find(b => b.id === beerId);
-    return beer?.name || 'Desconhecida';
+    const beer = this.beerTypes().find(b => b.num_id === beerId);
+    return beer?.desc_name || 'Desconhecida';
   }
 
   /**
@@ -904,7 +904,7 @@ export class SalesFormComponent implements OnInit {
     const eventId = this.selectedEventId();
     const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
     if (!stock) return false;
-    return stock.quantidadeLitros > 0 && stock.quantidadeLitros < stock.minLitersAlert;
+    return stock.num_quantidade_litros > 0 && stock.num_quantidade_litros < stock.num_min_liters_alert;
   }
 
   /**
@@ -916,7 +916,7 @@ export class SalesFormComponent implements OnInit {
     const eventId = this.selectedEventId();
     const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
     if (!stock) return false;
-    return stock.quantidadeLitros === 0;
+    return stock.num_quantidade_litros === 0;
   }
 
   /**
@@ -927,7 +927,7 @@ export class SalesFormComponent implements OnInit {
   getStockForBeer(beerId: number): number | null {
     const eventId = this.selectedEventId();
     const stock = this.dbService.getEventStockByBeerId(beerId, eventId);
-    return stock ? stock.quantidadeLitros : null;
+    return stock ? stock.num_quantidade_litros : null;
   }
 
   // ==================== MÉTODOS DE COMANDA ====================
@@ -954,7 +954,7 @@ export class SalesFormComponent implements OnInit {
   private loadAvailableComandas(): void {
     const disponivel = this.comandaService.getAvailableComandas();
     const emUso = this.comandaService.getInUseComandas();
-    const todasComandas = [...disponivel, ...emUso].sort((a, b) => a.numero - b.numero);
+    const todasComandas = [...disponivel, ...emUso].sort((a, b) => a.num_numero - b.num_numero);
     this.availableComandas.set(todasComandas);
   }
 
@@ -1002,7 +1002,7 @@ export class SalesFormComponent implements OnInit {
 
     // Abrir a comanda se ainda estiver disponível
     try {
-      if (comanda.status === 'disponivel') {
+      if (comanda.desc_status === 'disponivel') {
         this.comandaService.openComanda(comandaNumero);
       }
 
@@ -1010,16 +1010,16 @@ export class SalesFormComponent implements OnInit {
 
       // Processar todos os itens do carrinho vinculados à comanda
       this.cartItems().forEach(item => {
-        const sale: Omit<Sale, 'id'> = {
-          beerId: item.beerId,
-          beerName: item.beerName,
-          cupSize: item.cupSize,
-          quantity: item.quantity,
-          timestamp: new Date().toISOString(),
-          totalVolume: item.totalVolume,
-          comandaId: comanda.id,
-          userId: currentUser.userId,
-          eventId
+        const sale: Omit<Sale, 'num_id'> = {
+          num_beer_id: item.beerId,
+          desc_beer_name: item.beerName,
+          num_cup_size: item.cupSize,
+          num_quantity: item.quantity,
+          dt_timestamp: new Date().toISOString(),
+          num_total_volume: item.totalVolume,
+          num_comanda_id: comanda.num_id,
+          num_user_id: currentUser.num_user_id,
+          num_event_id: eventId
         };
 
         this.insertSaleIntoDatabase(sale);
@@ -1033,7 +1033,7 @@ export class SalesFormComponent implements OnInit {
       this.messageService.add({
         severity: 'success',
         summary: 'Venda Registrada',
-        detail: `${totalItems} item(s) adicionado(s) à Comanda ${comanda.numero} - R$ ${totalPrice.toFixed(2)}`,
+        detail: `${totalItems} item(s) adicionado(s) à Comanda ${comanda.num_numero} - R$ ${totalPrice.toFixed(2)}`,
         life: 5000
       });
 

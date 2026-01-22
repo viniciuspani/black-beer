@@ -55,7 +55,7 @@ export class ClientConfigService {
   getConfig(): ClientConfig | null {
     try {
       const results = this.db.executeQuery(
-        'SELECT * FROM client_config WHERE id = ? LIMIT 1',
+        'SELECT * FROM config_client WHERE num_id = ? LIMIT 1',
         [this.CONFIG_ID]
       );
 
@@ -65,12 +65,12 @@ export class ClientConfigService {
 
       const row = results[0];
       return {
-        id: Number(row.id),
-        companyName: row.companyName || undefined,
-        logoBase64: row.logoBase64 || undefined,
-        logoMimeType: row.logoMimeType || undefined,
-        logoFileName: row.logoFileName || undefined,
-        updatedAt: new Date(row.updatedAt)
+        num_id: Number(row.num_id),
+        desc_company_name: row.desc_company_name || undefined,
+        desc_logo_base64: row.desc_logo_base64 || undefined,
+        desc_logo_mime_type: row.desc_logo_mime_type || undefined,
+        desc_logo_file_name: row.desc_logo_file_name || undefined,
+        dt_updated_at: new Date(row.dt_updated_at)
       };
     } catch (error) {
       console.error('Erro ao buscar configuração:', error);
@@ -107,12 +107,12 @@ export class ClientConfigService {
           const base64 = e.target?.result as string;
 
           const config: ClientConfig = {
-            id: this.CONFIG_ID,
-            companyName: companyName,
-            logoBase64: base64,
-            logoMimeType: file.type,
-            logoFileName: file.name,
-            updatedAt: new Date()
+            num_id: this.CONFIG_ID,
+            desc_company_name: companyName,
+            desc_logo_base64: base64,
+            desc_logo_mime_type: file.type,
+            desc_logo_file_name: file.name,
+            dt_updated_at: new Date()
           };
 
           this.saveConfig(config);
@@ -137,37 +137,37 @@ export class ClientConfigService {
   private saveConfig(config: ClientConfig): void {
     try {
       const exists = this.db.executeQuery(
-        'SELECT id FROM client_config WHERE id = ? LIMIT 1',
+        'SELECT num_id FROM config_client WHERE num_id = ? LIMIT 1',
         [this.CONFIG_ID]
       );
 
       if (exists.length > 0) {
         // UPDATE
         this.db.executeRun(
-          `UPDATE client_config
-           SET companyName = ?, logoBase64 = ?, logoMimeType = ?, logoFileName = ?, updatedAt = ?
-           WHERE id = ?`,
+          `UPDATE config_client
+           SET desc_company_name = ?, desc_logo_base64 = ?, desc_logo_mime_type = ?, desc_logo_file_name = ?, dt_updated_at = ?
+           WHERE num_id = ?`,
           [
-            config.companyName || null,
-            config.logoBase64 || null,
-            config.logoMimeType || null,
-            config.logoFileName || null,
-            config.updatedAt.toISOString(),
+            config.desc_company_name || null,
+            config.desc_logo_base64 || null,
+            config.desc_logo_mime_type || null,
+            config.desc_logo_file_name || null,
+            config.dt_updated_at.toISOString(),
             this.CONFIG_ID
           ]
         );
       } else {
         // INSERT
         this.db.executeRun(
-          `INSERT INTO client_config (id, companyName, logoBase64, logoMimeType, logoFileName, updatedAt)
+          `INSERT INTO config_client (num_id, desc_company_name, desc_logo_base64, desc_logo_mime_type, desc_logo_file_name, dt_updated_at)
            VALUES (?, ?, ?, ?, ?, ?)`,
           [
             this.CONFIG_ID,
-            config.companyName || null,
-            config.logoBase64 || null,
-            config.logoMimeType || null,
-            config.logoFileName || null,
-            config.updatedAt.toISOString()
+            config.desc_company_name || null,
+            config.desc_logo_base64 || null,
+            config.desc_logo_mime_type || null,
+            config.desc_logo_file_name || null,
+            config.dt_updated_at.toISOString()
           ]
         );
       }
@@ -187,10 +187,10 @@ export class ClientConfigService {
       if (currentConfig) {
         const updatedConfig: ClientConfig = {
           ...currentConfig,
-          logoBase64: undefined,
-          logoMimeType: undefined,
-          logoFileName: undefined,
-          updatedAt: new Date()
+          desc_logo_base64: undefined,
+          desc_logo_mime_type: undefined,
+          desc_logo_file_name: undefined,
+          dt_updated_at: new Date()
         };
 
         this.saveConfig(updatedConfig);
@@ -210,12 +210,12 @@ export class ClientConfigService {
       const currentConfig = this.getConfig();
 
       const updatedConfig: ClientConfig = {
-        id: this.CONFIG_ID,
-        companyName,
-        logoBase64: currentConfig?.logoBase64,
-        logoMimeType: currentConfig?.logoMimeType,
-        logoFileName: currentConfig?.logoFileName,
-        updatedAt: new Date()
+        num_id: this.CONFIG_ID,
+        desc_company_name: companyName,
+        desc_logo_base64: currentConfig?.desc_logo_base64,
+        desc_logo_mime_type: currentConfig?.desc_logo_mime_type,
+        desc_logo_file_name: currentConfig?.desc_logo_file_name,
+        dt_updated_at: new Date()
       };
 
       this.saveConfig(updatedConfig);
@@ -231,7 +231,7 @@ export class ClientConfigService {
    */
   getLogoUrl(): string | null {
     const config = this.clientConfigSignal();
-    return config?.logoBase64 || null;
+    return config?.desc_logo_base64 || null;
   }
 
   /**
@@ -239,7 +239,7 @@ export class ClientConfigService {
    */
   hasLogo(): boolean {
     const config = this.clientConfigSignal();
-    return !!config?.logoBase64;
+    return !!config?.desc_logo_base64;
   }
 
   /**
@@ -247,7 +247,7 @@ export class ClientConfigService {
    */
   getCompanyName(): string | null {
     const config = this.clientConfigSignal();
-    return config?.companyName || null;
+    return config?.desc_company_name || null;
   }
 }
 

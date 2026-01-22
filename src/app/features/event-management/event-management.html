@@ -69,11 +69,11 @@
             <div class="form-grid">
               <!-- Nome do Evento -->
               <div class="form-field">
-                <label for="nameEvent">Nome do Evento *</label>
+                <label for="desc_name_event">Nome do Evento *</label>
                 <input
                   pInputText
-                  id="nameEvent"
-                  formControlName="nameEvent"
+                  id="desc_name_event"
+                  formControlName="desc_name_event"
                   placeholder="Ex: Festa Holliday"
                   maxlength="100"
                 />
@@ -81,11 +81,11 @@
 
               <!-- Local -->
               <div class="form-field">
-                <label for="localEvent">Local *</label>
+                <label for="desc_local_event">Local *</label>
                 <input
                   pInputText
-                  id="localEvent"
-                  formControlName="localEvent"
+                  id="desc_local_event"
+                  formControlName="desc_local_event"
                   placeholder="Ex: Clube Recreativo"
                   maxlength="200"
                 />
@@ -93,10 +93,10 @@
 
               <!-- Data -->
               <div class="form-field">
-                <label for="dataEvent">Data do Evento *</label>
+                <label for="dt_data_event">Data do Evento *</label>
                 <p-datePicker
-                  inputId="dataEvent"
-                  formControlName="dataEvent"
+                  inputId="dt_data_event"
+                  formControlName="dt_data_event"
                   [showTime]="true"
                   [showIcon]="true"
                   [iconDisplay]="'input'"
@@ -108,12 +108,12 @@
 
               <!-- Status -->
               <div class="form-field">
-                <label for="status">Status *</label>
+                <label for="desc_status">Status *</label>
                 <select
-                  id="status"
-                  formControlName="status"
+                  id="desc_status"
+                  formControlName="desc_status"
                   class="form-select"
-                  [value]="eventForm.get('status')?.value">
+                  [value]="eventForm.get('desc_status')?.value">
                   <option value="planejamento">Planejamento</option>
                   <option value="ativo">Ativo</option>
                   <option value="finalizado">Finalizado</option>
@@ -122,10 +122,10 @@
 
               <!-- Contato -->
               <div class="form-field">
-                <label for="contactEvent">Telefone/Contato</label>
+                <label for="desc_contact_event">Telefone/Contato</label>
                 <p-inputMask
-                  id="contactEvent"
-                  formControlName="contactEvent"
+                  id="desc_contact_event"
+                  formControlName="desc_contact_event"
                   mask="(99) 99999-9999"
                   placeholder="(00) 00000-0000"
                   [autoClear]="false"
@@ -134,11 +134,11 @@
 
               <!-- Nome do Contato -->
               <div class="form-field">
-                <label for="nameContactEvent">Nome do Responsável</label>
+                <label for="desc_name_contact_event">Nome do Responsável</label>
                 <input
                   pInputText
-                  id="nameContactEvent"
-                  formControlName="nameContactEvent"
+                  id="desc_name_contact_event"
+                  formControlName="desc_name_contact_event"
                   placeholder="Ex: João Silva"
                   maxlength="100"
                 />
@@ -180,18 +180,18 @@
             <tr>
               <td>
                 <div class="event-name-cell">
-                  <strong>{{ event.nameEvent }}</strong>
-                  @if (eventHasSales(event.id)) {
+                  <strong>{{ event.desc_name_event }}</strong>
+                  @if (eventHasSales(event.num_id)) {
                     <p-tag value="Com vendas" severity="warning" styleClass="ml-2" />
                   }
                 </div>
               </td>
-              <td>{{ event.localEvent }}</td>
-              <td>{{ formatDate(event.dataEvent) }}</td>
+              <td>{{ event.desc_local_event }}</td>
+              <td>{{ formatDate(event.dt_data_event) }}</td>
               <td>
                 <p-tag
-                  [value]="getStatusLabel(event.status)"
-                  [severity]="getStatusSeverity(event.status)"
+                  [value]="getStatusLabel(event.desc_status)"
+                  [severity]="getStatusSeverity(event.desc_status)"
                 />
               </td>
               <td>
@@ -243,17 +243,17 @@
       <!-- ==================== LISTA MOBILE (CARDS - <MD) ==================== -->
       <div class="md:hidden mobile-cards">
         <div class="cards-grid">
-          @for (event of events(); track event.id) {
+          @for (event of events(); track event.num_id) {
             <article class="event-card">
               <!-- Header -->
               <div class="event-card-header">
                 <div class="event-card-title">
                   <i class="pi pi-calendar"></i>
-                  <h3 class="event-name">{{ event.nameEvent }}</h3>
+                  <h3 class="event-name">{{ event.desc_name_event }}</h3>
                 </div>
                 <p-tag
-                  [value]="getStatusLabel(event.status)"
-                  [severity]="getStatusSeverity(event.status)"
+                  [value]="getStatusLabel(event.desc_status)"
+                  [severity]="getStatusSeverity(event.desc_status)"
                 />
               </div>
 
@@ -261,25 +261,25 @@
               <div class="event-card-info">
                 <div class="info-row">
                   <i class="pi pi-map-marker"></i>
-                  <span>{{ event.localEvent }}</span>
+                  <span>{{ event.desc_local_event }}</span>
                 </div>
                 <div class="info-row">
                   <i class="pi pi-clock"></i>
-                  <span>{{ formatDate(event.dataEvent) }}</span>
+                  <span>{{ formatDate(event.dt_data_event) }}</span>
                 </div>
-                @if (event.nameContactEvent) {
+                @if (event.desc_name_contact_event) {
                   <div class="info-row">
                     <i class="pi pi-user"></i>
-                    <span>{{ event.nameContactEvent }}</span>
+                    <span>{{ event.desc_name_contact_event }}</span>
                   </div>
                 }
-                @if (event.contactEvent) {
+                @if (event.desc_contact_event) {
                   <div class="info-row">
                     <i class="pi pi-phone"></i>
-                    <span>{{ event.contactEvent }}</span>
+                    <span>{{ event.desc_contact_event }}</span>
                   </div>
                 }
-                @if (eventHasSales(event.id)) {
+                @if (eventHasSales(event.num_id)) {
                   <p-tag value="Evento com vendas" severity="warning" styleClass="mt-2" />
                 }
               </div>
@@ -369,32 +369,32 @@
     <div class="form-grid">
       <!-- Nome do Evento -->
       <div class="form-field">
-        <label for="edit-nameEvent">Nome do Evento *</label>
+        <label for="edit-desc_name_event">Nome do Evento *</label>
         <input
           pInputText
-          id="edit-nameEvent"
-          formControlName="nameEvent"
+          id="edit-desc_name_event"
+          formControlName="desc_name_event"
           maxlength="100"
         />
       </div>
 
       <!-- Local -->
       <div class="form-field">
-        <label for="edit-localEvent">Local *</label>
+        <label for="edit-desc_local_event">Local *</label>
         <input
           pInputText
-          id="edit-localEvent"
-          formControlName="localEvent"
+          id="edit-desc_local_event"
+          formControlName="desc_local_event"
           maxlength="200"
         />
       </div>
 
       <!-- Data -->
       <div class="form-field">
-        <label for="edit-dataEvent">Data do Evento *</label>
+        <label for="edit-dt_data_event">Data do Evento *</label>
         <p-datePicker
-          inputId="edit-dataEvent"
-          formControlName="dataEvent"
+          inputId="edit-dt_data_event"
+          formControlName="dt_data_event"
           [showTime]="true"
           [showIcon]="true"
           dateFormat="dd/mm/yy"
@@ -404,12 +404,12 @@
 
       <!-- Status -->
       <div class="form-field">
-        <label for="edit-status">Status *</label>
+        <label for="edit-desc_status">Status *</label>
         <select
-          id="edit-status"
-          formControlName="status"
+          id="edit-desc_status"
+          formControlName="desc_status"
           class="form-select"
-          [value]="editForm.get('status')?.value">
+          [value]="editForm.get('desc_status')?.value">
           <option value="planejamento">Planejamento</option>
           <option value="ativo">Ativo</option>
           <option value="finalizado">Finalizado</option>
@@ -418,10 +418,10 @@
 
       <!-- Contato -->
       <div class="form-field">
-        <label for="edit-contactEvent">Telefone/Contato</label>
+        <label for="edit-desc_contact_event">Telefone/Contato</label>
         <p-inputMask
-          id="edit-contactEvent"
-          formControlName="contactEvent"
+          id="edit-desc_contact_event"
+          formControlName="desc_contact_event"
           mask="(99) 99999-9999"
           placeholder="(00) 00000-0000"
           [autoClear]="false"
@@ -430,11 +430,11 @@
 
       <!-- Nome do Contato -->
       <div class="form-field">
-        <label for="edit-nameContactEvent">Nome do Responsável</label>
+        <label for="edit-desc_name_contact_event">Nome do Responsável</label>
         <input
           pInputText
-          id="edit-nameContactEvent"
-          formControlName="nameContactEvent"
+          id="edit-desc_name_contact_event"
+          formControlName="desc_name_contact_event"
           maxlength="100"
         />
       </div>
@@ -468,7 +468,7 @@
   [draggable]="false"
   [resizable]="false"
   [style]="{width: '90vw', maxWidth: '35rem'}"
-  [header]="currentStatsEvent ? 'Estatísticas: ' + currentStatsEvent.nameEvent : 'Estatísticas'"
+  [header]="currentStatsEvent ? 'Estatísticas: ' + currentStatsEvent.desc_name_event : 'Estatísticas'"
   (onHide)="closeStatsDialog()">
 
   @if (eventStats) {

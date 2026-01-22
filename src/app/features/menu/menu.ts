@@ -181,7 +181,7 @@ export class Menu {
     const user = this.currentUser();
     if (!user) return '?';
 
-    const username = user.username || user.email;
+    const username = user.desc_username || user.desc_email;
     const parts = username.split(' ');
 
     if (parts.length >= 2) {
@@ -197,7 +197,7 @@ export class Menu {
   protected getUserDisplayName(): string {
     const user = this.currentUser();
     if (!user) return 'Usuário';
-    return user.username || user.email;
+    return user.desc_username || user.desc_email;
   }
 
   /**
@@ -206,7 +206,7 @@ export class Menu {
   protected getUserRoleLabel(): string {
     const user = this.currentUser();
     if (!user) return '';
-    return user.role === 'admin' ? 'Administrador' : 'Usuário';
+    return user.desc_role === 'admin' ? 'Administrador' : 'Usuário';
   }
 
   /**

@@ -64,21 +64,21 @@ export class EventService {
    * Eventos em planejamento
    */
   public readonly planningEvents = computed(() =>
-    this._events().filter(e => e.status === 'planejamento')
+    this._events().filter(e => e.desc_status === 'planejamento')
   );
 
   /**
    * Eventos ativos
    */
   public readonly activeEvents = computed(() =>
-    this._events().filter(e => e.status === 'ativo')
+    this._events().filter(e => e.desc_status === 'ativo')
   );
 
   /**
    * Eventos finalizados
    */
   public readonly finalizedEvents = computed(() =>
-    this._events().filter(e => e.status === 'finalizado')
+    this._events().filter(e => e.desc_status === 'finalizado')
   );
 
   /**
@@ -114,7 +114,7 @@ export class EventService {
         .filter(isValidEvent)
         .sort((a, b) => {
           // Ordena por data (mais recentes primeiro)
-          return new Date(b.dataEvent).getTime() - new Date(a.dataEvent).getTime();
+          return new Date(b.dt_data_event).getTime() - new Date(a.dt_data_event).getTime();
         });
 
       this._events.set(validEvents);
@@ -149,12 +149,12 @@ export class EventService {
 
     try {
       const eventId = this.dbService.createEvent({
-        nameEvent: eventData.nameEvent.trim(),
-        localEvent: eventData.localEvent.trim(),
-        dataEvent: eventData.dataEvent,
-        contactEvent: eventData.contactEvent?.trim() || undefined,
-        nameContactEvent: eventData.nameContactEvent?.trim() || undefined,
-        status: eventData.status || 'planejamento'
+        nameEvent: eventData.desc_name_event.trim(),
+        localEvent: eventData.desc_local_event.trim(),
+        dataEvent: eventData.dt_data_event,
+        contactEvent: eventData.desc_contact_event?.trim() || undefined,
+        nameContactEvent: eventData.desc_name_contact_event?.trim() || undefined,
+        status: eventData.desc_status || 'planejamento'
       });
 
       console.log('Debug - ID do evento criado:', eventId);
@@ -198,11 +198,11 @@ export class EventService {
         }
       });
 
-      const success = this.dbService.updateEvent(eventData.id, updateData);
+      const success = this.dbService.updateEvent(eventData.num_id, updateData);
 
       if (success) {
         await this.loadEvents();
-        console.log('✅ Evento atualizado com sucesso:', eventData.id);
+        console.log('✅ Evento atualizado com sucesso:', eventData.num_id);
       }
 
       return success;
@@ -236,7 +236,7 @@ export class EventService {
         await this.loadEvents();
 
         // Limpa seleção se for o evento selecionado
-        if (this._selectedEvent()?.id === eventId) {
+        if (this._selectedEvent()?.num_id === eventId) {
           this._selectedEvent.set(null);
         }
 
@@ -258,10 +258,10 @@ export class EventService {
    * @param eventId ID do evento
    */
   public selectEvent(eventId: number): void {
-    const event = this._events().find(e => e.id === eventId);
+    const event = this._events().find(e => e.num_id === eventId);
     if (event) {
       this._selectedEvent.set(event);
-      console.log('✅ Evento selecionado:', event.nameEvent);
+      console.log('✅ Evento selecionado:', event.desc_name_event);
     }
   }
 
@@ -280,7 +280,7 @@ export class EventService {
    * @returns Event ou null
    */
   public getEventById(eventId: number): Event | null {
-    return this._events().find(e => e.id === eventId) || null;
+    return this._events().find(e => e.num_id === eventId) || null;
   }
 
   /**
@@ -289,7 +289,7 @@ export class EventService {
    * @returns Array de eventos
    */
   public getEventsByStatus(status: EventStatus): Event[] {
-    return this._events().filter(e => e.status === status);
+    return this._events().filter(e => e.desc_status === status);
   }
 
   /**
@@ -302,8 +302,8 @@ export class EventService {
     if (!term) return this._events();
 
     return this._events().filter(e =>
-      e.nameEvent.toLowerCase().includes(term) ||
-      e.localEvent.toLowerCase().includes(term)
+      e.desc_name_event.toLowerCase().includes(term) ||
+      e.desc_local_event.toLowerCase().includes(term)
     );
   }
 
@@ -360,9 +360,9 @@ export class EventService {
    * @returns Estatísticas do evento
    */
   public getEventStatistics(eventId: number): {
-    totalSales: number;
-    totalVolume: number;
-    totalRevenue: number;
+    num_total_sales: number;
+    num_total_volume: number;
+    num_total_revenue: number;
     salesByBeer: any[];
   } {
     try {
@@ -370,9 +370,9 @@ export class EventService {
     } catch (error) {
       console.error('❌ Erro ao obter estatísticas do evento:', error);
       return {
-        totalSales: 0,
-        totalVolume: 0,
-        totalRevenue: 0,
+        num_total_sales: 0,
+        num_total_volume: 0,
+        num_total_revenue: 0,
         salesByBeer: []
       };
     }
@@ -407,8 +407,8 @@ export class EventService {
   public eventNameExists(nameEvent: string, excludeId?: number): boolean {
     const normalizedName = nameEvent.toLowerCase().trim();
     return this._events().some(e =>
-      e.nameEvent.toLowerCase().trim() === normalizedName &&
-      e.id !== excludeId
+      e.desc_name_event.toLowerCase().trim() === normalizedName &&
+      e.num_id !== excludeId
     );
   }
 

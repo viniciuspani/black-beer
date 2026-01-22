@@ -12,16 +12,19 @@ export type UserRole = 'user' | 'admin';
 
 /**
  * Interface do usuário
- * Representa um usuário cadastrado no sistema
+ * Convenção de nomenclatura:
+ * - num_ : Colunas INTEGER e REAL
+ * - desc_ : Colunas TEXT (dados gerais)
+ * - dt_ : Colunas TEXT com DEFAULT CURRENT_TIMESTAMP
  */
 export interface User {
-  id: number;                    // ID único (auto-increment)
-  username: string;              // Nome de usuário (único)
-  email: string;                 // Email (único)
-  passwordHash: string;          // Senha com hash (nunca armazenar senha pura!)
-  role: UserRole;                // Papel do usuário (user ou admin)
-  createdAt: string;             // Data de criação (ISO string)
-  lastLoginAt?: string;          // Última vez que fez login (opcional)
+  num_id: number;                    // ID único (auto-increment)
+  desc_username: string;             // Nome de usuário (único)
+  desc_email: string;                // Email (único)
+  desc_password_hash: string;        // Senha com hash (nunca armazenar senha pura!)
+  desc_role: UserRole;               // Papel do usuário (user ou admin)
+  dt_created_at: string;             // Data de criação (ISO string)
+  dt_last_login_at?: string;         // Última vez que fez login (opcional)
 }
 
 /**
@@ -29,10 +32,10 @@ export interface User {
  * Usado no cadastro - não inclui ID nem datas
  */
 export interface CreateUserDto {
-  username: string;
-  email: string;
-  password: string;              // Senha em texto (será convertida em hash)
-  role?: UserRole;               // Opcional - padrão é 'user'
+  desc_username: string;
+  desc_email: string;
+  desc_password: string;         // Senha em texto (será convertida em hash)
+  desc_role?: UserRole;          // Opcional - padrão é 'user'
 }
 
 /**
@@ -40,8 +43,8 @@ export interface CreateUserDto {
  * Apenas email/username e senha
  */
 export interface LoginDto {
-  emailOrUsername: string;       // Pode usar email OU username
-  password: string;
+  desc_email_or_username: string;  // Pode usar email OU username
+  desc_password: string;
 }
 
 /**
@@ -50,20 +53,20 @@ export interface LoginDto {
  */
 export interface LoginResponse {
   success: boolean;
-  user?: Omit<User, 'passwordHash'>;  // Usuário SEM senha
-  message?: string;              // Mensagem de erro/sucesso
+  user?: Omit<User, 'desc_password_hash'>;  // Usuário SEM senha
+  message?: string;                         // Mensagem de erro/sucesso
 }
 
 /**
  * Sessão do usuário (armazenada no localStorage)
  */
 export interface UserSession {
-  userId: number;
-  username: string;
-  email: string;
-  role: UserRole;
-  loginAt: string;               // Quando fez login
-  expiresAt: string;             // Quando expira (opcional)
+  num_user_id: number;
+  desc_username: string;
+  desc_email: string;
+  desc_role: UserRole;
+  dt_login_at: string;           // Quando fez login
+  dt_expires_at: string;         // Quando expira
 }
 
 // ========================================
@@ -74,14 +77,14 @@ export interface UserSession {
  * Verifica se um usuário é administrador
  */
 export function isAdmin(user: User | UserSession | null | undefined): boolean {
-  return user?.role === 'admin';
+  return user?.desc_role === 'admin';
 }
 
 /**
  * Verifica se um usuário é comum
  */
 export function isUser(user: User | UserSession | null | undefined): boolean {
-  return user?.role === 'user';
+  return user?.desc_role === 'user';
 }
 
 /**
@@ -91,12 +94,12 @@ export function isValidUser(obj: any): obj is User {
   return (
     typeof obj === 'object' &&
     obj !== null &&
-    typeof obj.id === 'number' &&
-    typeof obj.username === 'string' &&
-    typeof obj.email === 'string' &&
-    typeof obj.passwordHash === 'string' &&
-    (obj.role === 'user' || obj.role === 'admin') &&
-    typeof obj.createdAt === 'string'
+    typeof obj.num_id === 'number' &&
+    typeof obj.desc_username === 'string' &&
+    typeof obj.desc_email === 'string' &&
+    typeof obj.desc_password_hash === 'string' &&
+    (obj.desc_role === 'user' || obj.desc_role === 'admin') &&
+    typeof obj.dt_created_at === 'string'
   );
 }
 
@@ -107,20 +110,20 @@ export function isValidSession(obj: any): obj is UserSession {
   return (
     typeof obj === 'object' &&
     obj !== null &&
-    typeof obj.userId === 'number' &&
-    typeof obj.username === 'string' &&
-    typeof obj.email === 'string' &&
-    (obj.role === 'user' || obj.role === 'admin') &&
-    typeof obj.loginAt === 'string'
+    typeof obj.num_user_id === 'number' &&
+    typeof obj.desc_username === 'string' &&
+    typeof obj.desc_email === 'string' &&
+    (obj.desc_role === 'user' || obj.desc_role === 'admin') &&
+    typeof obj.dt_login_at === 'string'
   );
 }
 
 /**
  * Remove campos sensíveis do usuário
- * (Remove passwordHash antes de enviar para o frontend)
+ * (Remove desc_password_hash antes de enviar para o frontend)
  */
-export function sanitizeUser(user: User): Omit<User, 'passwordHash'> {
-  const { passwordHash, ...sanitized } = user;
+export function sanitizeUser(user: User): Omit<User, 'desc_password_hash'> {
+  const { desc_password_hash, ...sanitized } = user;
   return sanitized;
 }
 
@@ -131,14 +134,14 @@ export function sanitizeUser(user: User): Omit<User, 'passwordHash'> {
 export function userToSession(user: User, expiresInHours: number = 24): UserSession {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + expiresInHours * 60 * 60 * 1000);
-  
+
   return {
-    userId: user.id,
-    username: user.username,
-    email: user.email,
-    role: user.role,
-    loginAt: now.toISOString(),
-    expiresAt: expiresAt.toISOString()
+    num_user_id: user.num_id,
+    desc_username: user.desc_username,
+    desc_email: user.desc_email,
+    desc_role: user.desc_role,
+    dt_login_at: now.toISOString(),
+    dt_expires_at: expiresAt.toISOString()
   };
 }
 
@@ -146,11 +149,11 @@ export function userToSession(user: User, expiresInHours: number = 24): UserSess
  * Verifica se uma sessão expirou
  */
 export function isSessionExpired(session: UserSession): boolean {
-  if (!session.expiresAt) return false;  // Sem expiração = nunca expira
-  
+  if (!session.dt_expires_at) return false;  // Sem expiração = nunca expira
+
   const now = new Date();
-  const expiresAt = new Date(session.expiresAt);
-  
+  const expiresAt = new Date(session.dt_expires_at);
+
   return now > expiresAt;
 }
 

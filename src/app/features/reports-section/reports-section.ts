@@ -120,7 +120,7 @@ export class ReportsSectionComponent implements OnInit {
 
     if (!this.dbService.isDbReady()) {
       return {
-        summary: { totalSales: 0, totalVolumeLiters: 0 },
+        summary: { num_total_sales: 0, num_total_volume_liters: 0 },
         salesByCupSize: [],
         salesByBeerType: []
       };
@@ -176,7 +176,7 @@ export class ReportsSectionComponent implements OnInit {
    */
   protected pieChartData = computed<ChartData<'pie'>>(() => {
     const salesByBeer = this.report().salesByBeerType;
-    
+
     if (salesByBeer.length === 0) {
       return {
         labels: [],
@@ -187,12 +187,12 @@ export class ReportsSectionComponent implements OnInit {
         }]
       };
     }
-    
+
     return {
-      labels: salesByBeer.map(item => item.name),
+      labels: salesByBeer.map(item => item.desc_name),
       datasets: [{
-        data: salesByBeer.map(item => item.totalCups),
-        backgroundColor: salesByBeer.map(item => item.color || '#fbbf24'),
+        data: salesByBeer.map(item => item.num_total_cups),
+        backgroundColor: salesByBeer.map(item => item.desc_color || '#fbbf24'),
         borderWidth: 3,
         borderColor: '#ffffff',
         hoverBorderWidth: 4,
@@ -248,7 +248,7 @@ export class ReportsSectionComponent implements OnInit {
    */
   protected barChartData = computed<ChartData<'bar'>>(() => {
     const salesBySize = this.report().salesByCupSize;
-    
+
     if (salesBySize.length === 0) {
       return {
         labels: [],
@@ -261,15 +261,15 @@ export class ReportsSectionComponent implements OnInit {
         }]
       };
     }
-    
+
     // Ordenar por tamanho
-    const sortedSizes = [...salesBySize].sort((a, b) => a.cupSize - b.cupSize);
-    
+    const sortedSizes = [...salesBySize].sort((a, b) => a.num_cup_size - b.num_cup_size);
+
     return {
-      labels: sortedSizes.map(item => `${item.cupSize}ml`),
+      labels: sortedSizes.map(item => `${item.num_cup_size}ml`),
       datasets: [{
         label: 'Quantidade Vendida',
-        data: sortedSizes.map(item => item.count),
+        data: sortedSizes.map(item => item.num_count),
         backgroundColor: '#fbbf24',
         borderColor: '#d97706',
         borderWidth: 2,
@@ -376,14 +376,14 @@ export class ReportsSectionComponent implements OnInit {
    * Retorna o total de vendas
    */
   protected getTotalSales(): number {
-    return this.report().summary.totalSales;
+    return this.report().summary.num_total_sales;
   }
-  
+
   /**
    * Retorna o volume total vendido em litros
    */
   protected getTotalVolume(): string {
-    return this.report().summary.totalVolumeLiters.toFixed(2);
+    return this.report().summary.num_total_volume_liters.toFixed(2);
   }
   
   /**
@@ -391,14 +391,14 @@ export class ReportsSectionComponent implements OnInit {
    */
   protected getTopBeer(): string {
     const salesByBeer = this.report().salesByBeerType;
-    
+
     if (salesByBeer.length === 0) {
       return 'N/A';
     }
-    
+
     // Já vem ordenado por totalLiters DESC do banco
     const topBeer = salesByBeer[0];
-    return topBeer.name;
+    return topBeer.desc_name;
   }
   
   /**
@@ -415,12 +415,12 @@ export class ReportsSectionComponent implements OnInit {
     let preferredSize = salesBySize[0];
 
     for (const sizeData of salesBySize) {
-      if (sizeData.count > preferredSize.count) {
+      if (sizeData.num_count > preferredSize.num_count) {
         preferredSize = sizeData;
       }
     }
 
-    return preferredSize.cupSize;
+    return preferredSize.num_cup_size;
   }
 
   /**
@@ -455,8 +455,8 @@ export class ReportsSectionComponent implements OnInit {
       return 'Todos os Eventos';
     }
 
-    const event = this.availableEvents().find(e => e.id === eventId);
-    return event ? event.nameEvent : 'Evento não encontrado';
+    const event = this.availableEvents().find(e => e.num_id === eventId);
+    return event ? event.desc_name_event : 'Evento não encontrado';
   }
   
   /**
@@ -477,7 +477,7 @@ export class ReportsSectionComponent implements OnInit {
    * Retorna a contagem de vendas
    */
   protected getSalesCount(): number {
-    return this.report().summary.totalSales;
+    return this.report().summary.num_total_sales;
   }
   
   /**
@@ -516,7 +516,7 @@ export class ReportsSectionComponent implements OnInit {
     const totalRevenue = this.getTotalRevenue();
     csvLines.push('=== RESUMO GERAL ===');
     csvLines.push('Total vendas;Volume Total(Litros);Valor Total(R$)');
-    csvLines.push(`="${report.summary.totalSales}";"${report.summary.totalVolumeLiters.toFixed(2)}";"${totalRevenue.toFixed(2)}"`);
+    csvLines.push(`="${report.summary.num_total_sales}";"${report.summary.num_total_volume_liters.toFixed(2)}";"${totalRevenue.toFixed(2)}"`);
     csvLines.push(''); // Linha em branco
 
     // ===========================================
@@ -527,7 +527,7 @@ export class ReportsSectionComponent implements OnInit {
 
     if (report.salesByBeerType.length > 0) {
       report.salesByBeerType.forEach(beer => {
-        csvLines.push(`${beer.name};"${beer.totalCups}";"${beer.totalLiters.toFixed(2)}";"${beer.totalRevenue.toFixed(2)}"`);
+        csvLines.push(`${beer.desc_name};"${beer.num_total_cups}";"${beer.num_total_liters.toFixed(2)}";"${beer.num_total_revenue.toFixed(2)}"`);
       });
     } else {
       csvLines.push('Nenhuma venda registrada;;;');
@@ -542,9 +542,9 @@ export class ReportsSectionComponent implements OnInit {
     csvLines.push('Tamanho(ml);Quantidade');
 
     if (report.salesByCupSize.length > 0) {
-      const sortedSizes = [...report.salesByCupSize].sort((a, b) => a.cupSize - b.cupSize);
+      const sortedSizes = [...report.salesByCupSize].sort((a, b) => a.num_cup_size - b.num_cup_size);
       sortedSizes.forEach(size => {
-        csvLines.push(`"${size.cupSize}";"${size.count}"`);
+        csvLines.push(`"${size.num_cup_size}";"${size.num_count}"`);
       });
     } else {
       csvLines.push('Nenhuma venda registrada;');
@@ -733,7 +733,7 @@ export class ReportsSectionComponent implements OnInit {
     }
 
     // Verificar se há dados no relatório
-    if (this.report().summary.totalSales === 0) {
+    if (this.report().summary.num_total_sales === 0) {
       this.showError('Não há dados para exportar. Faça algumas vendas primeiro.');
       return;
     }
@@ -797,7 +797,7 @@ export class ReportsSectionComponent implements OnInit {
    * Baixa o CSV localmente (sem enviar por email)
    */
   protected downloadCSV(): void {
-    if (this.report().summary.totalSales === 0) {
+    if (this.report().summary.num_total_sales === 0) {
       this.showError('Não há dados para exportar.');
       return;
     }

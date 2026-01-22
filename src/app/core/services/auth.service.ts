@@ -108,20 +108,20 @@ export class AuthService {
     }
 
     try {
-      if (this.usernameExists(dto.username)) return { success: false, message: 'Nome de usuário já está em uso' };
-      if (this.emailExists(dto.email)) return { success: false, message: 'Email já está cadastrado' };
+      if (this.usernameExists(dto.desc_username)) return { success: false, message: 'Nome de usuário já está em uso' };
+      if (this.emailExists(dto.desc_email)) return { success: false, message: 'Email já está cadastrado' };
 
       console.log('✅ Dados de registro validados. Criando usuário...');
-      console.log('🔐 Verifica usuario...', this.usernameExists(dto.username));
-      console.log('🔐 Verifica email...', this.emailExists(dto.email));
+      console.log('🔐 Verifica usuario...', this.usernameExists(dto.desc_username));
+      console.log('🔐 Verifica email...', this.emailExists(dto.desc_email));
 
 
-      const passwordHash = this.hashPassword(dto.password);
-      const role: UserRole = dto.role || 'user';
+      const passwordHash = this.hashPassword(dto.desc_password);
+      const role: UserRole = dto.desc_role || 'user';
 
-      var resultado = this.dbService.executeRun('INSERT INTO users (username, email, passwordHash, role) VALUES (?, ?, ?, ?)', [
-        dto.username.trim(),
-        dto.email.trim().toLowerCase(),
+      var resultado = this.dbService.executeRun('INSERT INTO prd_users (desc_username, desc_email, desc_password_hash, desc_role) VALUES (?, ?, ?, ?)', [
+        dto.desc_username.trim(),
+        dto.desc_email.trim().toLowerCase(),
         passwordHash,
         role,
       ]);
@@ -144,23 +144,23 @@ export class AuthService {
   }
 
   private validateRegistration(dto: CreateUserDto): { valid: boolean; error?: string } {
-    if (!dto.username || dto.username.trim().length === 0) {
+    if (!dto.desc_username || dto.desc_username.trim().length === 0) {
       return { valid: false, error: 'Nome de usuário é obrigatório' };
     }
-    if (!isValidUsername(dto.username)) {
+    if (!isValidUsername(dto.desc_username)) {
       return { valid: false, error: 'Nome de usuário inválido (mín. 3 caracteres, apenas letras, números, _ e -)' };
     }
-    if (!dto.email || dto.email.trim().length === 0) {
+    if (!dto.desc_email || dto.desc_email.trim().length === 0) {
       return { valid: false, error: 'Email é obrigatório' };
     }
-    if (!isValidEmail(dto.email)) {
+    if (!isValidEmail(dto.desc_email)) {
       return { valid: false, error: 'Email inválido' };
     }
-    if (!dto.password || dto.password.length === 0) {
+    if (!dto.desc_password || dto.desc_password.length === 0) {
       return { valid: false, error: 'Senha é obrigatória' };
     }
-    if (!isValidPassword(dto.password)) {
-      const error = getPasswordError(dto.password);
+    if (!isValidPassword(dto.desc_password)) {
+      const error = getPasswordError(dto.desc_password);
       return { valid: false, error: error || 'Senha inválida' };
     }
     return { valid: true };
@@ -173,13 +173,13 @@ export class AuthService {
     }
 
     try {
-      const user = this.findUserByEmailOrUsername(dto.emailOrUsername);
+      const user = this.findUserByEmailOrUsername(dto.desc_email_or_username);
       if (!user) return { success: false, message: 'Usuário ou senha incorretos' };
 
-      const passwordMatch = this.verifyPassword(dto.password, user.passwordHash);
+      const passwordMatch = this.verifyPassword(dto.desc_password, user.desc_password_hash);
       if (!passwordMatch) return { success: false, message: 'Usuário ou senha incorretos' };
 
-      this.updateLastLogin(user.id);
+      this.updateLastLogin(user.num_id);
       const session = userToSession(user);
       this.setSession(session);
 
@@ -235,7 +235,7 @@ export class AuthService {
         return;
       }
       this.currentSessionSignal.set(session);
-      console.log('✅ Sessão restaurada:', session.username);
+      console.log('✅ Sessão restaurada:', session.desc_username);
     } catch (error) {
       console.error('❌ Erro ao restaurar sessão:', error);
       this.clearSession();
@@ -245,7 +245,7 @@ export class AuthService {
   // ==================== QUERIES E SUPORTE ====================
   private usernameExists(username: string): boolean {
     try {
-      const result = this.dbService.executeQuery('SELECT id FROM users WHERE LOWER(username) = LOWER(?) LIMIT 1', [username.trim()]);
+      const result = this.dbService.executeQuery('SELECT num_id FROM prd_users WHERE LOWER(desc_username) = LOWER(?) LIMIT 1', [username.trim()]);
       return result.length > 0;
     } catch (error) {
       console.error('❌ Erro ao verificar username:', error);
@@ -255,7 +255,7 @@ export class AuthService {
 
   private emailExists(email: string): boolean {
     try {
-      const result = this.dbService.executeQuery('SELECT id FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [email.trim()]);
+      const result = this.dbService.executeQuery('SELECT num_id FROM prd_users WHERE LOWER(desc_email) = LOWER(?) LIMIT 1', [email.trim()]);
       return result.length > 0;
     } catch (error) {
       console.error('❌ Erro ao verificar email:', error);
@@ -265,7 +265,7 @@ export class AuthService {
 
   private getUserById(id: number): User | null {
     try {
-      const result = this.dbService.executeQuery('SELECT * FROM users WHERE id = ? LIMIT 1', [id]);
+      const result = this.dbService.executeQuery('SELECT * FROM prd_users WHERE num_id = ? LIMIT 1', [id]);
       if (result.length === 0) return null;
       return this.mapToUser(result[0]);
     } catch (error) {
@@ -277,7 +277,7 @@ export class AuthService {
   private findUserByEmailOrUsername(emailOrUsername: string): User | null {
     try {
       const input = emailOrUsername.trim().toLowerCase();
-      const result = this.dbService.executeQuery('SELECT * FROM users WHERE LOWER(email) = ? OR LOWER(username) = ? LIMIT 1', [input, input]);
+      const result = this.dbService.executeQuery('SELECT * FROM prd_users WHERE LOWER(desc_email) = ? OR LOWER(desc_username) = ? LIMIT 1', [input, input]);
       if (result.length === 0) return null;
       return this.mapToUser(result[0]);
     } catch (error) {
@@ -288,7 +288,7 @@ export class AuthService {
 
   private updateLastLogin(userId: number): void {
     try {
-      this.dbService.executeRun('UPDATE users SET lastLoginAt = ? WHERE id = ?', [new Date().toISOString(), userId]);
+      this.dbService.executeRun('UPDATE prd_users SET dt_last_login_at = ? WHERE num_id = ?', [new Date().toISOString(), userId]);
     } catch (error) {
       console.error('❌ Erro ao atualizar último login:', error);
     }
@@ -296,13 +296,13 @@ export class AuthService {
 
   private mapToUser(row: any): User {
     return {
-      id: Number(row.id),
-      username: row.username,
-      email: row.email,
-      passwordHash: row.passwordHash,
-      role: row.role as UserRole,
-      createdAt: row.createdAt,
-      lastLoginAt: row.lastLoginAt,
+      num_id: Number(row.num_id),
+      desc_username: row.desc_username,
+      desc_email: row.desc_email,
+      desc_password_hash: row.desc_password_hash,
+      desc_role: row.desc_role as UserRole,
+      dt_created_at: row.dt_created_at,
+      dt_last_login_at: row.dt_last_login_at,
     };
   }
 
@@ -335,7 +335,7 @@ export class AuthService {
     const session = this.currentSessionSignal();
     if (!session) return;
 
-    const user = this.getUserById(session.userId);
+    const user = this.getUserById(session.num_user_id);
     if (!user) {
       this.logout();
       return;

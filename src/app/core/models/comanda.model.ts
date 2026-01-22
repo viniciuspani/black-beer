@@ -11,31 +11,35 @@ export enum ComandaStatus {
 
 /**
  * Interface da comanda no banco de dados
+ * Convenção de nomenclatura:
+ * - num_ : Colunas INTEGER e REAL
+ * - desc_ : Colunas TEXT (dados gerais)
+ * - dt_ : Colunas TEXT com DEFAULT CURRENT_TIMESTAMP
  */
 export interface Comanda {
-  id: number;
-  numero: number;
-  status: ComandaStatus;
-  totalValue: number;
-  openedAt: string | null;
-  closedAt: string | null;
-  paidAt: string | null;
-  createdAt: string;
-  updatedAt: string;
+  num_id: number;
+  num_numero: number;
+  desc_status: ComandaStatus;
+  num_total_value: number;
+  dt_opened_at: string | null;
+  dt_closed_at: string | null;
+  dt_paid_at: string | null;
+  dt_created_at: string;
+  dt_updated_at: string;
 }
 
 /**
  * Item de venda dentro de uma comanda
  */
 export interface ComandaItem {
-  saleId: number;
-  beerId: number;
-  beerName: string;
-  cupSize: number;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
-  timestamp: string;
+  num_sale_id: number;
+  num_beer_id: number;
+  desc_beer_name: string;
+  num_cup_size: number;
+  num_quantity: number;
+  num_unit_price: number;
+  num_total_price: number;
+  dt_timestamp: string;
 }
 
 /**
@@ -52,9 +56,9 @@ export function isComanda(obj: any): obj is Comanda {
   return (
     typeof obj === 'object' &&
     obj !== null &&
-    typeof obj.id === 'number' &&
-    typeof obj.numero === 'number' &&
-    typeof obj.status === 'string' &&
-    Object.values(ComandaStatus).includes(obj.status)
+    typeof obj.num_id === 'number' &&
+    typeof obj.num_numero === 'number' &&
+    typeof obj.desc_status === 'string' &&
+    Object.values(ComandaStatus).includes(obj.desc_status)
   );
 }

@@ -5,8 +5,8 @@ import { BeerType, Sale } from '../models/beer.model';
 import { FullReport, SalesSummary, SalesByCupSize, SalesByBeerType } from '../models/report.model';
 import { isPlatformBrowser } from '@angular/common';
 
-const DB_STORAGE_KEY = 'black_beer_sqlite_db_v9'; // v9 para gestão de eventos
-const DB_VERSION = 9; // Versionamento do schema
+const DB_STORAGE_KEY = 'black_beer_sqlite_db_v10'; // v10 padronização de colunas
+const DB_VERSION = 10; // Versionamento do schema
 
 /**
  * Constantes para validação de emails
@@ -26,7 +26,12 @@ declare global {
 /**
  * Serviço responsável por gerenciar o banco de dados SQLite da aplicação
  *
- * VERSÃO ATUAL: 9 (schema unificado)
+ * VERSÃO ATUAL: 10 (padronização de colunas)
+ *
+ * CONVENÇÃO DE NOMENCLATURA:
+ * - num_ → Colunas INTEGER e REAL (ex: num_id, num_quantity, num_price_300ml)
+ * - desc_ → Colunas TEXT para dados gerais (ex: desc_name, desc_email)
+ * - dt_ → Colunas TEXT com TIMESTAMP (ex: dt_created_at, dt_timestamp)
  *
  * CARACTERÍSTICAS:
  * - IDs INTEGER com auto-increment em todas as tabelas
@@ -38,7 +43,7 @@ declare global {
  * - White-label (logo e nome da empresa)
  * - Relatórios detalhados com filtros por data e evento
  *
- * @version 9.0.0
+ * @version 10.0.0
  */
 @Injectable({
   providedIn: 'root'
@@ -66,12 +71,12 @@ export class DatabaseService {
         locateFile: (file: string) => `assets/${file}`
       });
 
-      // Tentar carregar banco existente V9
+      // Tentar carregar banco existente V10
       const savedDb = localStorage.getItem(DB_STORAGE_KEY);
 
       if (!savedDb) {
         // Não há DB, criar novo
-        console.log('🔄 Criando novo banco de dados (versão 9)...');
+        console.log('🔄 Criando novo banco de dados (versão 10)...');
         this.createNewDatabase();
       } else {
         // Carrega banco existente
@@ -92,225 +97,203 @@ export class DatabaseService {
   }
 
   /**
-   * Cria um novo banco de dados do zero com schema v9
+   * Cria um novo banco de dados do zero com schema v10
    */
   private createNewDatabase(): void {
     this.db = new this.SQL.Database();
-    this.createSchemaV9();
+    this.createSchemaV10();
     this.seedInitialData();
     this.setStoredVersion(DB_VERSION);
     this.persist();
   }
 
   /**
-   * Cria o schema do banco de dados versão 9 (unificado)
+   * Cria o schema do banco de dados versão 10 (padronização de colunas)
+   *
+   * CONVENÇÃO DE NOMENCLATURA:
+   * - num_ → Colunas INTEGER e REAL
+   * - desc_ → Colunas TEXT (dados gerais)
+   * - dt_ → Colunas TEXT com TIMESTAMP
    *
    * ESTRUTURA COMPLETA DO BANCO DE DADOS:
    *
    * TABELAS PRINCIPAIS:
-   * - beer_types: Tipos de cerveja disponíveis (IDs INTEGER auto-increment)
-   * - sales: Registro de vendas (vinculadas a cerveja, usuário, comanda e/ou evento)
-   * - users: Usuários do sistema (autenticação e controle de acesso)
-   * - events: Eventos de venda (com status: planejamento, ativo, finalizado)
-   * - comandas: Gestão de comandas/tabs de clientes
+   * - prd_beer_types: Tipos de cerveja disponíveis
+   * - prd_sales: Registro de vendas
+   * - prd_users: Usuários do sistema
+   * - prd_events: Eventos de venda
+   * - prd_comandas: Gestão de comandas/tabs
    *
    * TABELAS DE CONFIGURAÇÃO:
-   * - settings: Configurações gerais (emails para relatórios)
-   * - client_config: White-label (logo e nome da empresa)
-   * - sales_config: Preços por cerveja e tamanho de copo (com suporte a eventos)
-   * - event_sale: Estoque por cerveja (com suporte a eventos)
-   * - stock_alert_config: Configuração de alertas de estoque baixo
+   * - config_settings: Configurações gerais (emails)
+   * - config_client: White-label (logo e nome)
+   * - config_sales: Preços por cerveja
+   * - config_event_sale: Estoque por cerveja
+   * - config_stock_alert: Alertas de estoque
    *
    * RELACIONAMENTOS:
-   * - sales.beerId → beer_types.id (CASCADE)
-   * - sales.userId → users.id
-   * - sales.comandaId → comandas.id (SET NULL)
-   * - sales.eventId → events.id (SET NULL)
-   * - sales_config.beerId → beer_types.id (CASCADE)
-   * - sales_config.eventId → events.id (CASCADE)
-   * - event_sale.beerId → beer_types.id (CASCADE)
-   * - event_sale.eventId → events.id (CASCADE)
+   * - prd_sales.num_beer_id → prd_beer_types.num_id (CASCADE)
+   * - prd_sales.num_user_id → prd_users.num_id
+   * - prd_sales.num_comanda_id → prd_comandas.num_id (SET NULL)
+   * - prd_sales.num_event_id → prd_events.num_id (SET NULL)
    */
-  private createSchemaV9(): void {
+  private createSchemaV10(): void {
     if (!this.db) return;
 
-   const schema = `
-      -- Tabela de tipos de cerveja com ID INTEGER
-      CREATE TABLE IF NOT EXISTS beer_types (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL UNIQUE,
-        color TEXT NOT NULL DEFAULT '#D4A574',
-        description TEXT
+    const schema = `
+      -- Tabela de tipos de cerveja
+      CREATE TABLE IF NOT EXISTS prd_beer_types (
+        num_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        desc_name TEXT NOT NULL UNIQUE,
+        desc_color TEXT NOT NULL DEFAULT '#D4A574',
+        desc_description TEXT
       );
 
-      -- Tabela de vendas com IDs INTEGER e FK
-      -- Permite vincular vendas a cerveja, usuário, comanda e/ou evento
-      CREATE TABLE IF NOT EXISTS sales (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        beerId INTEGER NOT NULL,
-        beerName TEXT NOT NULL,
-        cupSize INTEGER NOT NULL CHECK(cupSize IN (300, 500, 1000)),
-        quantity INTEGER NOT NULL CHECK(quantity > 0),
-        timestamp TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        totalVolume REAL NOT NULL CHECK(totalVolume > 0),
-        comandaId INTEGER,
-        userId INTEGER NOT NULL,
-        eventId INTEGER,
-        FOREIGN KEY (beerId) REFERENCES beer_types(id) ON DELETE CASCADE,
-        FOREIGN KEY (comandaId) REFERENCES comandas(id) ON DELETE SET NULL,
-        FOREIGN KEY (userId) REFERENCES users(id),
-        FOREIGN KEY (eventId) REFERENCES events(id) ON DELETE SET NULL
+      -- Tabela de vendas
+      CREATE TABLE IF NOT EXISTS prd_sales (
+        num_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        num_beer_id INTEGER NOT NULL,
+        desc_beer_name TEXT NOT NULL,
+        num_cup_size INTEGER NOT NULL CHECK(num_cup_size IN (300, 500, 1000)),
+        num_quantity INTEGER NOT NULL CHECK(num_quantity > 0),
+        dt_timestamp TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        num_total_volume REAL NOT NULL CHECK(num_total_volume > 0),
+        num_comanda_id INTEGER,
+        num_user_id INTEGER NOT NULL,
+        num_event_id INTEGER,
+        FOREIGN KEY (num_beer_id) REFERENCES prd_beer_types(num_id) ON DELETE CASCADE,
+        FOREIGN KEY (num_comanda_id) REFERENCES prd_comandas(num_id) ON DELETE SET NULL,
+        FOREIGN KEY (num_user_id) REFERENCES prd_users(num_id),
+        FOREIGN KEY (num_event_id) REFERENCES prd_events(num_id) ON DELETE SET NULL
       );
 
-      -- Índice para melhorar performance em queries por data
-      CREATE INDEX IF NOT EXISTS idx_sales_timestamp ON sales(timestamp);
+      -- Índices para prd_sales
+      CREATE INDEX IF NOT EXISTS idx_sales_dt_timestamp ON prd_sales(dt_timestamp);
+      CREATE INDEX IF NOT EXISTS idx_sales_num_beer_id ON prd_sales(num_beer_id);
+      CREATE INDEX IF NOT EXISTS idx_sales_num_comanda_id ON prd_sales(num_comanda_id);
+      CREATE INDEX IF NOT EXISTS idx_sales_num_user_id ON prd_sales(num_user_id);
+      CREATE INDEX IF NOT EXISTS idx_sales_num_event_id ON prd_sales(num_event_id);
 
-      -- Índice para melhorar performance em queries por cerveja
-      CREATE INDEX IF NOT EXISTS idx_sales_beerId ON sales(beerId);
-
-      -- Índice para melhorar performance em queries por comanda
-      CREATE INDEX IF NOT EXISTS idx_sales_comandaId ON sales(comandaId);
-
-      -- Índice para melhorar performance em queries por usuário
-      CREATE INDEX IF NOT EXISTS idx_sales_userId ON sales(userId);
-
-      -- Índice para melhorar performance em queries por evento
-      CREATE INDEX IF NOT EXISTS idx_sales_eventId ON sales(eventId);
-
-      -- Tabela de configurações reestruturada
-      CREATE TABLE IF NOT EXISTS settings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT NOT NULL UNIQUE,
-        isConfigured INTEGER NOT NULL DEFAULT 0 CHECK(isConfigured IN (0, 1))
+      -- Tabela de configurações
+      CREATE TABLE IF NOT EXISTS config_settings (
+        num_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        desc_email TEXT NOT NULL UNIQUE,
+        num_is_configured INTEGER NOT NULL DEFAULT 0 CHECK(num_is_configured IN (0, 1))
       );
 
-      -- Tabela de usuários (NOVO)
-      CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL UNIQUE,
-        email TEXT NOT NULL UNIQUE,
-        passwordHash TEXT NOT NULL,
-        role TEXT NOT NULL CHECK(role IN ('user', 'admin')) DEFAULT 'user',
-        createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        lastLoginAt TEXT
+      -- Tabela de usuários
+      CREATE TABLE IF NOT EXISTS prd_users (
+        num_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        desc_username TEXT NOT NULL UNIQUE,
+        desc_email TEXT NOT NULL UNIQUE,
+        desc_password_hash TEXT NOT NULL,
+        desc_role TEXT NOT NULL CHECK(desc_role IN ('user', 'admin')) DEFAULT 'user',
+        dt_created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        dt_last_login_at TEXT
       );
 
-      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-      CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+      CREATE INDEX IF NOT EXISTS idx_users_desc_email ON prd_users(desc_email);
+      CREATE INDEX IF NOT EXISTS idx_users_desc_username ON prd_users(desc_username);
 
       -- Tabela de eventos
-      -- Gerencia eventos de venda com configurações isoladas de estoque e preços
-      CREATE TABLE IF NOT EXISTS events (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nameEvent TEXT NOT NULL,
-        localEvent TEXT NOT NULL,
-        dataEvent TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        contactEvent TEXT,
-        nameContactEvent TEXT,
-        status TEXT NOT NULL CHECK(status IN ('planejamento', 'ativo', 'finalizado')) DEFAULT 'planejamento',
-        createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      CREATE TABLE IF NOT EXISTS prd_events (
+        num_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        desc_name_event TEXT NOT NULL,
+        desc_local_event TEXT NOT NULL,
+        dt_data_event TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        desc_contact_event TEXT,
+        desc_name_contact_event TEXT,
+        desc_status TEXT NOT NULL CHECK(desc_status IN ('planejamento', 'ativo', 'finalizado')) DEFAULT 'planejamento',
+        dt_created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        dt_updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
 
-      CREATE INDEX IF NOT EXISTS idx_events_status ON events(status);
-      CREATE INDEX IF NOT EXISTS idx_events_dataEvent ON events(dataEvent);
+      CREATE INDEX IF NOT EXISTS idx_events_desc_status ON prd_events(desc_status);
+      CREATE INDEX IF NOT EXISTS idx_events_dt_data_event ON prd_events(dt_data_event);
 
       -- Tabela de configurações do cliente (white-label)
-      CREATE TABLE IF NOT EXISTS client_config (
-        id INTEGER PRIMARY KEY CHECK(id = 1),
-        companyName TEXT,
-        logoBase64 TEXT,
-        logoMimeType TEXT,
-        logoFileName TEXT,
-        updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      CREATE TABLE IF NOT EXISTS config_client (
+        num_id INTEGER PRIMARY KEY CHECK(num_id = 1),
+        desc_company_name TEXT,
+        desc_logo_base64 TEXT,
+        desc_logo_mime_type TEXT,
+        desc_logo_file_name TEXT,
+        dt_updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
 
       -- Tabela de estoque por evento
-      -- Armazena a quantidade de litros disponível de cada cerveja
-      -- Suporta configuração por evento (eventId NULL = estoque geral)
-      CREATE TABLE IF NOT EXISTS event_sale (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        beerId INTEGER NOT NULL,
-        beerName TEXT NOT NULL,
-        quantidadeLitros REAL NOT NULL DEFAULT 0 CHECK(quantidadeLitros >= 0),
-        minLitersAlert REAL DEFAULT 5.0 CHECK(minLitersAlert >= 0),
-        eventId INTEGER,
-        createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (beerId) REFERENCES beer_types(id) ON DELETE CASCADE,
-        FOREIGN KEY (eventId) REFERENCES events(id) ON DELETE CASCADE,
-        UNIQUE(beerId, eventId)
+      CREATE TABLE IF NOT EXISTS config_event_sale (
+        num_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        num_beer_id INTEGER NOT NULL,
+        desc_beer_name TEXT NOT NULL,
+        num_quantidade_litros REAL NOT NULL DEFAULT 0 CHECK(num_quantidade_litros >= 0),
+        num_min_liters_alert REAL DEFAULT 5.0 CHECK(num_min_liters_alert >= 0),
+        num_event_id INTEGER,
+        dt_created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        dt_updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (num_beer_id) REFERENCES prd_beer_types(num_id) ON DELETE CASCADE,
+        FOREIGN KEY (num_event_id) REFERENCES prd_events(num_id) ON DELETE CASCADE,
+        UNIQUE(num_beer_id, num_event_id)
       );
 
-      -- Índice para melhorar performance em queries por cerveja
-      CREATE INDEX IF NOT EXISTS idx_event_sale_beerId ON event_sale(beerId);
-
-      -- Índice para melhorar performance em queries por evento
-      CREATE INDEX IF NOT EXISTS idx_event_sale_eventId ON event_sale(eventId);
+      CREATE INDEX IF NOT EXISTS idx_event_sale_num_beer_id ON config_event_sale(num_beer_id);
+      CREATE INDEX IF NOT EXISTS idx_event_sale_num_event_id ON config_event_sale(num_event_id);
 
       -- Tabela de configuração de alertas de estoque
-      -- Armazena o limite mínimo de litros para emitir alerta
-      CREATE TABLE IF NOT EXISTS stock_alert_config (
-        id INTEGER PRIMARY KEY CHECK(id = 1),
-        minLiters REAL NOT NULL DEFAULT 5.0 CHECK(minLiters >= 0),
-        updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      CREATE TABLE IF NOT EXISTS config_stock_alert (
+        num_id INTEGER PRIMARY KEY CHECK(num_id = 1),
+        num_min_liters REAL NOT NULL DEFAULT 5.0 CHECK(num_min_liters >= 0),
+        dt_updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
 
       -- Insere configuração padrão de alerta (5 litros)
-      INSERT OR IGNORE INTO stock_alert_config (id, minLiters) VALUES (1, 5.0);
+      INSERT OR IGNORE INTO config_stock_alert (num_id, num_min_liters) VALUES (1, 5.0);
 
       -- Tabela de configuração de preços por cerveja
-      -- Armazena o preço de cada cerveja por tamanho de copo
-      -- Suporta configuração por evento (eventId NULL = preços gerais)
-      CREATE TABLE IF NOT EXISTS sales_config (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        beerId INTEGER NOT NULL,
-        beerName TEXT NOT NULL,
-        price300ml REAL NOT NULL DEFAULT 0 CHECK(price300ml >= 0),
-        price500ml REAL NOT NULL DEFAULT 0 CHECK(price500ml >= 0),
-        price1000ml REAL NOT NULL DEFAULT 0 CHECK(price1000ml >= 0),
-        eventId INTEGER,
-        createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (beerId) REFERENCES beer_types(id) ON DELETE CASCADE,
-        FOREIGN KEY (eventId) REFERENCES events(id) ON DELETE CASCADE,
-        UNIQUE(beerId, eventId)
+      CREATE TABLE IF NOT EXISTS config_sales (
+        num_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        num_beer_id INTEGER NOT NULL,
+        desc_beer_name TEXT NOT NULL,
+        num_price_300ml REAL NOT NULL DEFAULT 0 CHECK(num_price_300ml >= 0),
+        num_price_500ml REAL NOT NULL DEFAULT 0 CHECK(num_price_500ml >= 0),
+        num_price_1000ml REAL NOT NULL DEFAULT 0 CHECK(num_price_1000ml >= 0),
+        num_event_id INTEGER,
+        dt_created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        dt_updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (num_beer_id) REFERENCES prd_beer_types(num_id) ON DELETE CASCADE,
+        FOREIGN KEY (num_event_id) REFERENCES prd_events(num_id) ON DELETE CASCADE,
+        UNIQUE(num_beer_id, num_event_id)
       );
 
-      -- Índice para melhorar performance em queries por cerveja
-      CREATE INDEX IF NOT EXISTS idx_sales_config_beerId ON sales_config(beerId);
-
-      -- Índice para melhorar performance em queries por evento
-      CREATE INDEX IF NOT EXISTS idx_sales_config_eventId ON sales_config(eventId);
+      CREATE INDEX IF NOT EXISTS idx_sales_config_num_beer_id ON config_sales(num_beer_id);
+      CREATE INDEX IF NOT EXISTS idx_sales_config_num_event_id ON config_sales(num_event_id);
 
       -- Tabela de comandas
-      -- Armazena o estado de cada comanda (disponível, em uso, aguardando pagamento)
-      CREATE TABLE IF NOT EXISTS comandas (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        numero INTEGER NOT NULL UNIQUE,
-        status TEXT NOT NULL CHECK(status IN ('disponivel', 'em_uso', 'aguardando_pagamento')) DEFAULT 'disponivel',
-        totalValue REAL DEFAULT 0,
-        openedAt TEXT,
-        closedAt TEXT,
-        paidAt TEXT,
-        createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      CREATE TABLE IF NOT EXISTS prd_comandas (
+        num_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        num_numero INTEGER NOT NULL UNIQUE,
+        desc_status TEXT NOT NULL CHECK(desc_status IN ('disponivel', 'em_uso', 'aguardando_pagamento')) DEFAULT 'disponivel',
+        num_total_value REAL DEFAULT 0,
+        dt_opened_at TEXT,
+        dt_closed_at TEXT,
+        dt_paid_at TEXT,
+        dt_created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        dt_updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- Índices para melhorar performance em queries por status e número
-      CREATE INDEX IF NOT EXISTS idx_comandas_status ON comandas(status);
-      CREATE INDEX IF NOT EXISTS idx_comandas_numero ON comandas(numero);
+      CREATE INDEX IF NOT EXISTS idx_comandas_desc_status ON prd_comandas(desc_status);
+      CREATE INDEX IF NOT EXISTS idx_comandas_num_numero ON prd_comandas(num_numero);
 
       -- Tabela de versão do schema
       CREATE TABLE IF NOT EXISTS db_version (
-        version INTEGER PRIMARY KEY
+        num_version INTEGER PRIMARY KEY
       );
 
-      INSERT INTO db_version (version) VALUES (${DB_VERSION});
+      INSERT INTO db_version (num_version) VALUES (${DB_VERSION});
     `;
 
     this.db.exec(schema);
-    console.log('✅ Schema V9 criado com sucesso');
+    console.log('✅ Schema V10 criado com sucesso');
     // Seed de comandas iniciais
     this.seedInitialComandas(10);
     // Cria admin padrão
@@ -326,18 +309,18 @@ export class DatabaseService {
 
     // Beer types com IDs automáticos (1, 2, 3, 4)
     const defaultBeers = [
-      { name: 'Pilsen', color: '#f9e79f', description: 'Clara e refrescante.' },
-      { name: 'Larger', color: '#f39c12', description: 'Amarga e aromática.' },
-      { name: 'IPA', color: '#f1c40f', description: 'Leve e frutada.' },
-      { name: 'Session IPA', color: '#8B4513', description: 'Escura e robusta.' }
+      { desc_name: 'Pilsen', desc_color: '#f9e79f', desc_description: 'Clara e refrescante.' },
+      { desc_name: 'Larger', desc_color: '#f39c12', desc_description: 'Amarga e aromática.' },
+      { desc_name: 'IPA', desc_color: '#f1c40f', desc_description: 'Leve e frutada.' },
+      { desc_name: 'Session IPA', desc_color: '#8B4513', desc_description: 'Escura e robusta.' }
     ];
 
     const insertBeerStmt = this.db.prepare(
-      'INSERT INTO beer_types (name, color, description) VALUES (?, ?, ?)'
+      'INSERT INTO prd_beer_types (desc_name, desc_color, desc_description) VALUES (?, ?, ?)'
     );
 
     defaultBeers.forEach(beer => {
-      insertBeerStmt.run([beer.name, beer.color, beer.description]);
+      insertBeerStmt.run([beer.desc_name, beer.desc_color, beer.desc_description]);
     });
 
     insertBeerStmt.free();
@@ -356,7 +339,7 @@ export class DatabaseService {
 
     for (let i = 1; i <= count; i++) {
       this.executeRun(
-        `INSERT INTO comandas (numero, status) VALUES (?, ?)`,
+        `INSERT INTO prd_comandas (num_numero, desc_status) VALUES (?, ?)`,
         [i, 'disponivel']
       );
     }
@@ -373,7 +356,7 @@ export class DatabaseService {
     if (!this.db) return 0;
 
     try {
-      const result = this.db.exec('SELECT version FROM db_version LIMIT 1');
+      const result = this.db.exec('SELECT num_version FROM db_version LIMIT 1');
       if (result.length > 0 && result[0].values.length > 0) {
         return Number(result[0].values[0][0]);
       }
@@ -475,9 +458,17 @@ export class DatabaseService {
 
   /**
    * Converte Uint8Array para string base64
+   * Usa chunks para evitar "Maximum call stack size exceeded"
    */
-  private uint8ArrayToString = (arr: Uint8Array): string =>
-    btoa(String.fromCharCode.apply(null, Array.from(arr)));
+  private uint8ArrayToString = (arr: Uint8Array): string => {
+    const CHUNK_SIZE = 8192;
+    let result = '';
+    for (let i = 0; i < arr.length; i += CHUNK_SIZE) {
+      const chunk = arr.subarray(i, i + CHUNK_SIZE);
+      result += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    return btoa(result);
+  };
 
   /**
    * Converte string base64 para Uint8Array
@@ -534,10 +525,10 @@ export class DatabaseService {
     }
 
     try {
-      const salesCount = this.executeQuery('SELECT COUNT(*) as count FROM sales')[0]?.count || 0;
-      const beerTypesCount = this.executeQuery('SELECT COUNT(*) as count FROM beer_types')[0]?.count || 0;
-      const settingsCount = this.executeQuery('SELECT COUNT(*) as count FROM settings')[0]?.count || 0;
-      const version = this.executeQuery('SELECT version FROM db_version LIMIT 1')[0]?.version || 0;
+      const salesCount = this.executeQuery('SELECT COUNT(*) as count FROM prd_sales')[0]?.count || 0;
+      const beerTypesCount = this.executeQuery('SELECT COUNT(*) as count FROM prd_beer_types')[0]?.count || 0;
+      const settingsCount = this.executeQuery('SELECT COUNT(*) as count FROM config_settings')[0]?.count || 0;
+      const version = this.executeQuery('SELECT num_version FROM db_version LIMIT 1')[0]?.num_version || 0;
 
       return {
         totalSales: Number(salesCount),
@@ -567,22 +558,22 @@ export class DatabaseService {
   public getFullReport(startDate?: Date, endDate?: Date, eventId?: number): FullReport {
     if (!this.db) {
       return {
-        summary: { totalSales: 0, totalVolumeLiters: 0 },
+        summary: { num_total_sales: 0, num_total_volume_liters: 0 },
         salesByCupSize: [],
         salesByBeerType: []
       };
     }
 
     // Construir WHERE clauses separadas para queries com e sem JOIN
-    let whereClauseSales = ''; // Para queries simples (sales apenas)
-    let whereClauseJoin = '';  // Para queries com JOIN (sales + beer_types + sales_config)
+    let whereClauseSales = ''; // Para queries simples (prd_sales apenas)
+    let whereClauseJoin = '';  // Para queries com JOIN (prd_sales + prd_beer_types + config_sales)
     const params: any[] = [];
     const paramsJoin: any[] = [];
 
     // Filtro de data inicial
     if (startDate) {
-      whereClauseSales += ' WHERE timestamp >= ?';
-      whereClauseJoin += ' WHERE s.timestamp >= ?';
+      whereClauseSales += ' WHERE dt_timestamp >= ?';
+      whereClauseJoin += ' WHERE s.dt_timestamp >= ?';
       params.push(startDate.toISOString());
       paramsJoin.push(startDate.toISOString());
     }
@@ -593,90 +584,90 @@ export class DatabaseService {
       endOfDay.setDate(endOfDay.getDate() + 1);
       endOfDay.setSeconds(endOfDay.getSeconds() - 1);
 
-      whereClauseSales += whereClauseSales ? ' AND timestamp <= ?' : ' WHERE timestamp <= ?';
-      whereClauseJoin += whereClauseJoin ? ' AND s.timestamp <= ?' : ' WHERE s.timestamp <= ?';
+      whereClauseSales += whereClauseSales ? ' AND dt_timestamp <= ?' : ' WHERE dt_timestamp <= ?';
+      whereClauseJoin += whereClauseJoin ? ' AND s.dt_timestamp <= ?' : ' WHERE s.dt_timestamp <= ?';
       params.push(endOfDay.toISOString());
       paramsJoin.push(endOfDay.toISOString());
     }
 
     // Filtro de evento (CRÍTICO: usar alias correto para evitar ambiguidade)
     if (eventId !== undefined) {
-      whereClauseSales += whereClauseSales ? ' AND eventId = ?' : ' WHERE eventId = ?';
-      whereClauseJoin += whereClauseJoin ? ' AND s.eventId = ?' : ' WHERE s.eventId = ?';
+      whereClauseSales += whereClauseSales ? ' AND num_event_id = ?' : ' WHERE num_event_id = ?';
+      whereClauseJoin += whereClauseJoin ? ' AND s.num_event_id = ?' : ' WHERE s.num_event_id = ?';
       params.push(eventId);
       paramsJoin.push(eventId);
     }
 
-    // Query de resumo (tabela sales apenas)
+    // Query de resumo (tabela prd_sales apenas)
     const summaryQuery = `
       SELECT
-        COUNT(id) as totalSales,
-        COALESCE(SUM(totalVolume) / 1000.0, 0) as totalVolumeLiters
-      FROM sales
+        COUNT(num_id) as num_total_sales,
+        COALESCE(SUM(num_total_volume) / 1000.0, 0) as num_total_volume_liters
+      FROM prd_sales
       ${whereClauseSales}
     `;
     const summaryResult = this.executeQuery(summaryQuery, params)[0] || {
-      totalSales: 0,
-      totalVolumeLiters: 0
+      num_total_sales: 0,
+      num_total_volume_liters: 0
     };
 
-    // Query por tamanho de copo (tabela sales apenas)
+    // Query por tamanho de copo (tabela prd_sales apenas)
     const byCupSizeQuery = `
       SELECT
-        cupSize,
-        SUM(quantity) as count
-      FROM sales
+        num_cup_size,
+        SUM(num_quantity) as num_count
+      FROM prd_sales
       ${whereClauseSales}
-      GROUP BY cupSize
-      ORDER BY cupSize
+      GROUP BY num_cup_size
+      ORDER BY num_cup_size
     `;
     const salesByCupSize = this.executeQuery(byCupSizeQuery, params);
 
-    // Query por tipo de cerveja (JOIN com beer_types e sales_config)
+    // Query por tipo de cerveja (JOIN com prd_beer_types e config_sales)
     // IMPORTANTE: Usar whereClauseJoin que qualifica colunas com alias 's.'
     const byBeerTypeQuery = `
       SELECT
-        bt.id as beerId,
-        bt.name,
-        bt.color,
-        bt.description,
-        SUM(s.quantity) as totalCups,
-        COALESCE(SUM(s.totalVolume) / 1000.0, 0) as totalLiters,
+        bt.num_id as num_beer_id,
+        bt.desc_name,
+        bt.desc_color,
+        bt.desc_description,
+        SUM(s.num_quantity) as num_total_cups,
+        COALESCE(SUM(s.num_total_volume) / 1000.0, 0) as num_total_liters,
         COALESCE(SUM(
           CASE
-            WHEN s.cupSize = 300 THEN s.quantity * COALESCE(sc.price300ml, 0)
-            WHEN s.cupSize = 500 THEN s.quantity * COALESCE(sc.price500ml, 0)
-            WHEN s.cupSize = 1000 THEN s.quantity * COALESCE(sc.price1000ml, 0)
+            WHEN s.num_cup_size = 300 THEN s.num_quantity * COALESCE(sc.num_price_300ml, 0)
+            WHEN s.num_cup_size = 500 THEN s.num_quantity * COALESCE(sc.num_price_500ml, 0)
+            WHEN s.num_cup_size = 1000 THEN s.num_quantity * COALESCE(sc.num_price_1000ml, 0)
             ELSE 0
           END
-        ), 0) as totalRevenue
-      FROM sales s
-      INNER JOIN beer_types bt ON s.beerId = bt.id
-      LEFT JOIN sales_config sc ON s.beerId = sc.beerId
+        ), 0) as num_total_revenue
+      FROM prd_sales s
+      INNER JOIN prd_beer_types bt ON s.num_beer_id = bt.num_id
+      LEFT JOIN config_sales sc ON s.num_beer_id = sc.num_beer_id
       ${whereClauseJoin}
-      GROUP BY bt.id, bt.name, bt.color, bt.description
-      ORDER BY totalLiters DESC
+      GROUP BY bt.num_id, bt.desc_name, bt.desc_color, bt.desc_description
+      ORDER BY num_total_liters DESC
     `;
 
     const salesByBeerType = this.executeQuery(byBeerTypeQuery, paramsJoin);
 
     return {
       summary: {
-        totalSales: Number(summaryResult.totalSales) || 0,
-        totalVolumeLiters: Number(summaryResult.totalVolumeLiters) || 0,
+        num_total_sales: Number(summaryResult.num_total_sales) || 0,
+        num_total_volume_liters: Number(summaryResult.num_total_volume_liters) || 0,
       },
       salesByCupSize: salesByCupSize.map(item => ({
-        cupSize: Number(item.cupSize),
-        count: Number(item.count)
+        num_cup_size: Number(item.num_cup_size),
+        num_count: Number(item.num_count)
       })),
       salesByBeerType: salesByBeerType.map(item => ({
-        beerId: Number(item.beerId), // Agora é INTEGER
-        name: item.name,
-        color: item.color,
-        description: item.description,
-        totalCups: Number(item.totalCups),
-        totalLiters: Number(item.totalLiters),
-        totalRevenue: Number(item.totalRevenue) || 0
+        num_beer_id: Number(item.num_beer_id),
+        desc_name: item.desc_name,
+        desc_color: item.desc_color,
+        desc_description: item.desc_description,
+        num_total_cups: Number(item.num_total_cups),
+        num_total_liters: Number(item.num_total_liters),
+        num_total_revenue: Number(item.num_total_revenue) || 0
       }))
     };
   }
@@ -692,12 +683,12 @@ export class DatabaseService {
   public getSalesDetailedByEvent(startDate?: Date, endDate?: Date): any[] {
     if (!this.db) return [];
 
-    let whereClause = 'WHERE s.eventId IS NOT NULL';
+    let whereClause = 'WHERE s.num_event_id IS NOT NULL';
     const params: any[] = [];
 
     // Filtro de data inicial
     if (startDate) {
-      whereClause += ' AND s.timestamp >= ?';
+      whereClause += ' AND s.dt_timestamp >= ?';
       params.push(startDate.toISOString());
     }
 
@@ -706,36 +697,36 @@ export class DatabaseService {
       const endOfDay = new Date(endDate);
       endOfDay.setDate(endOfDay.getDate() + 1);
       endOfDay.setSeconds(endOfDay.getSeconds() - 1);
-      whereClause += ' AND s.timestamp <= ?';
+      whereClause += ' AND s.dt_timestamp <= ?';
       params.push(endOfDay.toISOString());
     }
 
     const query = `
       SELECT
-        e.id as eventId,
-        e.nameEvent,
-        e.localEvent,
-        e.dataEvent,
-        DATE(s.timestamp) as saleDate,
-        COALESCE(u.username, 'Usuário Desconhecido') as username,
-        COUNT(s.id) as salesCount,
-        SUM(s.quantity) as totalQuantity,
-        COALESCE(SUM(s.totalVolume) / 1000.0, 0) as totalLiters,
+        e.num_id as eventId,
+        e.desc_name_event as nameEvent,
+        e.desc_local_event as localEvent,
+        e.dt_data_event as dataEvent,
+        DATE(s.dt_timestamp) as saleDate,
+        COALESCE(u.desc_username, 'Usuário Desconhecido') as username,
+        COUNT(s.num_id) as salesCount,
+        SUM(s.num_quantity) as totalQuantity,
+        COALESCE(SUM(s.num_total_volume) / 1000.0, 0) as totalLiters,
         COALESCE(SUM(
           CASE
-            WHEN s.cupSize = 300 THEN s.quantity * COALESCE(sc.price300ml, 0)
-            WHEN s.cupSize = 500 THEN s.quantity * COALESCE(sc.price500ml, 0)
-            WHEN s.cupSize = 1000 THEN s.quantity * COALESCE(sc.price1000ml, 0)
+            WHEN s.num_cup_size = 300 THEN s.num_quantity * COALESCE(sc.num_price_300ml, 0)
+            WHEN s.num_cup_size = 500 THEN s.num_quantity * COALESCE(sc.num_price_500ml, 0)
+            WHEN s.num_cup_size = 1000 THEN s.num_quantity * COALESCE(sc.num_price_1000ml, 0)
             ELSE 0
           END
         ), 0) as totalRevenue
-      FROM sales s
-      INNER JOIN events e ON s.eventId = e.id
-      LEFT JOIN users u ON s.userId = u.id
-      LEFT JOIN sales_config sc ON s.beerId = sc.beerId AND (sc.eventId = s.eventId OR sc.eventId IS NULL)
+      FROM prd_sales s
+      INNER JOIN prd_events e ON s.num_event_id = e.num_id
+      LEFT JOIN prd_users u ON s.num_user_id = u.num_id
+      LEFT JOIN config_sales sc ON s.num_beer_id = sc.num_beer_id AND (sc.num_event_id = s.num_event_id OR sc.num_event_id IS NULL)
       ${whereClause}
-      GROUP BY e.id, e.nameEvent, e.localEvent, e.dataEvent, DATE(s.timestamp), username
-      ORDER BY e.dataEvent DESC, saleDate DESC, username
+      GROUP BY e.num_id, e.desc_name_event, e.desc_local_event, e.dt_data_event, DATE(s.dt_timestamp), username
+      ORDER BY e.dt_data_event DESC, saleDate DESC, username
     `;
 
     return this.executeQuery(query, params).map(row => ({
@@ -763,12 +754,12 @@ export class DatabaseService {
   public getSalesDetailedWithoutEvent(startDate?: Date, endDate?: Date): any[] {
     if (!this.db) return [];
 
-    let whereClause = 'WHERE s.eventId IS NULL';
+    let whereClause = 'WHERE s.num_event_id IS NULL';
     const params: any[] = [];
 
     // Filtro de data inicial
     if (startDate) {
-      whereClause += ' AND s.timestamp >= ?';
+      whereClause += ' AND s.dt_timestamp >= ?';
       params.push(startDate.toISOString());
     }
 
@@ -777,30 +768,30 @@ export class DatabaseService {
       const endOfDay = new Date(endDate);
       endOfDay.setDate(endOfDay.getDate() + 1);
       endOfDay.setSeconds(endOfDay.getSeconds() - 1);
-      whereClause += ' AND s.timestamp <= ?';
+      whereClause += ' AND s.dt_timestamp <= ?';
       params.push(endOfDay.toISOString());
     }
 
     const query = `
       SELECT
-        DATE(s.timestamp) as saleDate,
-        COALESCE(u.username, 'Usuário Desconhecido') as username,
-        COUNT(s.id) as salesCount,
-        SUM(s.quantity) as totalQuantity,
-        COALESCE(SUM(s.totalVolume) / 1000.0, 0) as totalLiters,
+        DATE(s.dt_timestamp) as saleDate,
+        COALESCE(u.desc_username, 'Usuário Desconhecido') as username,
+        COUNT(s.num_id) as salesCount,
+        SUM(s.num_quantity) as totalQuantity,
+        COALESCE(SUM(s.num_total_volume) / 1000.0, 0) as totalLiters,
         COALESCE(SUM(
           CASE
-            WHEN s.cupSize = 300 THEN s.quantity * COALESCE(sc.price300ml, 0)
-            WHEN s.cupSize = 500 THEN s.quantity * COALESCE(sc.price500ml, 0)
-            WHEN s.cupSize = 1000 THEN s.quantity * COALESCE(sc.price1000ml, 0)
+            WHEN s.num_cup_size = 300 THEN s.num_quantity * COALESCE(sc.num_price_300ml, 0)
+            WHEN s.num_cup_size = 500 THEN s.num_quantity * COALESCE(sc.num_price_500ml, 0)
+            WHEN s.num_cup_size = 1000 THEN s.num_quantity * COALESCE(sc.num_price_1000ml, 0)
             ELSE 0
           END
         ), 0) as totalRevenue
-      FROM sales s
-      LEFT JOIN users u ON s.userId = u.id
-      LEFT JOIN sales_config sc ON s.beerId = sc.beerId AND sc.eventId IS NULL
+      FROM prd_sales s
+      LEFT JOIN prd_users u ON s.num_user_id = u.num_id
+      LEFT JOIN config_sales sc ON s.num_beer_id = sc.num_beer_id AND sc.num_event_id IS NULL
       ${whereClause}
-      GROUP BY DATE(s.timestamp), username
+      GROUP BY DATE(s.dt_timestamp), username
       ORDER BY saleDate DESC, username
     `;
 
@@ -825,12 +816,12 @@ export class DatabaseService {
   public getEventTotals(startDate?: Date, endDate?: Date): any[] {
     if (!this.db) return [];
 
-    let whereClause = 'WHERE s.eventId IS NOT NULL';
+    let whereClause = 'WHERE s.num_event_id IS NOT NULL';
     const params: any[] = [];
 
     // Filtro de data inicial
     if (startDate) {
-      whereClause += ' AND s.timestamp >= ?';
+      whereClause += ' AND s.dt_timestamp >= ?';
       params.push(startDate.toISOString());
     }
 
@@ -839,31 +830,31 @@ export class DatabaseService {
       const endOfDay = new Date(endDate);
       endOfDay.setDate(endOfDay.getDate() + 1);
       endOfDay.setSeconds(endOfDay.getSeconds() - 1);
-      whereClause += ' AND s.timestamp <= ?';
+      whereClause += ' AND s.dt_timestamp <= ?';
       params.push(endOfDay.toISOString());
     }
 
     const query = `
       SELECT
-        e.id as eventId,
-        e.nameEvent,
-        COUNT(s.id) as salesCount,
-        SUM(s.quantity) as totalQuantity,
-        COALESCE(SUM(s.totalVolume) / 1000.0, 0) as totalLiters,
+        e.num_id as eventId,
+        e.desc_name_event as nameEvent,
+        COUNT(s.num_id) as salesCount,
+        SUM(s.num_quantity) as totalQuantity,
+        COALESCE(SUM(s.num_total_volume) / 1000.0, 0) as totalLiters,
         COALESCE(SUM(
           CASE
-            WHEN s.cupSize = 300 THEN s.quantity * COALESCE(sc.price300ml, 0)
-            WHEN s.cupSize = 500 THEN s.quantity * COALESCE(sc.price500ml, 0)
-            WHEN s.cupSize = 1000 THEN s.quantity * COALESCE(sc.price1000ml, 0)
+            WHEN s.num_cup_size = 300 THEN s.num_quantity * COALESCE(sc.num_price_300ml, 0)
+            WHEN s.num_cup_size = 500 THEN s.num_quantity * COALESCE(sc.num_price_500ml, 0)
+            WHEN s.num_cup_size = 1000 THEN s.num_quantity * COALESCE(sc.num_price_1000ml, 0)
             ELSE 0
           END
         ), 0) as totalRevenue
-      FROM sales s
-      INNER JOIN events e ON s.eventId = e.id
-      LEFT JOIN sales_config sc ON s.beerId = sc.beerId AND (sc.eventId = s.eventId OR sc.eventId IS NULL)
+      FROM prd_sales s
+      INNER JOIN prd_events e ON s.num_event_id = e.num_id
+      LEFT JOIN config_sales sc ON s.num_beer_id = sc.num_beer_id AND (sc.num_event_id = s.num_event_id OR sc.num_event_id IS NULL)
       ${whereClause}
-      GROUP BY e.id, e.nameEvent
-      ORDER BY e.dataEvent DESC
+      GROUP BY e.num_id, e.desc_name_event
+      ORDER BY e.dt_data_event DESC
     `;
 
     return this.executeQuery(query, params).map(row => ({
@@ -947,22 +938,22 @@ export class DatabaseService {
       console.log(`📦 Versão do banco: ${currentVersion}`);
 
       // Verifica se tabelas principais existem
-      const eventsTableExists = this.tableExists('events');
-      const comandasTableExists = this.tableExists('comandas');
-      const usersTableExists = this.tableExists('users');
+      const eventsTableExists = this.tableExists('prd_events');
+      const comandasTableExists = this.tableExists('prd_comandas');
+      const usersTableExists = this.tableExists('prd_users');
 
-      console.log(`📋 Tabela 'events': ${eventsTableExists}`);
-      console.log(`📋 Tabela 'comandas': ${comandasTableExists}`);
-      console.log(`📋 Tabela 'users': ${usersTableExists}`);
+      console.log(`📋 Tabela 'prd_events': ${eventsTableExists}`);
+      console.log(`📋 Tabela 'prd_comandas': ${comandasTableExists}`);
+      console.log(`📋 Tabela 'prd_users': ${usersTableExists}`);
 
       // Verifica colunas críticas
-      const salesHasEventId = this.columnExists('sales', 'eventId');
-      const salesHasUserId = this.columnExists('sales', 'userId');
-      const salesHasComandaId = this.columnExists('sales', 'comandaId');
+      const salesHasEventId = this.columnExists('prd_sales', 'num_event_id');
+      const salesHasUserId = this.columnExists('prd_sales', 'num_user_id');
+      const salesHasComandaId = this.columnExists('prd_sales', 'num_comanda_id');
 
-      console.log(`📋 Coluna 'sales.eventId': ${salesHasEventId}`);
-      console.log(`📋 Coluna 'sales.userId': ${salesHasUserId}`);
-      console.log(`📋 Coluna 'sales.comandaId': ${salesHasComandaId}`);
+      console.log(`📋 Coluna 'prd_sales.num_event_id': ${salesHasEventId}`);
+      console.log(`📋 Coluna 'prd_sales.num_user_id': ${salesHasUserId}`);
+      console.log(`📋 Coluna 'prd_sales.num_comanda_id': ${salesHasComandaId}`);
 
       // Se schema estiver incompleto, avisar que precisa recriar
       if (!eventsTableExists || !salesHasEventId || !salesHasUserId) {
@@ -1003,7 +994,7 @@ export class DatabaseService {
     try {
       // Verifica se já existe admin
       const existing = this.executeQuery(
-        "SELECT id FROM users WHERE email = 'admin@blackbeer.com' LIMIT 1"
+        "SELECT num_id FROM prd_users WHERE desc_email = 'admin@blackbeer.com' LIMIT 1"
       );
       if (existing.length > 0) {
         console.log('ℹ️ Admin padrão já existe');
@@ -1015,7 +1006,7 @@ export class DatabaseService {
       const combined = salt + password + salt;
       const adminPassword = btoa(combined);
       this.executeRun(
-        'INSERT INTO users (username, email, passwordHash, role) VALUES (?, ?, ?, ?)',
+        'INSERT INTO prd_users (desc_username, desc_email, desc_password_hash, desc_role) VALUES (?, ?, ?, ?)',
         ['admin', 'admin@blackbeer.com', adminPassword, 'admin']
       );
       console.log('✅ Usuário admin padrão criado');
@@ -1028,7 +1019,7 @@ export class DatabaseService {
   }
 
   public getUsuarios(): any[] {
-    return this.executeQuery('SELECT id, username, email, role, createdAt, lastLoginAt FROM users');
+    return this.executeQuery('SELECT num_id, desc_username, desc_email, desc_role, dt_created_at, dt_last_login_at FROM prd_users');
   }
 
   /**
@@ -1037,10 +1028,10 @@ export class DatabaseService {
    */
   public getConfiguredEmails(): string[] {
     try {
-      const result = this.executeQuery('SELECT email FROM settings LIMIT 1');
+      const result = this.executeQuery('SELECT desc_email FROM config_settings LIMIT 1');
 
       if (result && result.length > 0) {
-        const emailString = result[0].email;
+        const emailString = result[0].desc_email;
 
         // Converter string do banco para array
         // Formato no banco: "email1@example.com,email2@example.com"
@@ -1070,16 +1061,16 @@ export class DatabaseService {
     try {
       const result = this.executeQuery(`
         SELECT
-          es.id,
-          es.beerId,
-          es.beerName,
-          es.quantidadeLitros,
-          bt.color,
-          es.createdAt,
-          es.updatedAt
-        FROM event_sale es
-        INNER JOIN beer_types bt ON es.beerId = bt.id
-        ORDER BY es.beerName
+          es.num_id,
+          es.num_beer_id,
+          es.desc_beer_name,
+          es.num_quantidade_litros,
+          bt.desc_color,
+          es.dt_created_at,
+          es.dt_updated_at
+        FROM config_event_sale es
+        INNER JOIN prd_beer_types bt ON es.num_beer_id = bt.num_id
+        ORDER BY es.desc_beer_name
       `);
       return result;
     } catch (error) {
@@ -1096,8 +1087,8 @@ export class DatabaseService {
   public getEventStockByBeerId(beerId: number, eventId: number | null = null): any | null {
     try {
       const query = eventId !== null
-        ? 'SELECT * FROM event_sale WHERE beerId = ? AND eventId = ?'
-        : 'SELECT * FROM event_sale WHERE beerId = ? AND eventId IS NULL';
+        ? 'SELECT * FROM config_event_sale WHERE num_beer_id = ? AND num_event_id = ?'
+        : 'SELECT * FROM config_event_sale WHERE num_beer_id = ? AND num_event_id IS NULL';
       const params = eventId !== null ? [beerId, eventId] : [beerId];
 
       const result = this.executeQuery(query, params);
@@ -1124,8 +1115,8 @@ export class DatabaseService {
       if (existing) {
         // Atualiza registro existente
         const updateQuery = eventId !== null
-          ? `UPDATE event_sale SET quantidadeLitros = ?, minLitersAlert = ?, updatedAt = CURRENT_TIMESTAMP WHERE beerId = ? AND eventId = ?`
-          : `UPDATE event_sale SET quantidadeLitros = ?, minLitersAlert = ?, updatedAt = CURRENT_TIMESTAMP WHERE beerId = ? AND eventId IS NULL`;
+          ? `UPDATE config_event_sale SET num_quantidade_litros = ?, num_min_liters_alert = ?, dt_updated_at = CURRENT_TIMESTAMP WHERE num_beer_id = ? AND num_event_id = ?`
+          : `UPDATE config_event_sale SET num_quantidade_litros = ?, num_min_liters_alert = ?, dt_updated_at = CURRENT_TIMESTAMP WHERE num_beer_id = ? AND num_event_id IS NULL`;
         const updateParams = eventId !== null
           ? [quantidadeLitros, minLitersAlert, beerId, eventId]
           : [quantidadeLitros, minLitersAlert, beerId];
@@ -1135,7 +1126,7 @@ export class DatabaseService {
       } else {
         // Insere novo registro
         this.executeRun(
-          `INSERT INTO event_sale (beerId, beerName, quantidadeLitros, minLitersAlert, eventId)
+          `INSERT INTO config_event_sale (num_beer_id, desc_beer_name, num_quantidade_litros, num_min_liters_alert, num_event_id)
            VALUES (?, ?, ?, ?, ?)`,
           [beerId, beerName, quantidadeLitros, minLitersAlert, eventId]
         );
@@ -1155,10 +1146,10 @@ export class DatabaseService {
   public updateMinLitersAlert(beerId: number, minLitersAlert: number): void {
     try {
       this.executeRun(
-        `UPDATE event_sale
-         SET minLitersAlert = ?,
-             updatedAt = CURRENT_TIMESTAMP
-         WHERE beerId = ?`,
+        `UPDATE config_event_sale
+         SET num_min_liters_alert = ?,
+             dt_updated_at = CURRENT_TIMESTAMP
+         WHERE num_beer_id = ?`,
         [minLitersAlert, beerId]
       );
       console.log(`✅ Limite de alerta atualizado: beerId ${beerId} = ${minLitersAlert}L`);
@@ -1180,25 +1171,25 @@ export class DatabaseService {
       const stock = this.getEventStockByBeerId(beerId, eventId);
 
       // Se não há estoque configurado, retorna false (modo normal)
-      if (!stock || stock.quantidadeLitros === 0) {
+      if (!stock || stock.num_quantidade_litros === 0) {
         console.log(`ℹ️ Sem estoque configurado para beerId ${beerId} (eventId: ${eventId || 'geral'})`);
         return false;
       }
 
       // Calcula novo estoque (não permite negativo)
-      const newQuantity = Math.max(0, stock.quantidadeLitros - litersToSubtract);
+      const newQuantity = Math.max(0, stock.num_quantidade_litros - litersToSubtract);
 
       // Atualiza com filtro correto incluindo eventId
       const updateQuery = eventId !== null
-        ? `UPDATE event_sale SET quantidadeLitros = ?, updatedAt = CURRENT_TIMESTAMP WHERE beerId = ? AND eventId = ?`
-        : `UPDATE event_sale SET quantidadeLitros = ?, updatedAt = CURRENT_TIMESTAMP WHERE beerId = ? AND eventId IS NULL`;
+        ? `UPDATE config_event_sale SET num_quantidade_litros = ?, dt_updated_at = CURRENT_TIMESTAMP WHERE num_beer_id = ? AND num_event_id = ?`
+        : `UPDATE config_event_sale SET num_quantidade_litros = ?, dt_updated_at = CURRENT_TIMESTAMP WHERE num_beer_id = ? AND num_event_id IS NULL`;
       const updateParams = eventId !== null
         ? [newQuantity, beerId, eventId]
         : [newQuantity, beerId];
 
       this.executeRun(updateQuery, updateParams);
 
-      console.log(`✅ Estoque subtraído: ${stock.beerName} -${litersToSubtract}L = ${newQuantity}L [eventId: ${eventId || 'geral'}]`);
+      console.log(`✅ Estoque subtraído: ${stock.desc_beer_name} -${litersToSubtract}L = ${newQuantity}L [eventId: ${eventId || 'geral'}]`);
       return true;
     } catch (error) {
       console.error('❌ Erro ao subtrair do estoque:', error);
@@ -1212,7 +1203,7 @@ export class DatabaseService {
    */
   public removeEventStock(beerId: number): void {
     try {
-      this.executeRun('DELETE FROM event_sale WHERE beerId = ?', [beerId]);
+      this.executeRun('DELETE FROM config_event_sale WHERE num_beer_id = ?', [beerId]);
       console.log('✅ Estoque removido para beerId:', beerId);
     } catch (error) {
       console.error('❌ Erro ao remover estoque:', error);
@@ -1227,23 +1218,29 @@ export class DatabaseService {
   public getStockAlerts(): any[] {
     try {
       const config = this.getStockAlertConfig();
-      const minLiters = config?.minLiters || 5.0;
+      const minLiters = config?.num_min_liters || 5.0;
 
       const result = this.executeQuery(
         `SELECT
-          es.beerId,
-          es.beerName,
-          es.quantidadeLitros,
-          bt.color
-         FROM event_sale es
-         INNER JOIN beer_types bt ON es.beerId = bt.id
-         WHERE es.quantidadeLitros > 0
-           AND es.quantidadeLitros < ?
-         ORDER BY es.quantidadeLitros ASC`,
+          es.num_beer_id,
+          es.desc_beer_name,
+          es.num_quantidade_litros,
+          bt.desc_color
+         FROM config_event_sale es
+         INNER JOIN prd_beer_types bt ON es.num_beer_id = bt.num_id
+         WHERE es.num_quantidade_litros > 0
+           AND es.num_quantidade_litros < ?
+         ORDER BY es.num_quantidade_litros ASC`,
         [minLiters]
       );
 
-      return result;
+      // Mapeia para formato esperado pelo template
+      return result.map(row => ({
+        beerId: row.num_beer_id,
+        beerName: row.desc_beer_name,
+        quantidadeLitros: row.num_quantidade_litros,
+        color: row.desc_color
+      }));
     } catch (error) {
       console.error('❌ Erro ao buscar alertas de estoque:', error);
       return [];
@@ -1258,7 +1255,7 @@ export class DatabaseService {
    */
   public getStockAlertConfig(): any | null {
     try {
-      const result = this.executeQuery('SELECT * FROM stock_alert_config WHERE id = 1');
+      const result = this.executeQuery('SELECT * FROM config_stock_alert WHERE num_id = 1');
       return result.length > 0 ? result[0] : null;
     } catch (error) {
       console.error('❌ Erro ao buscar configuração de alerta:', error);
@@ -1273,10 +1270,10 @@ export class DatabaseService {
   public setStockAlertConfig(minLiters: number): void {
     try {
       this.executeRun(
-        `UPDATE stock_alert_config
-         SET minLiters = ?,
-             updatedAt = CURRENT_TIMESTAMP
-         WHERE id = 1`,
+        `UPDATE config_stock_alert
+         SET num_min_liters = ?,
+             dt_updated_at = CURRENT_TIMESTAMP
+         WHERE num_id = 1`,
         [minLiters]
       );
       console.log('✅ Configuração de alerta atualizada:', minLiters, 'litros');
@@ -1296,8 +1293,8 @@ export class DatabaseService {
   public getSalesConfigByBeerId(beerId: number, eventId: number | null = null): any | null {
     try {
       const query = eventId !== null
-        ? 'SELECT * FROM sales_config WHERE beerId = ? AND eventId = ?'
-        : 'SELECT * FROM sales_config WHERE beerId = ? AND eventId IS NULL';
+        ? 'SELECT * FROM config_sales WHERE num_beer_id = ? AND num_event_id = ?'
+        : 'SELECT * FROM config_sales WHERE num_beer_id = ? AND num_event_id IS NULL';
       const params = eventId !== null ? [beerId, eventId] : [beerId];
 
       const result = this.executeQuery(query, params);
@@ -1314,7 +1311,7 @@ export class DatabaseService {
    */
   public getAllSalesConfig(): any[] {
     try {
-      return this.executeQuery('SELECT * FROM sales_config ORDER BY beerName');
+      return this.executeQuery('SELECT * FROM config_sales ORDER BY desc_beer_name');
     } catch (error) {
       console.error('❌ Erro ao buscar todas as configurações de preços:', error);
       return [];
@@ -1345,8 +1342,8 @@ export class DatabaseService {
       if (existing) {
         // Atualiza configuração existente
         const updateQuery = eventId !== null
-          ? `UPDATE sales_config SET beerName = ?, price300ml = ?, price500ml = ?, price1000ml = ?, updatedAt = CURRENT_TIMESTAMP WHERE beerId = ? AND eventId = ?`
-          : `UPDATE sales_config SET beerName = ?, price300ml = ?, price500ml = ?, price1000ml = ?, updatedAt = CURRENT_TIMESTAMP WHERE beerId = ? AND eventId IS NULL`;
+          ? `UPDATE config_sales SET desc_beer_name = ?, num_price_300ml = ?, num_price_500ml = ?, num_price_1000ml = ?, dt_updated_at = CURRENT_TIMESTAMP WHERE num_beer_id = ? AND num_event_id = ?`
+          : `UPDATE config_sales SET desc_beer_name = ?, num_price_300ml = ?, num_price_500ml = ?, num_price_1000ml = ?, dt_updated_at = CURRENT_TIMESTAMP WHERE num_beer_id = ? AND num_event_id IS NULL`;
         const updateParams = eventId !== null
           ? [beerName, price300ml, price500ml, price1000ml, beerId, eventId]
           : [beerName, price300ml, price500ml, price1000ml, beerId];
@@ -1356,7 +1353,7 @@ export class DatabaseService {
       } else {
         // Insere nova configuração
         this.executeRun(
-          `INSERT INTO sales_config (beerId, beerName, price300ml, price500ml, price1000ml, eventId)
+          `INSERT INTO config_sales (num_beer_id, desc_beer_name, num_price_300ml, num_price_500ml, num_price_1000ml, num_event_id)
            VALUES (?, ?, ?, ?, ?, ?)`,
           [beerId, beerName, price300ml, price500ml, price1000ml, eventId]
         );
@@ -1376,7 +1373,7 @@ export class DatabaseService {
    */
   public removeSalesConfig(beerId: number): void {
     try {
-      this.executeRun('DELETE FROM sales_config WHERE beerId = ?', [beerId]);
+      this.executeRun('DELETE FROM config_sales WHERE num_beer_id = ?', [beerId]);
       console.log('✅ Configuração de preços removida para beerId:', beerId);
       this.persist();
     } catch (error) {
@@ -1401,14 +1398,14 @@ export class DatabaseService {
         SELECT
           SUM(
             CASE
-              WHEN s.cupSize = 300 THEN s.quantity * COALESCE(sc.price300ml, 0)
-              WHEN s.cupSize = 500 THEN s.quantity * COALESCE(sc.price500ml, 0)
-              WHEN s.cupSize = 1000 THEN s.quantity * COALESCE(sc.price1000ml, 0)
+              WHEN s.num_cup_size = 300 THEN s.num_quantity * COALESCE(sc.num_price_300ml, 0)
+              WHEN s.num_cup_size = 500 THEN s.num_quantity * COALESCE(sc.num_price_500ml, 0)
+              WHEN s.num_cup_size = 1000 THEN s.num_quantity * COALESCE(sc.num_price_1000ml, 0)
               ELSE 0
             END
           ) as totalRevenue
-        FROM sales s
-        LEFT JOIN sales_config sc ON s.beerId = sc.beerId
+        FROM prd_sales s
+        LEFT JOIN config_sales sc ON s.num_beer_id = sc.num_beer_id
       `;
 
       const params: any[] = [];
@@ -1416,13 +1413,13 @@ export class DatabaseService {
 
       // Aplicar filtros de data se houver
       if (startDate && endDate) {
-        whereClause = ' WHERE s.timestamp BETWEEN ? AND ?';
+        whereClause = ' WHERE s.dt_timestamp BETWEEN ? AND ?';
         params.push(startDate.toISOString(), endDate.toISOString());
       }
 
       // Aplicar filtro de evento se houver
       if (eventId !== undefined) {
-        whereClause += whereClause ? ' AND s.eventId = ?' : ' WHERE s.eventId = ?';
+        whereClause += whereClause ? ' AND s.num_event_id = ?' : ' WHERE s.num_event_id = ?';
         params.push(eventId);
       }
 
@@ -1448,7 +1445,7 @@ export class DatabaseService {
    * @returns Array de comandas
    */
   public getAllComandas(): any[] {
-    const query = 'SELECT * FROM comandas ORDER BY numero ASC';
+    const query = 'SELECT * FROM prd_comandas ORDER BY num_numero ASC';
     return this.executeQuery(query);
   }
 
@@ -1458,7 +1455,7 @@ export class DatabaseService {
    * @returns Array de comandas com o status especificado
    */
   public getComandasByStatus(status: string): any[] {
-    const query = 'SELECT * FROM comandas WHERE status = ? ORDER BY numero ASC';
+    const query = 'SELECT * FROM prd_comandas WHERE desc_status = ? ORDER BY num_numero ASC';
     return this.executeQuery(query, [status]);
   }
 
@@ -1468,7 +1465,7 @@ export class DatabaseService {
    * @returns Comanda ou null se não encontrada
    */
   public getComandaByNumero(numero: number): any | null {
-    const query = 'SELECT * FROM comandas WHERE numero = ? LIMIT 1';
+    const query = 'SELECT * FROM prd_comandas WHERE num_numero = ? LIMIT 1';
     const result = this.executeQuery(query, [numero]);
     return result.length > 0 ? result[0] : null;
   }
@@ -1479,7 +1476,7 @@ export class DatabaseService {
    * @returns Comanda ou null se não encontrada
    */
   public getComandaById(id: number): any | null {
-    const query = 'SELECT * FROM comandas WHERE id = ? LIMIT 1';
+    const query = 'SELECT * FROM prd_comandas WHERE num_id = ? LIMIT 1';
     const result = this.executeQuery(query, [id]);
     return result.length > 0 ? result[0] : null;
   }
@@ -1491,9 +1488,9 @@ export class DatabaseService {
   public openComanda(numero: number): void {
     const now = new Date().toISOString();
     this.executeRun(
-      `UPDATE comandas
-       SET status = ?, openedAt = ?, updatedAt = ?
-       WHERE numero = ? AND status = ?`,
+      `UPDATE prd_comandas
+       SET desc_status = ?, dt_opened_at = ?, dt_updated_at = ?
+       WHERE num_numero = ? AND desc_status = ?`,
       ['em_uso', now, now, numero, 'disponivel']
     );
     this.persist();
@@ -1508,9 +1505,9 @@ export class DatabaseService {
     const total = this.calculateComandaTotal(comandaId);
 
     this.executeRun(
-      `UPDATE comandas
-       SET status = ?, closedAt = ?, totalValue = ?, updatedAt = ?
-       WHERE id = ?`,
+      `UPDATE prd_comandas
+       SET desc_status = ?, dt_closed_at = ?, num_total_value = ?, dt_updated_at = ?
+       WHERE num_id = ?`,
       ['aguardando_pagamento', now, total, now, comandaId]
     );
     this.persist();
@@ -1524,15 +1521,15 @@ export class DatabaseService {
     const now = new Date().toISOString();
 
     this.executeRun(
-      `UPDATE comandas
-       SET status = ?, paidAt = ?, totalValue = 0, openedAt = NULL, closedAt = NULL, updatedAt = ?
-       WHERE id = ?`,
+      `UPDATE prd_comandas
+       SET desc_status = ?, dt_paid_at = ?, num_total_value = 0, dt_opened_at = NULL, dt_closed_at = NULL, dt_updated_at = ?
+       WHERE num_id = ?`,
       ['disponivel', now, now, comandaId]
     );
 
     // Remover vínculo das vendas desta comanda (vendas ficam no histórico)
     this.executeRun(
-      'UPDATE sales SET comandaId = NULL WHERE comandaId = ?',
+      'UPDATE prd_sales SET num_comanda_id = NULL WHERE num_comanda_id = ?',
       [comandaId]
     );
 
@@ -1549,15 +1546,15 @@ export class DatabaseService {
       SELECT
         COALESCE(SUM(
           CASE
-            WHEN s.cupSize = 300 THEN s.quantity * COALESCE(sc.price300ml, 0)
-            WHEN s.cupSize = 500 THEN s.quantity * COALESCE(sc.price500ml, 0)
-            WHEN s.cupSize = 1000 THEN s.quantity * COALESCE(sc.price1000ml, 0)
+            WHEN s.num_cup_size = 300 THEN s.num_quantity * COALESCE(sc.num_price_300ml, 0)
+            WHEN s.num_cup_size = 500 THEN s.num_quantity * COALESCE(sc.num_price_500ml, 0)
+            WHEN s.num_cup_size = 1000 THEN s.num_quantity * COALESCE(sc.num_price_1000ml, 0)
             ELSE 0
           END
         ), 0) as total
-      FROM sales s
-      LEFT JOIN sales_config sc ON s.beerId = sc.beerId
-      WHERE s.comandaId = ?
+      FROM prd_sales s
+      LEFT JOIN config_sales sc ON s.num_beer_id = sc.num_beer_id
+      WHERE s.num_comanda_id = ?
     `;
 
     const result = this.executeQuery(query, [comandaId]);
@@ -1572,28 +1569,32 @@ export class DatabaseService {
   public getComandaItems(comandaId: number): any[] {
     const query = `
       SELECT
-        s.id as saleId,
-        s.beerId,
-        s.beerName,
-        s.cupSize,
-        s.quantity,
-        s.timestamp,
+        s.num_id as num_sale_id,
+        s.num_beer_id,
+        s.desc_beer_name,
+        s.num_cup_size,
+        s.num_quantity,
+        s.dt_timestamp,
         CASE
-          WHEN s.cupSize = 300 THEN COALESCE(sc.price300ml, 0)
-          WHEN s.cupSize = 500 THEN COALESCE(sc.price500ml, 0)
-          WHEN s.cupSize = 1000 THEN COALESCE(sc.price1000ml, 0)
+          WHEN s.num_cup_size = 300 THEN COALESCE(sc.num_price_300ml, 0)
+          WHEN s.num_cup_size = 500 THEN COALESCE(sc.num_price_500ml, 0)
+          WHEN s.num_cup_size = 1000 THEN COALESCE(sc.num_price_1000ml, 0)
           ELSE 0
-        END as unitPrice,
+        END as num_unit_price,
         CASE
-          WHEN s.cupSize = 300 THEN s.quantity * COALESCE(sc.price300ml, 0)
-          WHEN s.cupSize = 500 THEN s.quantity * COALESCE(sc.price500ml, 0)
-          WHEN s.cupSize = 1000 THEN s.quantity * COALESCE(sc.price1000ml, 0)
+          WHEN s.num_cup_size = 300 THEN s.num_quantity * COALESCE(sc.num_price_300ml, 0)
+          WHEN s.num_cup_size = 500 THEN s.num_quantity * COALESCE(sc.num_price_500ml, 0)
+          WHEN s.num_cup_size = 1000 THEN s.num_quantity * COALESCE(sc.num_price_1000ml, 0)
           ELSE 0
-        END as totalPrice
-      FROM sales s
-      LEFT JOIN sales_config sc ON s.beerId = sc.beerId
-      WHERE s.comandaId = ?
-      ORDER BY s.timestamp DESC
+        END as num_total_price
+      FROM prd_sales s
+      LEFT JOIN config_sales sc ON s.num_beer_id = sc.num_beer_id
+        AND (
+          (s.num_event_id IS NULL AND sc.num_event_id IS NULL)
+          OR s.num_event_id = sc.num_event_id
+        )
+      WHERE s.num_comanda_id = ?
+      ORDER BY s.dt_timestamp DESC
     `;
 
     return this.executeQuery(query, [comandaId]);
@@ -1610,9 +1611,13 @@ export class DatabaseService {
 
     const items = this.getComandaItems(comandaId);
 
+    // Calcula o total a partir dos itens (mais confiável que o valor salvo)
+    const calculatedTotal = items.reduce((sum, item) => sum + (item.num_total_price || 0), 0);
+
     return {
       ...comanda,
-      items
+      items,
+      num_total_value: calculatedTotal // Sobrescreve com o valor calculado
     };
   }
 
@@ -1644,7 +1649,7 @@ export class DatabaseService {
 
       // Usar statement preparado para obter melhor controle
       const stmt = this.db.prepare(
-        `INSERT INTO events (nameEvent, localEvent, dataEvent, contactEvent, nameContactEvent, status, createdAt, updatedAt)
+        `INSERT INTO prd_events (desc_name_event, desc_local_event, dt_data_event, desc_contact_event, desc_name_contact_event, desc_status, dt_created_at, dt_updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       );
 
@@ -1667,7 +1672,7 @@ export class DatabaseService {
       if (!eventId || eventId === 0) {
         console.error('❌ Erro: ID do evento é 0 ou null');
         console.error('   Isso indica que o INSERT pode ter falhado silenciosamente');
-        console.error('   Verifique se a tabela events existe');
+        console.error('   Verifique se a tabela prd_events existe');
         return null;
       }
 
@@ -1686,7 +1691,7 @@ export class DatabaseService {
    * @returns Array de eventos
    */
   public getAllEvents(): any[] {
-    const query = 'SELECT * FROM events ORDER BY dataEvent DESC';
+    const query = 'SELECT * FROM prd_events ORDER BY dt_data_event DESC';
     return this.executeQuery(query);
   }
 
@@ -1696,7 +1701,7 @@ export class DatabaseService {
    * @returns Array de eventos com o status especificado
    */
   public getEventsByStatus(status: 'planejamento' | 'ativo' | 'finalizado'): any[] {
-    const query = 'SELECT * FROM events WHERE status = ? ORDER BY dataEvent DESC';
+    const query = 'SELECT * FROM prd_events WHERE desc_status = ? ORDER BY dt_data_event DESC';
     return this.executeQuery(query, [status]);
   }
 
@@ -1706,7 +1711,7 @@ export class DatabaseService {
    * @returns Evento ou null se não encontrado
    */
   public getEventById(id: number): any | null {
-    const query = 'SELECT * FROM events WHERE id = ? LIMIT 1';
+    const query = 'SELECT * FROM prd_events WHERE num_id = ? LIMIT 1';
     const result = this.executeQuery(query, [id]);
     return result.length > 0 ? result[0] : null;
   }
@@ -1732,43 +1737,43 @@ export class DatabaseService {
 
       // Construir query dinamicamente baseado nos campos fornecidos
       if (eventData.nameEvent !== undefined) {
-        updates.push('nameEvent = ?');
+        updates.push('desc_name_event = ?');
         values.push(eventData.nameEvent);
       }
       if (eventData.localEvent !== undefined) {
-        updates.push('localEvent = ?');
+        updates.push('desc_local_event = ?');
         values.push(eventData.localEvent);
       }
       if (eventData.dataEvent !== undefined) {
-        updates.push('dataEvent = ?');
+        updates.push('dt_data_event = ?');
         values.push(eventData.dataEvent);
       }
       if (eventData.contactEvent !== undefined) {
-        updates.push('contactEvent = ?');
+        updates.push('desc_contact_event = ?');
         values.push(eventData.contactEvent || null);
       }
       if (eventData.nameContactEvent !== undefined) {
-        updates.push('nameContactEvent = ?');
+        updates.push('desc_name_contact_event = ?');
         values.push(eventData.nameContactEvent || null);
       }
       if (eventData.status !== undefined) {
-        updates.push('status = ?');
+        updates.push('desc_status = ?');
         values.push(eventData.status);
       }
 
-      // Sempre atualizar updatedAt
-      updates.push('updatedAt = ?');
+      // Sempre atualizar dt_updated_at
+      updates.push('dt_updated_at = ?');
       values.push(now);
 
       // Adicionar ID ao final
       values.push(id);
 
       if (updates.length === 1) {
-        // Apenas updatedAt, nada para atualizar
+        // Apenas dt_updated_at, nada para atualizar
         return false;
       }
 
-      const query = `UPDATE events SET ${updates.join(', ')} WHERE id = ?`;
+      const query = `UPDATE prd_events SET ${updates.join(', ')} WHERE num_id = ?`;
       this.executeRun(query, values);
       this.persist();
       console.log('✅ Evento atualizado com sucesso:', id);
@@ -1782,16 +1787,16 @@ export class DatabaseService {
   /**
    * Deleta um evento
    * ATENÇÃO: Isso irá:
-   * - Deletar configurações de estoque relacionadas (event_sale CASCADE)
-   * - Deletar configurações de preços relacionadas (sales_config CASCADE)
-   * - Setar eventId = NULL nas vendas relacionadas (sales SET NULL)
+   * - Deletar configurações de estoque relacionadas (config_event_sale CASCADE)
+   * - Deletar configurações de preços relacionadas (config_sales CASCADE)
+   * - Setar num_event_id = NULL nas vendas relacionadas (prd_sales SET NULL)
    *
    * @param id ID do evento
    * @returns true se deletado com sucesso, false caso contrário
    */
   public deleteEvent(id: number): boolean {
     try {
-      this.executeRun('DELETE FROM events WHERE id = ?', [id]);
+      this.executeRun('DELETE FROM prd_events WHERE num_id = ?', [id]);
       this.persist();
       console.log('✅ Evento deletado com sucesso:', id);
       return true;
@@ -1826,19 +1831,19 @@ export class DatabaseService {
    * @returns Objeto com estatísticas do evento
    */
   public getEventStatistics(eventId: number): {
-    totalSales: number;
-    totalVolume: number;
-    totalRevenue: number;
+    num_total_sales: number;
+    num_total_volume: number;
+    num_total_revenue: number;
     salesByBeer: any[];
   } {
     try {
       // Total de vendas e volume
       const summaryQuery = `
         SELECT
-          COUNT(*) as totalSales,
-          COALESCE(SUM(totalVolume), 0) as totalVolume
-        FROM sales
-        WHERE eventId = ?
+          COUNT(*) as num_total_sales,
+          COALESCE(SUM(num_total_volume), 0) as num_total_volume
+        FROM prd_sales
+        WHERE num_event_id = ?
       `;
       const summary = this.executeQuery(summaryQuery, [eventId]);
 
@@ -1847,53 +1852,53 @@ export class DatabaseService {
         SELECT
           COALESCE(SUM(
             CASE
-              WHEN s.cupSize = 300 THEN s.quantity * COALESCE(sc.price300ml, 0)
-              WHEN s.cupSize = 500 THEN s.quantity * COALESCE(sc.price500ml, 0)
-              WHEN s.cupSize = 1000 THEN s.quantity * COALESCE(sc.price1000ml, 0)
+              WHEN s.num_cup_size = 300 THEN s.num_quantity * COALESCE(sc.num_price_300ml, 0)
+              WHEN s.num_cup_size = 500 THEN s.num_quantity * COALESCE(sc.num_price_500ml, 0)
+              WHEN s.num_cup_size = 1000 THEN s.num_quantity * COALESCE(sc.num_price_1000ml, 0)
               ELSE 0
             END
-          ), 0) as totalRevenue
-        FROM sales s
-        LEFT JOIN sales_config sc ON s.beerId = sc.beerId AND (sc.eventId = ? OR sc.eventId IS NULL)
-        WHERE s.eventId = ?
+          ), 0) as num_total_revenue
+        FROM prd_sales s
+        LEFT JOIN config_sales sc ON s.num_beer_id = sc.num_beer_id AND (sc.num_event_id = ? OR sc.num_event_id IS NULL)
+        WHERE s.num_event_id = ?
       `;
       const revenue = this.executeQuery(revenueQuery, [eventId, eventId]);
 
       // Vendas por cerveja
       const salesByBeerQuery = `
         SELECT
-          s.beerName,
-          COUNT(*) as salesCount,
-          COALESCE(SUM(s.quantity), 0) as totalQuantity,
-          COALESCE(SUM(s.totalVolume), 0) as totalVolume,
+          s.desc_beer_name,
+          COUNT(*) as num_sales_count,
+          COALESCE(SUM(s.num_quantity), 0) as num_total_quantity,
+          COALESCE(SUM(s.num_total_volume), 0) as num_total_volume,
           COALESCE(SUM(
             CASE
-              WHEN s.cupSize = 300 THEN s.quantity * COALESCE(sc.price300ml, 0)
-              WHEN s.cupSize = 500 THEN s.quantity * COALESCE(sc.price500ml, 0)
-              WHEN s.cupSize = 1000 THEN s.quantity * COALESCE(sc.price1000ml, 0)
+              WHEN s.num_cup_size = 300 THEN s.num_quantity * COALESCE(sc.num_price_300ml, 0)
+              WHEN s.num_cup_size = 500 THEN s.num_quantity * COALESCE(sc.num_price_500ml, 0)
+              WHEN s.num_cup_size = 1000 THEN s.num_quantity * COALESCE(sc.num_price_1000ml, 0)
               ELSE 0
             END
-          ), 0) as revenue
-        FROM sales s
-        LEFT JOIN sales_config sc ON s.beerId = sc.beerId AND (sc.eventId = ? OR sc.eventId IS NULL)
-        WHERE s.eventId = ?
-        GROUP BY s.beerId, s.beerName
-        ORDER BY revenue DESC
+          ), 0) as num_revenue
+        FROM prd_sales s
+        LEFT JOIN config_sales sc ON s.num_beer_id = sc.num_beer_id AND (sc.num_event_id = ? OR sc.num_event_id IS NULL)
+        WHERE s.num_event_id = ?
+        GROUP BY s.num_beer_id, s.desc_beer_name
+        ORDER BY num_revenue DESC
       `;
       const salesByBeer = this.executeQuery(salesByBeerQuery, [eventId, eventId]);
 
       return {
-        totalSales: summary[0]?.totalSales || 0,
-        totalVolume: summary[0]?.totalVolume || 0,
-        totalRevenue: revenue[0]?.totalRevenue || 0,
+        num_total_sales: summary[0]?.num_total_sales || 0,
+        num_total_volume: summary[0]?.num_total_volume || 0,
+        num_total_revenue: revenue[0]?.num_total_revenue || 0,
         salesByBeer
       };
     } catch (error) {
       console.error('❌ Erro ao buscar estatísticas do evento:', error);
       return {
-        totalSales: 0,
-        totalVolume: 0,
-        totalRevenue: 0,
+        num_total_sales: 0,
+        num_total_volume: 0,
+        num_total_revenue: 0,
         salesByBeer: []
       };
     }
@@ -1905,7 +1910,7 @@ export class DatabaseService {
    * @returns true se o evento tem vendas, false caso contrário
    */
   public eventHasSales(eventId: number): boolean {
-    const query = 'SELECT COUNT(*) as count FROM sales WHERE eventId = ?';
+    const query = 'SELECT COUNT(*) as count FROM prd_sales WHERE num_event_id = ?';
     const result = this.executeQuery(query, [eventId]);
     return result[0]?.count > 0;
   }
@@ -1917,11 +1922,11 @@ export class DatabaseService {
    */
   public getSalesByEvent(eventId: number): any[] {
     const query = `
-      SELECT s.*, u.username
-      FROM sales s
-      LEFT JOIN users u ON s.userId = u.id
-      WHERE s.eventId = ?
-      ORDER BY s.timestamp DESC
+      SELECT s.*, u.desc_username as username
+      FROM prd_sales s
+      LEFT JOIN prd_users u ON s.num_user_id = u.num_id
+      WHERE s.num_event_id = ?
+      ORDER BY s.dt_timestamp DESC
     `;
     return this.executeQuery(query, [eventId]);
   }

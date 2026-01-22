@@ -91,8 +91,8 @@ export class LoginComponent implements OnInit, AfterViewInit {
     try {
       const { emailOrUsername, password } = this.loginForm.value;
       const response = await this.authService.login({
-        emailOrUsername: emailOrUsername.trim(),
-        password,
+        desc_email_or_username: emailOrUsername.trim(),
+        desc_password: password,
       });
 
       if (response.success) {

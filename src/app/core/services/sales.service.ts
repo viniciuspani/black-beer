@@ -74,11 +74,11 @@ export class SalesService {
 
     switch (cupSize) {
       case 300:
-        return Number(config.price300ml) || 0;
+        return Number(config.num_price_300ml) || 0;
       case 500:
-        return Number(config.price500ml) || 0;
+        return Number(config.num_price_500ml) || 0;
       case 1000:
-        return Number(config.price1000ml) || 0;
+        return Number(config.num_price_1000ml) || 0;
       default:
         return 0;
     }

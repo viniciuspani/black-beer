@@ -1,0 +1,1163 @@
+// ========================================
+// src/app/features/event-management/event-management.scss
+// ========================================
+
+// Variáveis de cores
+$primary: #d97706;
+$primary-hover: #b45309;
+$success: #16a34a;
+$success-hover: #15803d;
+$danger: #dc2626;
+$danger-hover: #b91c1c;
+$info: #0284c7;
+$info-hover: #0369a1;
+$secondary: #6b7280;
+$secondary-hover: #4b5563;
+
+$white: #ffffff;
+$gray-50: #f9fafb;
+$gray-100: #f3f4f6;
+$gray-200: #e5e7eb;
+$gray-300: #d1d5db;
+$gray-400: #9ca3af;
+$gray-500: #6b7280;
+$gray-600: #4b5563;
+$gray-700: #374151;
+$gray-800: #1f2937;
+$gray-900: #111827;
+
+$text-primary: $gray-900;
+$text-secondary: $gray-600;
+$border-light: $gray-200;
+
+$shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+$shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+$shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+
+// Container principal
+.event-management-container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1rem;
+  overflow-x: hidden;
+
+  @media (min-width: 768px) {
+    padding: 1.5rem;
+    overflow-y: visible;
+  }
+
+  // Garantir que componentes PrimeNG sejam responsivos
+  ::ng-deep {
+    .p-inputtext,
+    .p-inputmask,
+    .p-datepicker input {
+      width: 100% !important;
+      max-width: 100%;
+      box-sizing: border-box;
+      font-size: 0.9375rem !important;
+      height: 2.75rem !important; // Altura consistente para todos os inputs
+    }
+
+    .p-datepicker {
+      width: 100%;
+    }
+
+    // Melhorar visualização do InputMask - mesma altura dos outros inputs
+    .p-inputmask,
+    .p-inputmask input {
+      padding: 0.625rem 0.75rem !important;
+      height: 2.75rem !important;
+      line-height: normal !important;
+      margin: 0 !important;
+      border: 1px solid $border-light !important;
+      border-radius: 0.375rem !important;
+      box-sizing: border-box !important;
+    }
+
+    // Remove borda duplicada do wrapper
+    .p-inputmask {
+      border: none !important;
+      padding: 0 !important;
+      height: auto !important;
+    }
+
+    // Aplica estilos apenas no input interno
+    .p-inputmask input {
+      width: 100% !important;
+    }
+
+    // Estilos para o modal do DatePicker em mobile - 60% otimizado
+    @media (max-width: 767px) {
+      .p-datepicker-panel {
+        width: 75vw !important;
+        max-width: 300px !important;
+        font-size: 0.7rem !important;
+        padding: 0.4rem !important;
+        margin: auto !important;
+      }
+
+      // Cabeçalho do calendário (mês/ano)
+      .p-datepicker-header {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 0.3rem 0.15rem !important;
+        gap: 0.3rem !important;
+        min-height: 1.75rem !important;
+        margin-bottom: 0.15rem !important;
+
+        .p-datepicker-title {
+          flex: 1 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 0.15rem !important;
+          font-size: 0.7rem !important;
+          font-weight: 600 !important;
+
+          button,
+          span {
+            font-size: 0.7rem !important;
+            padding: 0.075rem !important;
+          }
+        }
+
+        // Botões de navegação (setas) - 60% otimizado
+        > button {
+          width: 1.5rem !important;
+          height: 1.5rem !important;
+          min-width: 28px !important;
+          min-height: 28px !important;
+          flex-shrink: 0 !important;
+          padding: 0.15rem !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+
+          .p-icon {
+            font-size: 0.7rem !important;
+          }
+        }
+      }
+
+      // Tabela do calendário
+      .p-datepicker-calendar-container {
+        padding: 0.15rem !important;
+      }
+
+      .p-datepicker-calendar {
+        width: 100% !important;
+
+        thead tr th {
+          padding: 0.15rem 0.075rem !important;
+          font-size: 0.6rem !important;
+          font-weight: 600 !important;
+          text-align: center !important;
+        }
+
+        tbody {
+          td {
+            padding: 0.0375rem !important;
+            text-align: center !important;
+          }
+
+          // Botões dos dias - 60% otimizado
+          .p-datepicker-day {
+            width: 1.5rem !important;
+            height: 1.5rem !important;
+            min-width: 28px !important;
+            min-height: 28px !important;
+            font-size: 0.7rem !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            border-radius: 0.15rem !important;
+            font-weight: 500 !important;
+          }
+        }
+      }
+
+      // Botões do timepicker - 60% otimizado
+      .p-datepicker-time-picker {
+        padding: 0.3rem 0.15rem !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0.3rem !important;
+        border-top: 1px solid $border-light !important;
+        margin-top: 0.15rem !important;
+
+        > div {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          gap: 0.075rem !important;
+        }
+
+        // Botões incremento/decremento - 60% otimizado
+        button {
+          width: 1.2rem !important;
+          height: 1.2rem !important;
+          min-width: 22px !important;
+          min-height: 22px !important;
+          flex-shrink: 0 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 0 !important;
+
+          .p-icon {
+            font-size: 0.6rem !important;
+          }
+        }
+
+        // Display de hora/minuto - 60% otimizado
+        span {
+          font-size: 0.75rem !important;
+          font-weight: 700 !important;
+          min-width: 1.2rem !important;
+          text-align: center !important;
+          padding: 0 !important;
+          line-height: 1 !important;
+        }
+
+        // Separador ":" - 60% otimizado
+        .p-separator {
+          font-size: 0.75rem !important;
+          font-weight: 700 !important;
+          margin: 0 0.0375rem !important;
+        }
+      }
+    }
+
+    // Estilos para o modal do DatePicker em desktop - 50% menor
+    @media (min-width: 768px) {
+      // Garantir que o overlay não seja cortado
+      .p-datepicker {
+        position: relative !important;
+        z-index: 1000 !important;
+      }
+
+      .p-datepicker-panel {
+        font-size: 0.625rem !important;
+        padding: 0.5rem !important;
+        width: auto !important;
+        max-width: none !important;
+        overflow: visible !important;
+        min-width: 240px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+      }
+
+      // Cabeçalho do calendário (mês/ano)
+      .p-datepicker-header {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 0.375rem 0.25rem !important;
+        gap: 0.375rem !important;
+        min-height: 2rem !important;
+        margin-bottom: 0.25rem !important;
+
+        .p-datepicker-title {
+          flex: 1 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 0.25rem !important;
+          font-size: 0.75rem !important;
+          font-weight: 600 !important;
+
+          button,
+          span {
+            font-size: 0.75rem !important;
+            padding: 0.125rem !important;
+          }
+        }
+
+        // Botões de navegação (setas) - 50% menor
+        > button {
+          width: 1.5rem !important;
+          height: 1.5rem !important;
+          flex-shrink: 0 !important;
+          padding: 0.25rem !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+
+          .p-icon {
+            font-size: 0.75rem !important;
+          }
+        }
+      }
+
+      // Tabela do calendário
+      .p-datepicker-calendar-container {
+        padding: 0.25rem !important;
+        width: 100% !important;
+      }
+
+      .p-datepicker-calendar {
+        width: 100% !important;
+        table-layout: fixed !important;
+
+        thead tr th {
+          padding: 0.25rem 0.125rem !important;
+          font-size: 0.625rem !important;
+          font-weight: 600 !important;
+          text-align: center !important;
+        }
+
+        tbody {
+          td {
+            padding: 0.0625rem !important;
+            text-align: center !important;
+          }
+
+          // Botões dos dias - 50% menor
+          .p-datepicker-day {
+            width: 1.5rem !important;
+            height: 1.5rem !important;
+            font-size: 0.75rem !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            border-radius: 0.25rem !important;
+            font-weight: 500 !important;
+            margin: 0 auto !important;
+          }
+        }
+      }
+
+      // Botões do timepicker - 50% menor
+      .p-datepicker-time-picker {
+        padding: 0.5rem 0.25rem !important;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0.5rem !important;
+        border-top: 1px solid $border-light !important;
+        margin-top: 0.25rem !important;
+        width: 100% !important;
+        overflow: visible !important;
+
+        > div {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          gap: 0.125rem !important;
+          flex-shrink: 0 !important;
+        }
+
+        // Botões incremento/decremento - 50% menor
+        button {
+          width: 1.5rem !important;
+          height: 1.5rem !important;
+          flex-shrink: 0 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 0 !important;
+
+          .p-icon {
+            font-size: 0.7rem !important;
+          }
+        }
+
+        // Display de hora/minuto - 50% menor
+        span {
+          font-size: 0.85rem !important;
+          font-weight: 700 !important;
+          min-width: 1.5rem !important;
+          text-align: center !important;
+          padding: 0.125rem !important;
+          line-height: 1.2 !important;
+        }
+
+        // Separador ":" - 50% menor
+        .p-separator {
+          font-size: 0.85rem !important;
+          font-weight: 700 !important;
+          margin: 0 0.125rem !important;
+          align-self: center !important;
+        }
+      }
+    }
+  }
+}
+
+// Card principal
+::ng-deep {
+  .event-management-card {
+    overflow: visible !important;
+
+    .p-card-body {
+      padding: 0;
+      overflow: visible !important;
+    }
+
+    .p-card-content {
+      padding: 0;
+      overflow: visible !important;
+    }
+  }
+}
+
+// Título do card
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: $text-primary;
+
+  i {
+    color: $primary;
+    font-size: 1.75rem;
+  }
+}
+
+// ==================== BARRA DE AÇÕES E FILTROS ====================
+
+.action-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-bottom: 1px solid $border-light;
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+.action-bar-left {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.status-filters {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+// ==================== FORMULÁRIO DE CRIAÇÃO/EDIÇÃO ====================
+
+.add-form-container {
+  padding: 1rem;
+  background: $gray-50;
+  border-bottom: 1px solid $border-light;
+  overflow: visible;
+  position: relative;
+
+  @media (min-width: 768px) {
+    padding: 1.5rem 2rem;
+  }
+
+  @media (min-width: 1200px) {
+    padding: 1.5rem 3rem;
+  }
+}
+
+.event-form {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  overflow-x: hidden;
+  overflow-y: visible;
+
+  .form-header {
+    margin-bottom: 1rem;
+
+    @media (min-width: 768px) {
+      margin-bottom: 1.25rem;
+    }
+
+    h3 {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: $text-primary;
+      margin: 0;
+
+      @media (min-width: 768px) {
+        font-size: 1.25rem;
+      }
+
+      i {
+        color: $success;
+      }
+    }
+  }
+
+  .form-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+    width: 100%;
+    overflow: visible !important;
+    position: relative;
+
+    @media (min-width: 640px) {
+      grid-template-columns: repeat(2, 1fr) !important;
+      gap: 0.75rem 1rem !important;
+    }
+
+    @media (min-width: 768px) {
+      gap: 1rem 1.5rem !important;
+    }
+
+    @media (min-width: 1024px) {
+      grid-template-columns: repeat(3, 1fr) !important;
+    }
+
+    .col-span-2 {
+      grid-column: span 1 !important;
+
+      @media (min-width: 640px) {
+        grid-column: span 2 !important;
+      }
+
+      @media (min-width: 1024px) {
+        grid-column: span 3 !important;
+      }
+    }
+  }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    position: relative;
+    overflow: visible;
+    min-width: 0;
+    margin-bottom: 0;
+
+    label {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: $text-primary;
+      margin-bottom: 0;
+      padding: 0;
+    }
+
+    input[type="text"],
+    input[type="tel"],
+    .form-select {
+      width: 100%;
+      max-width: 100%;
+      padding: 0.625rem 0.75rem;
+      border: 1px solid $border-light;
+      border-radius: 0.375rem;
+      font-size: 0.9375rem;
+      transition: all 0.2s ease;
+      box-sizing: border-box;
+      height: 2.75rem;
+      margin: 0;
+
+      &:focus {
+        outline: none;
+        border-color: $primary;
+        box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1);
+      }
+
+      &:disabled {
+        background: $gray-100;
+        cursor: not-allowed;
+      }
+    }
+
+    .form-select {
+      background: $gray-900;
+      color: $white;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      padding-right: 2.5rem;
+    }
+  }
+
+  .form-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid $border-light;
+
+    @media (min-width: 480px) {
+      flex-direction: row;
+      justify-content: flex-end;
+      gap: 1rem;
+    }
+
+    @media (min-width: 768px) {
+      grid-column: 1 / -1;
+      margin-top: 1rem;
+    }
+
+    ::ng-deep {
+      .p-button {
+        width: 100%;
+        min-width: 120px;
+
+        @media (min-width: 480px) {
+          width: auto;
+        }
+      }
+    }
+  }
+}
+
+// ==================== TABELA DESKTOP ====================
+
+.desktop-table {
+  padding: 1.5rem;
+
+  ::ng-deep {
+    .p-datatable {
+      .p-datatable-thead > tr > th {
+        background: $gray-50;
+        color: $text-primary;
+        font-weight: 600;
+        padding: 1rem;
+        border-bottom: 2px solid $border-light;
+      }
+
+      .p-datatable-tbody > tr {
+        transition: background-color 0.2s ease;
+
+        &:hover {
+          background: $gray-50;
+        }
+
+        > td {
+          padding: 1rem;
+          border-bottom: 1px solid $border-light;
+          vertical-align: middle;
+        }
+      }
+    }
+  }
+
+  .event-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+}
+
+// ==================== CARDS MOBILE ====================
+
+.mobile-cards {
+  padding: 1rem;
+}
+
+.cards-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+.event-card {
+  background: $white;
+  border: 1px solid $border-light;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  transition: all 0.2s ease;
+  box-shadow: $shadow;
+
+  &:hover {
+    box-shadow: $shadow-md;
+    transform: translateY(-2px);
+  }
+
+  .event-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    gap: 0.75rem;
+
+    .event-card-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex: 1;
+      min-width: 0;
+
+      i {
+        color: $primary;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+      }
+
+      .event-name {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: $text-primary;
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+  }
+
+  .event-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+
+    .info-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+      color: $text-secondary;
+
+      i {
+        width: 1rem;
+        text-align: center;
+        color: $gray-400;
+      }
+
+      span {
+        flex: 1;
+      }
+    }
+  }
+
+  .event-card-actions {
+    display: flex;
+    gap: 0.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid $border-light;
+    justify-content: space-between;
+
+    // Estilos customizados para botões PrimeNG no mobile (ícone + texto curto)
+    ::ng-deep {
+      .mobile-action-btn {
+        flex: 0 1 auto;
+        min-width: 0;
+
+        .p-button {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.375rem;
+          padding: 0.5rem 0.75rem;
+          border-radius: 0.375rem;
+          font-size: 0.8125rem;
+          font-weight: 500;
+          transition: all 0.2s ease;
+          white-space: nowrap;
+
+          .p-button-icon {
+            font-size: 1rem;
+            margin: 0;
+            flex-shrink: 0;
+          }
+
+          .p-button-label {
+            flex: 0 1 auto;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 0.8125rem;
+          }
+
+          &:active {
+            transform: scale(0.95);
+          }
+        }
+      }
+    }
+  }
+}
+
+// Estado vazio
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  text-align: center;
+
+  i {
+    font-size: 4rem;
+    color: $gray-300;
+    margin-bottom: 1rem;
+  }
+
+  .empty-state-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: $text-primary;
+    margin: 0 0 0.5rem;
+  }
+
+  .empty-state-text {
+    font-size: 0.9375rem;
+    color: $text-secondary;
+    margin: 0;
+  }
+}
+
+// ==================== CARDS DE INFORMAÇÃO ====================
+
+.info-section {
+  padding: 1.5rem;
+  background: $gray-50;
+  border-top: 1px solid $border-light;
+}
+
+.info-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.info-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: $white;
+  border-radius: 0.75rem;
+  border: 1px solid $border-light;
+  box-shadow: $shadow;
+  transition: all 0.2s ease;
+
+  &:hover {
+    box-shadow: $shadow-md;
+    transform: translateY(-2px);
+  }
+
+  i {
+    font-size: 2rem;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+  }
+
+  &.info-card-primary i {
+    background: rgba($primary, 0.1);
+    color: $primary;
+  }
+
+  .info-card-content {
+    display: flex;
+    flex-direction: column;
+
+    .info-card-value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: $text-primary;
+      line-height: 1;
+    }
+
+    .info-card-label {
+      font-size: 0.875rem;
+      color: $text-secondary;
+      margin-top: 0.25rem;
+    }
+  }
+}
+
+// ==================== MODAL ====================
+
+::ng-deep {
+  .p-dialog {
+    .p-dialog-header {
+      background: $gray-50;
+      border-bottom: 1px solid $border-light;
+
+      .p-dialog-title {
+        color: $text-primary;
+        font-weight: 600;
+        font-size: 1.125rem;
+
+        @media (min-width: 768px) {
+          font-size: 1.25rem;
+        }
+      }
+    }
+
+    .p-dialog-content {
+      padding: 1rem;
+
+      @media (min-width: 768px) {
+        padding: 1.5rem;
+      }
+
+      // Garantir que os campos do formulário dentro do modal fiquem legíveis
+      .form-select {
+        color: $text-primary;
+        background: $white;
+
+        option {
+          color: $text-primary;
+          background: $white;
+        }
+      }
+
+      input[type="text"],
+      input[type="tel"] {
+        color: $text-primary;
+      }
+
+      // Estilos para p-inputMask
+      .p-inputmask {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        border: none;
+        padding: 0;
+        height: auto;
+        margin: 0;
+
+        input {
+          width: 100%;
+          height: 2.75rem;
+          padding: 0.625rem 0.75rem;
+          margin: 0;
+          border: 1px solid $border-light;
+          border-radius: 0.375rem;
+          box-sizing: border-box;
+        }
+      }
+
+      // Estilos para p-datePicker
+      .p-datepicker {
+        width: 100%;
+
+        input {
+          width: 100%;
+          box-sizing: border-box;
+        }
+      }
+    }
+
+    .p-dialog-footer {
+      padding: 1rem;
+      border-top: 1px solid $border-light;
+
+      @media (min-width: 768px) {
+        padding: 1rem 1.5rem;
+      }
+    }
+  }
+}
+
+.dialog-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  @media (min-width: 480px) {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+
+  ::ng-deep {
+    .p-button {
+      width: 100%;
+
+      @media (min-width: 480px) {
+        width: auto;
+      }
+    }
+  }
+}
+
+// ==================== ESTATÍSTICAS ====================
+
+.stats-container {
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+
+    @media (min-width: 640px) {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .stat-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: $gray-50;
+    border-radius: 0.5rem;
+
+    .stat-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 3rem;
+      height: 3rem;
+      border-radius: 0.5rem;
+
+      i {
+        font-size: 1.5rem;
+      }
+
+      &.stat-icon-sales {
+        background: rgba($info, 0.1);
+        color: $info;
+      }
+
+      &.stat-icon-volume {
+        background: rgba($primary, 0.1);
+        color: $primary;
+      }
+
+      &.stat-icon-revenue {
+        background: rgba($success, 0.1);
+        color: $success;
+      }
+    }
+
+    .stat-content {
+      display: flex;
+      flex-direction: column;
+
+      .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: $text-primary;
+        line-height: 1;
+      }
+
+      .stat-label {
+        font-size: 0.75rem;
+        color: $text-secondary;
+        margin-top: 0.25rem;
+      }
+    }
+  }
+
+  .sales-by-beer {
+    h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: $text-primary;
+      margin: 0 0 1rem;
+    }
+
+    .beer-stats-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+
+      .beer-stat-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background: $gray-50;
+        border-radius: 0.5rem;
+
+        .beer-stat-info {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+
+          strong {
+            font-size: 0.9375rem;
+            color: $text-primary;
+          }
+
+          .beer-stat-details {
+            font-size: 0.8125rem;
+            color: $text-secondary;
+          }
+        }
+
+        .beer-stat-revenue {
+          font-size: 1rem;
+          font-weight: 600;
+          color: $success;
+        }
+      }
+    }
+  }
+
+  .no-sales-message {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: $gray-50;
+    border-radius: 0.5rem;
+    color: $text-secondary;
+
+    i {
+      font-size: 1.25rem;
+    }
+
+    p {
+      margin: 0;
+      font-size: 0.9375rem;
+    }
+  }
+}
+
+// ==================== UTILITÁRIOS ====================
+
+.hidden {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .md\:hidden {
+    display: none;
+  }
+
+  .md\:block {
+    display: block;
+  }
+}
+
+.text-center {
+  text-align: center;
+}
+
+.p-4 {
+  padding: 1rem;
+}
+
+.mt-2 {
+  margin-top: 0.5rem;
+}
+
+.ml-2 {
+  margin-left: 0.5rem;
+}

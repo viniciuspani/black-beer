@@ -20,6 +20,7 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 // App Services and Models
 import { BeerType } from '../../core/models/beer.model';
 import { DatabaseService } from '../../core/services/database';
+import { TabRefreshService, MainTab } from '../../core/services/tab-refresh.service';
 
 /**
  * Componente para gerenciar tipos de cerveja
@@ -56,6 +57,7 @@ export class BeerManagementComponent implements OnInit {
   private fb = inject(FormBuilder);
   private confirmationService = inject(ConfirmationService);
   private messageService = inject(MessageService);
+  private tabRefreshService = inject(TabRefreshService);
   
 
   // ==================== SIGNALS PARA ESTADO REATIVO ====================
@@ -197,6 +199,9 @@ export class BeerManagementComponent implements OnInit {
       this.showSuccess(`${newBeer.name} adicionada com sucesso!`);
       this.loadBeerTypes();
       this.toggleAddForm();
+
+      // Notifica sales-form para recarregar lista de cervejas
+      this.tabRefreshService.notifyMainTabActivated(MainTab.SALES);
     } catch (error) {
       this.showError('Não foi possível adicionar a cerveja.');
       console.error('❌ Erro ao adicionar cerveja:', error);
@@ -283,6 +288,9 @@ export class BeerManagementComponent implements OnInit {
       this.showSuccess(`${updatedBeer.name} foi atualizada com sucesso!`);
       this.loadBeerTypes();
       this.closeEditDialog();
+
+      // Notifica sales-form para recarregar lista de cervejas
+      this.tabRefreshService.notifyMainTabActivated(MainTab.SALES);
     } catch (error) {
       this.showError('Não foi possível atualizar a cerveja.');
       console.error('❌ Erro ao atualizar cerveja:', error);
@@ -293,14 +301,9 @@ export class BeerManagementComponent implements OnInit {
   /**
    * Abre dialog de confirmação para deletar cerveja
    * MUDANÇA: Recebe BeerType com id: number
+   * MUDANÇA: Permite deletar todas as cervejas (inclusive padrão)
    */
   confirmDelete(beer: BeerType): void {
-    // Previne deleção de cervejas padrão
-    if (this.isDefaultBeer(beer.id)) {
-      this.showWarning('Cervejas padrão não podem ser removidas.');
-      return;
-    }
-
     this.confirmationService.confirm({
       message: `Você tem certeza que deseja remover a cerveja "${beer.name}"? Todas as vendas relacionadas também serão removidas.`,
       header: 'Confirmação de Exclusão',
@@ -338,9 +341,12 @@ export class BeerManagementComponent implements OnInit {
       );
 
       console.log('✅ Cerveja removida:', beer.name, '(ID:', beer.id, ')');
-      
+
       this.showSuccess(`${beer.name} foi removida com sucesso.`);
       this.loadBeerTypes();
+
+      // Notifica sales-form para recarregar lista de cervejas
+      this.tabRefreshService.notifyMainTabActivated(MainTab.SALES);
     } catch (error) {
       this.showError('Não foi possível remover a cerveja.');
       console.error('❌ Erro ao remover cerveja:', error);

@@ -1,0 +1,149 @@
+<!-- ========================================
+     src/app/features/acompanhamento-comandas/acompanhamento-comandas.html
+     Template de Acompanhamento de Comandas
+     ======================================== -->
+
+<p-toast></p-toast>
+
+<div class="comandas-container">
+  <p-card styleClass="comandas-card">
+
+    <!-- Header -->
+    <ng-template pTemplate="header">
+      <div class="card-header">
+        <div class="header-content">
+          <i class="pi pi-list"></i>
+          <div class="header-text">
+            <span class="header-title">Acompanhamento de Comandas</span>
+            <span class="header-subtitle">Gestão completa de comandas</span>
+          </div>
+        </div>
+        <p-button
+          icon="pi pi-refresh"
+          [rounded]="true"
+          severity="secondary"
+          [outlined]="true"
+          (onClick)="refreshData()"
+          aria-label="Atualizar">
+        </p-button>
+      </div>
+    </ng-template>
+
+    <ng-template pTemplate="content">
+
+      <!-- Seção: Disponíveis -->
+      <div class="status-section">
+        <div class="section-header">
+          <h3 class="section-title">
+            <i class="pi pi-check-circle status-icon-disponivel"></i>
+            Disponíveis ({{ totalDisponiveis() }})
+          </h3>
+        </div>
+
+        <div class="comandas-grid-simple">
+          @for (comanda of comandasDisponiveis(); track comanda.id) {
+            <div class="comanda-card-simple disponivel">
+              <span class="comanda-numero">{{ comanda.numero }}</span>
+            </div>
+          }
+          @empty {
+            <p class="empty-message">Nenhuma comanda disponível</p>
+          }
+        </div>
+      </div>
+
+      <!-- Seção: Em Uso -->
+      <div class="status-section">
+        <div class="section-header">
+          <h3 class="section-title">
+            <i class="pi pi-clock status-icon-em-uso"></i>
+            Em Uso ({{ totalEmUso() }})
+          </h3>
+        </div>
+
+        <div class="comandas-grid-detailed">
+          @for (comanda of comandasEmUso(); track comanda.id) {
+            <div class="comanda-card-detailed em-uso">
+              <div class="comanda-card-header">
+                <span class="comanda-numero-large">{{ comanda.numero }}</span>
+                <p-tag value="Em Uso" severity="warning"></p-tag>
+              </div>
+
+              <div class="comanda-items">
+                @for (item of comanda.items; track item.saleId) {
+                  <div class="item-row">
+                    <span class="item-name">{{ item.quantity }}x {{ item.beerName }} ({{ item.cupSize }}ml)</span>
+                    <span class="item-price">R$ {{ item.totalPrice.toFixed(2) }}</span>
+                  </div>
+                }
+              </div>
+
+              <div class="comanda-footer">
+                <span class="total-label">Total:</span>
+                <span class="total-value">R$ {{ comanda.totalValue.toFixed(2) }}</span>
+              </div>
+
+              <p-button
+                label="Fechar Comanda"
+                icon="pi pi-lock"
+                severity="secondary"
+                styleClass="w-full"
+                (onClick)="fecharComanda(comanda.id)">
+              </p-button>
+            </div>
+          }
+          @empty {
+            <p class="empty-message">Nenhuma comanda em uso</p>
+          }
+        </div>
+      </div>
+
+      <!-- Seção: Aguardando Pagamento -->
+      <div class="status-section">
+        <div class="section-header">
+          <h3 class="section-title">
+            <i class="pi pi-dollar status-icon-aguardando"></i>
+            Aguardando Pagamento ({{ totalAguardando() }})
+          </h3>
+        </div>
+
+        <div class="comandas-grid-detailed">
+          @for (comanda of comandasAguardandoPagamento(); track comanda.id) {
+            <div class="comanda-card-detailed aguardando">
+              <div class="comanda-card-header">
+                <span class="comanda-numero-large">{{ comanda.numero }}</span>
+                <p-tag value="Aguardando" severity="danger"></p-tag>
+              </div>
+
+              <div class="comanda-items">
+                @for (item of comanda.items; track item.saleId) {
+                  <div class="item-row">
+                    <span class="item-name">{{ item.quantity }}x {{ item.beerName }} ({{ item.cupSize }}ml)</span>
+                    <span class="item-price">R$ {{ item.totalPrice.toFixed(2) }}</span>
+                  </div>
+                }
+              </div>
+
+              <div class="comanda-footer">
+                <span class="total-label">Total a Pagar:</span>
+                <span class="total-value total-value-highlight">R$ {{ comanda.totalValue.toFixed(2) }}</span>
+              </div>
+
+              <p-button
+                label="Confirmar Pagamento"
+                icon="pi pi-check"
+                severity="success"
+                styleClass="w-full"
+                (onClick)="confirmarPagamento(comanda.id)">
+              </p-button>
+            </div>
+          }
+          @empty {
+            <p class="empty-message">Nenhuma comanda aguardando pagamento</p>
+          }
+        </div>
+      </div>
+
+    </ng-template>
+  </p-card>
+</div>

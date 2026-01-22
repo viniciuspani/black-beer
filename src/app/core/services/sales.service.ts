@@ -23,6 +23,7 @@ export class SalesService {
    *
    * @param startDate Data inicial do filtro (opcional)
    * @param endDate Data final do filtro (opcional)
+   * @param eventId ID do evento para filtrar (opcional)
    * @returns Valor total em reais
    *
    * @example
@@ -32,14 +33,18 @@ export class SalesService {
    * @example
    * // Obter receita de um período específico
    * const revenue = this.salesService.getTotalRevenue(startDate, endDate);
+   *
+   * @example
+   * // Obter receita de um evento específico
+   * const revenue = this.salesService.getTotalRevenue(undefined, undefined, eventId);
    */
-  public getTotalRevenue(startDate?: Date, endDate?: Date): number {
+  public getTotalRevenue(startDate?: Date, endDate?: Date, eventId?: number): number {
     if (!this.dbService.isDbReady()) {
       console.warn('⚠️ Banco de dados não está pronto');
       return 0;
     }
 
-    return this.dbService.getTotalRevenue(startDate, endDate);
+    return this.dbService.getTotalRevenue(startDate, endDate, eventId);
   }
 
   /**

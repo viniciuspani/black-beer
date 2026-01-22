@@ -220,7 +220,6 @@
               <th style="width: 5%">Cor</th>
               <th>Nome</th>
               <th>Descrição</th>
-              <th style="width: 10%">Tipo</th>
               <th style="width: 10%">Ações</th>
             </tr>
           </ng-template>
@@ -231,11 +230,6 @@
               </td>
               <td>{{ beer.name }}</td>
               <td>{{ beer.description }}</td>
-              <td>
-                <p-tag [value]="isDefaultBeer(beer.id) ? 'Padrão' : 'Custom'"
-                       [severity]="isDefaultBeer(beer.id) ? 'info' : 'success'">
-                </p-tag>
-              </td>
               <td>
                 <div class="action-buttons">
                   <p-button
@@ -254,8 +248,7 @@
                     [rounded]="true"
                     (click)="confirmDelete(beer)"
                     pTooltip="Remover Cerveja"
-                    tooltipPosition="top"
-                    [disabled]="isDefaultBeer(beer.id)">
+                    tooltipPosition="top">
                   </p-button>
                 </div>
               </td>
@@ -263,7 +256,7 @@
           </ng-template>
           <ng-template pTemplate="emptymessage">
             <tr>
-              <td colspan="5" class="text-center p-4">Nenhum tipo de cerveja encontrado.</td>
+              <td colspan="4" class="text-center p-4">Nenhum tipo de cerveja encontrado.</td>
             </tr>
           </ng-template>
         </p-table>
@@ -275,8 +268,8 @@
         <!-- Grid de cards -->
         <div class="cards-grid">
           @for (beer of beerTypes(); track beer.id) {
-            <article class="beer-card" [class.beer-card-default]="isDefaultBeer(beer.id)">
-              
+            <article class="beer-card">
+
               <!-- Header do card -->
               <div class="beer-card-header">
                 <!-- Cor e nome -->
@@ -284,19 +277,11 @@
                   <div class="beer-color-indicator" [style.background-color]="beer.color"></div>
                   <h3 class="beer-name">{{ beer.name }}</h3>
                 </div>
-                
-                <!-- Badge de tipo -->
-                <p-tag 
-                  [value]="isDefaultBeer(beer.id) ? 'Padrão' : 'Custom'"
-                  [severity]="isDefaultBeer(beer.id) ? 'info' : 'success'"
-                  [rounded]="true"
-                  styleClass="beer-type-badge">
-                </p-tag>
               </div>
-              
+
               <!-- Descrição -->
               <p class="beer-description">{{ beer.description }}</p>
-              
+
               <!-- Footer com ações -->
               <div class="beer-card-footer">
                 <!-- Info adicional -->
@@ -319,8 +304,6 @@
                   <button
                     type="button"
                     class="delete-button"
-                    [class.delete-button-disabled]="isDefaultBeer(beer.id)"
-                    [disabled]="isDefaultBeer(beer.id)"
                     (click)="confirmDelete(beer)"
                     [attr.aria-label]="'Remover cerveja ' + beer.name">
                     <i class="pi pi-trash"></i>
@@ -328,14 +311,6 @@
                   </button>
                 </div>
               </div>
-              
-              <!-- Indicador de cerveja padrão -->
-              @if (isDefaultBeer(beer.id)) {
-                <div class="default-indicator">
-                  <i class="pi pi-lock"></i>
-                  <span>Não pode ser removida</span>
-                </div>
-              }
             </article>
           } @empty {
             <!-- Estado vazio -->
@@ -356,25 +331,7 @@
             <i class="pi pi-list"></i>
             <div class="info-card-content">
               <span class="info-card-value">{{ getTotalBeerTypes() }}</span>
-              <span class="info-card-label">Total</span>
-            </div>
-          </div>
-          
-          <!-- Card: Padrão -->
-          <div class="info-card info-card-info">
-            <i class="pi pi-shield"></i>
-            <div class="info-card-content">
-              <span class="info-card-value">{{ getDefaultBeers().length }}</span>
-              <span class="info-card-label">Padrão</span>
-            </div>
-          </div>
-          
-          <!-- Card: Custom -->
-          <div class="info-card info-card-success">
-            <i class="pi pi-star"></i>
-            <div class="info-card-content">
-              <span class="info-card-value">{{ getCustomBeerTypesCount() }}</span>
-              <span class="info-card-label">Custom</span>
+              <span class="info-card-label">Total de Cervejas</span>
             </div>
           </div>
         </div>

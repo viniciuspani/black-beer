@@ -18,6 +18,9 @@ export interface BeerType {
  * MUDANÇAS:
  * - id: string → number
  * - beerId: string → number (mantém FK para beer_types)
+ * - comandaId: Nova coluna opcional (V6) para vincular vendas a comandas
+ * - userId: Nova coluna obrigatória (V8) para rastrear qual usuário fez a venda
+ * - eventId: Nova coluna opcional (V9) para vincular vendas a eventos
  */
 export interface Sale {
   id: number;              // ← MUDANÇA: number em vez de string
@@ -27,6 +30,9 @@ export interface Sale {
   quantity: number;
   timestamp: string;       // ISO string para SQLite
   totalVolume: number;     // em ml
+  comandaId?: number | null; // ← NOVO (V6): FK opcional para comandas
+  userId: number;          // ← NOVO (V8): FK obrigatória para users.id
+  eventId?: number | null; // ← NOVO (V9): FK opcional para eventos
 }
 
 /**
@@ -87,7 +93,9 @@ export function isSale(obj: any): obj is Sale {
     (obj.cupSize === 300 || obj.cupSize === 500 || obj.cupSize === 1000) &&
     typeof obj.quantity === 'number' &&
     typeof obj.timestamp === 'string' &&
-    typeof obj.totalVolume === 'number'
+    typeof obj.totalVolume === 'number' &&
+    typeof obj.userId === 'number' &&
+    (obj.eventId === undefined || obj.eventId === null || typeof obj.eventId === 'number')
   );
 }
 

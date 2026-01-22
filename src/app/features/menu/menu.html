@@ -27,19 +27,29 @@
           </div>
         }
 
-        <!-- Botão de Logout -->
-        <div class="logout-container">
-          <button
-            type="button"
-            class="logout-button"
-            (click)="handleLogout($event)"
-            pTooltip="Sair do sistema"
-            tooltipPosition="bottom"
-            aria-label="Logout"
-            tabindex="0">
-            <i class="pi pi-sign-out"></i>
-            <span class="logout-text">Sair</span>
-          </button>
+        <!-- Informações do Usuário com Dropdown -->
+        <div class="user-info-container">
+          <div class="user-info-button" #userMenuButton (click)="userMenu.toggle($event)">
+            <!-- Avatar -->
+            <p-avatar
+              [label]="getUserInitials()"
+              styleClass="user-avatar"
+              shape="circle"
+              [style]="{'background-color': '#fb923c', 'color': '#ffffff'}">
+            </p-avatar>
+
+            <!-- Informações do Usuário (Desktop) -->
+            <div class="user-details">
+              <span class="user-name">{{ getUserDisplayName() }}</span>
+              <span class="user-role">{{ getUserRoleLabel() }}</span>
+            </div>
+
+            <!-- Ícone de dropdown -->
+            <i class="pi pi-chevron-down user-dropdown-icon"></i>
+          </div>
+
+          <!-- Dropdown Menu -->
+          <p-menu #userMenu [model]="userMenuItems" [popup]="true" appendTo="body"></p-menu>
         </div>
       </div>
     </div>
@@ -59,19 +69,22 @@
             <span> Nova Venda</span>
           </p-tab>
           <p-tab value="1" (click)="onTabClick(1)">
+            <i class="pi pi-list"></i>
+            <span> Comandas</span>
+          </p-tab>
+          <p-tab value="2" (click)="onTabClick(2)">
             <i class="pi pi-chart-bar"></i>
             <span> Relatórios</span>
           </p-tab>
-          <p-tab value="2" (click)="onTabClick(2)">
+          <p-tab value="3" (click)="onTabClick(3)">
             <i class="pi pi-moon"></i>
             <span> Cervejas</span>
           </p-tab>
-          <p-tab value="3" (click)="onTabClick(3)">
+          <p-tab value="4" (click)="onTabClick(4)">
             <i class="pi pi-cog"></i>
             <span> Configurações</span>
           </p-tab>
         </p-tablist>
-
         <p-tabpanels>
           <p-tabpanel value="0">
             <div class="overflow-auto">
@@ -81,17 +94,23 @@
 
           <p-tabpanel value="1">
             <div class="overflow-auto">
-              <app-reports-section></app-reports-section>
+              <app-acompanhamento-comandas></app-acompanhamento-comandas>
             </div>
           </p-tabpanel>
 
           <p-tabpanel value="2">
             <div class="overflow-auto">
-              <app-beer-management></app-beer-management>
+              <app-reports-section></app-reports-section>
             </div>
           </p-tabpanel>
 
           <p-tabpanel value="3">
+            <div class="overflow-auto">
+              <app-beer-management></app-beer-management>
+            </div>
+          </p-tabpanel>
+
+          <p-tabpanel value="4">
             <div class="overflow-auto">
               <!-- Sub-abas de Configurações -->
               <p-tabs [(value)]="activeSettingsTabDesktop" (onChange)="onSettingsTabChange($event)" class="w-full">
@@ -109,6 +128,10 @@
                     <span> Admin</span>
                   </p-tab>
                   <p-tab value="3" (click)="onSettingsTabClick(3)">
+                    <i class="pi pi-calendar"></i>
+                    <span> Eventos</span>
+                  </p-tab>
+                  <p-tab value="4" (click)="onSettingsTabClick(4)">
                     <i class="pi pi-question-circle"></i>
                     <span> Ajuda</span>
                   </p-tab>
@@ -125,6 +148,9 @@
                     <app-settings-admin></app-settings-admin>
                   </p-tabpanel>
                   <p-tabpanel value="3">
+                    <app-event-management></app-event-management>
+                  </p-tabpanel>
+                  <p-tabpanel value="4">
                     <app-help></app-help>
                   </p-tabpanel>
                 </p-tabpanels>
@@ -143,12 +169,15 @@
           <app-sales-form></app-sales-form>
         }
         @case (1) {
-          <app-reports-section></app-reports-section>
+          <app-acompanhamento-comandas></app-acompanhamento-comandas>
         }
         @case (2) {
-          <app-beer-management></app-beer-management>
+          <app-reports-section></app-reports-section>
         }
         @case (3) {
+          <app-beer-management></app-beer-management>
+        }
+        @case (4) {
           <!-- Sub-abas de Configurações para Mobile -->
           <div class="flex flex-col gap-3">
             <!-- Botões de Sub-navegação -->
@@ -194,6 +223,17 @@
                 [class.text-white]="activeSettingsTab() === 3"
                 [class.bg-gray-100]="activeSettingsTab() !== 3"
                 [class.text-gray-700]="activeSettingsTab() !== 3">
+                <i class="pi pi-calendar"></i>
+                <span>Eventos</span>
+              </button>
+              <button
+                type="button"
+                (click)="setActiveSettingsTab(4)"
+                class="flex-1 py-2 px-3 rounded-md transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium whitespace-nowrap"
+                [class.bg-amber-600]="activeSettingsTab() === 4"
+                [class.text-white]="activeSettingsTab() === 4"
+                [class.bg-gray-100]="activeSettingsTab() !== 4"
+                [class.text-gray-700]="activeSettingsTab() !== 4">
                 <i class="pi pi-question-circle"></i>
                 <span>Ajuda</span>
               </button>
@@ -211,6 +251,9 @@
                 <app-settings-admin></app-settings-admin>
               }
               @case (3) {
+                <app-event-management></app-event-management>
+              }
+              @case (4) {
                 <app-help></app-help>
               }
             }
@@ -222,7 +265,7 @@
 
   <!-- ==================== BOTTOM NAVIGATION (apenas mobile) ==================== -->
   <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 shadow-2xl z-50">
-    <div class="grid grid-cols-4 h-[72px]">
+    <div class="grid grid-cols-5 h-[72px]">
 
       <!-- Tab: Nova Venda -->
       <button
@@ -242,7 +285,7 @@
         }
       </button>
 
-      <!-- Tab: Relatórios -->
+      <!-- Tab: Comandas -->
       <button
         type="button"
         (click)="setActiveTabMobile(1)"
@@ -250,17 +293,17 @@
         [class.text-amber-600]="activeTabMobile() === 1"
         [class.text-gray-500]="activeTabMobile() !== 1"
         [class.bg-amber-50]="activeTabMobile() === 1"
-        aria-label="Relatórios">
-        <i class="pi pi-chart-bar text-2xl"
+        aria-label="Comandas">
+        <i class="pi pi-list text-2xl"
            [class.scale-110]="activeTabMobile() === 1"></i>
         <span class="text-xs font-medium"
-              [class.font-bold]="activeTabMobile() === 1">Relatórios</span>
+              [class.font-bold]="activeTabMobile() === 1">Comandas</span>
         @if (activeTabMobile() === 1) {
           <div class="absolute bottom-0 left-0 right-0 h-1 bg-amber-600 rounded-t-full"></div>
         }
       </button>
 
-      <!-- Tab: Cervejas -->
+      <!-- Tab: Relatórios -->
       <button
         type="button"
         (click)="setActiveTabMobile(2)"
@@ -268,17 +311,17 @@
         [class.text-amber-600]="activeTabMobile() === 2"
         [class.text-gray-500]="activeTabMobile() !== 2"
         [class.bg-amber-50]="activeTabMobile() === 2"
-        aria-label="Cervejas">
-        <i class="pi pi-moon text-2xl"
+        aria-label="Relatórios">
+        <i class="pi pi-chart-bar text-2xl"
            [class.scale-110]="activeTabMobile() === 2"></i>
         <span class="text-xs font-medium"
-              [class.font-bold]="activeTabMobile() === 2">Cervejas</span>
+              [class.font-bold]="activeTabMobile() === 2">Relatórios</span>
         @if (activeTabMobile() === 2) {
           <div class="absolute bottom-0 left-0 right-0 h-1 bg-amber-600 rounded-t-full"></div>
         }
       </button>
 
-      <!-- Tab: Configurações -->
+      <!-- Tab: Cervejas -->
       <button
         type="button"
         (click)="setActiveTabMobile(3)"
@@ -286,12 +329,30 @@
         [class.text-amber-600]="activeTabMobile() === 3"
         [class.text-gray-500]="activeTabMobile() !== 3"
         [class.bg-amber-50]="activeTabMobile() === 3"
-        aria-label="Configurações">
-        <i class="pi pi-cog text-2xl"
+        aria-label="Cervejas">
+        <i class="pi pi-moon text-2xl"
            [class.scale-110]="activeTabMobile() === 3"></i>
         <span class="text-xs font-medium"
-              [class.font-bold]="activeTabMobile() === 3">Config</span>
+              [class.font-bold]="activeTabMobile() === 3">Cervejas</span>
         @if (activeTabMobile() === 3) {
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-amber-600 rounded-t-full"></div>
+        }
+      </button>
+
+      <!-- Tab: Configurações -->
+      <button
+        type="button"
+        (click)="setActiveTabMobile(4)"
+        class="flex flex-col items-center justify-center gap-1 transition-all duration-300 active:scale-95"
+        [class.text-amber-600]="activeTabMobile() === 4"
+        [class.text-gray-500]="activeTabMobile() !== 4"
+        [class.bg-amber-50]="activeTabMobile() === 4"
+        aria-label="Configurações">
+        <i class="pi pi-cog text-2xl"
+           [class.scale-110]="activeTabMobile() === 4"></i>
+        <span class="text-xs font-medium"
+              [class.font-bold]="activeTabMobile() === 4">Config</span>
+        @if (activeTabMobile() === 4) {
           <div class="absolute bottom-0 left-0 right-0 h-1 bg-amber-600 rounded-t-full"></div>
         }
       </button>

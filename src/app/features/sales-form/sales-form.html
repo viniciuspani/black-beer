@@ -1,34 +1,97 @@
 <p-toast />
 
+<!-- ==================== MODAL: ERRO DE ESTOQUE (DESKTOP) ==================== -->
+<p-dialog
+  [(visible)]="showStockErrorModal"
+  [modal]="true"
+  [closable]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{width: '90vw', maxWidth: '28rem'}"
+  [header]="stockErrorTitle()"
+  (onHide)="closeStockErrorModal()">
+
+  <div class="stock-error-content">
+    <div class="stock-error-icon">
+      <i class="pi pi-exclamation-triangle"></i>
+    </div>
+    <p class="stock-error-message">{{ stockErrorMessage() }}</p>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <p-button
+      label="Entendi"
+      icon="pi pi-check"
+      severity="danger"
+      (onClick)="closeStockErrorModal()" />
+  </ng-template>
+</p-dialog>
+
 <div class="sales-form-container">
-  
-  <!-- ==================== RESUMO DA VENDA (FIXO NO TOPO - MOBILE) ==================== -->
-  @if (saleSummary(); as summary) {
-    <div class="sticky-summary md:hidden">
-      <div class="summary-card">
-        <div class="summary-header">
-          <i class="pi pi-info-circle"></i>
-          <span>Resumo</span>
+
+  <!-- ==================== BOTTOM SHEET CARRINHO (MOBILE ONLY) ==================== -->
+  @if (hasCartItems()) {
+    <div class="bottom-sheet md:hidden">
+      <!-- Header do Bottom Sheet (sempre visível) -->
+      <div class="bottom-sheet-header" (click)="toggleBottomSheet()">
+        <div class="bottom-sheet-header-left">
+          <i class="pi pi-shopping-cart"></i>
+          <span>Carrinho</span>
+          <span class="cart-count">{{ cartItems().length }}</span>
         </div>
-        <div class="summary-content">
-          <div class="summary-item">
-            <span class="label">Cerveja:</span>
-            <span class="value">{{ summary.beerName }}</span>
-          </div>
-          <div class="summary-item">
-            <span class="label">Tamanho:</span>
-            <span class="value">{{ summary.cupSize }}ml</span>
-          </div>
-          <div class="summary-item">
-            <span class="label">Qtd:</span>
-            <span class="value">{{ summary.quantity }}</span>
-          </div>
-          <div class="summary-item highlight">
-            <span class="label">Total:</span>
-            <span class="value">{{ summary.totalVolume }}L</span>
-          </div>
+        <div class="bottom-sheet-header-right">
+          <span class="cart-total-value">R$ {{ cartTotalPrice().toFixed(2) }}</span>
+          <i class="pi pi-chevron-up toggle-icon" [class.rotated]="isBottomSheetExpanded()"></i>
         </div>
       </div>
+
+      <!-- Conteúdo expansível do Bottom Sheet -->
+      @if (isBottomSheetExpanded()) {
+        <div class="bottom-sheet-content">
+          <div class="cart-items-mobile">
+            @for (item of cartItems(); track item.id) {
+              <div class="cart-item-mobile">
+                <div class="cart-item-header">
+                  <div class="cart-item-beer">
+                    <div class="beer-color-indicator" [style.background-color]="item.beerColor"></div>
+                    <span class="beer-name">{{ item.beerName }}</span>
+                    <span class="cup-size-badge">{{ item.cupSize }}ml</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="remove-item-btn"
+                    (click)="removeFromCart(item.id)"
+                    aria-label="Remover item">
+                    <i class="pi pi-trash"></i>
+                  </button>
+                </div>
+                <div class="cart-item-controls">
+                  <div class="quantity-controls">
+                    <button
+                      type="button"
+                      class="qty-btn"
+                      (click)="decrementCartItem(item.id)"
+                      aria-label="Diminuir quantidade">
+                      <i class="pi pi-minus"></i>
+                    </button>
+                    <span class="qty-value">{{ item.quantity }}</span>
+                    <button
+                      type="button"
+                      class="qty-btn"
+                      (click)="incrementCartItem(item.id)"
+                      aria-label="Aumentar quantidade">
+                      <i class="pi pi-plus"></i>
+                    </button>
+                  </div>
+                  <div class="item-price">
+                    <span class="price-value">R$ {{ item.totalPrice.toFixed(2) }}</span>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
     </div>
   }
 
@@ -42,15 +105,47 @@
     </ng-template>
 
     <ng-template pTemplate="content">
-      <form [formGroup]="saleForm" (ngSubmit)="handleSale()" class="sales-form">
-        
+      <form [formGroup]="saleForm" class="sales-form">
+
+        <!-- ==================== SELEÇÃO DE EVENTO ==================== -->
+        <section class="form-section event-selector-section">
+          <h3 class="section-title">
+            <i class="pi pi-calendar text-amber-600"></i>
+            Evento (Opcional)
+          </h3>
+
+          <div class="event-selector-compact">
+            <!-- Botão "Sem Evento" -->
+            <button
+              type="button"
+              class="event-btn-compact"
+              [class.event-btn-active]="selectedEventId() === null"
+              (click)="onEventChange(null)">
+              <i class="pi pi-globe"></i>
+              <span>Sem Evento</span>
+            </button>
+
+            <!-- Botões de eventos ativos -->
+            @for (event of availableEvents(); track event.id) {
+              <button
+                type="button"
+                class="event-btn-compact"
+                [class.event-btn-active]="selectedEventId() === event.id"
+                (click)="onEventChange(event.id)">
+                <i class="pi pi-calendar-plus"></i>
+                <span>{{ event.nameEvent }}</span>
+              </button>
+            }
+          </div>
+        </section>
+
         <!-- ==================== SELEÇÃO DE CERVEJA ==================== -->
         <section class="form-section">
           <h3 class="section-title">
             <i class="pi pi-beer text-amber-600"></i>
             Selecione a Cerveja
           </h3>
-          
+
           <!-- Grid responsivo: 1 col mobile, 2 cols tablet+ -->
           <div class="beer-grid">
             @for (beer of beerTypes(); track beer.id) {
@@ -61,7 +156,7 @@
                 [class.beer-button-active]="beerId.value === beer.id"
                 [attr.aria-pressed]="beerId.value === beer.id"
                 [attr.aria-label]="'Selecionar cerveja ' + beer.name">
-                
+
                 <!-- Indicador visual de seleção -->
                 <div class="beer-button-indicator">
                   @if (beerId.value === beer.id) {
@@ -70,11 +165,27 @@
                     <div class="beer-color-dot" [style.background-color]="beer.color"></div>
                   }
                 </div>
-                
+
                 <!-- Conteúdo do botão -->
                 <div class="beer-button-content">
                   <span class="beer-name">{{ beer.name }}</span>
                   <span class="beer-description">{{ beer.description }}</span>
+
+                  <!-- Alerta de Estoque Baixo -->
+                  @if (checkLowStockForBeer(beer.id)) {
+                    <div class="stock-low-alert">
+                      <i class="pi pi-exclamation-circle"></i>
+                      <span>Estoque Baixo ({{ getStockForBeer(beer.id) }}L restantes)</span>
+                    </div>
+                  }
+
+                  <!-- Alerta de Estoque Esgotado -->
+                  @if (checkDepletedStockForBeer(beer.id)) {
+                    <div class="stock-depleted-alert">
+                      <i class="pi pi-exclamation-triangle"></i>
+                      <span>Estoque Esgotado</span>
+                    </div>
+                  }
                 </div>
               </button>
             }
@@ -87,7 +198,7 @@
             <i class="pi pi-box text-amber-600"></i>
             Tamanho do Copo
           </h3>
-          
+
           <!-- Layout vertical em mobile, horizontal em desktop -->
           <div class="cup-size-container">
             @for (size of cupSizes; track size) {
@@ -98,7 +209,7 @@
                 [class.cup-size-button-active]="cupSize.value === size"
                 [attr.aria-pressed]="cupSize.value === size"
                 [attr.aria-label]="'Selecionar copo de ' + size + ' mililitros'">
-                
+
                 <!-- Ícone visual do copo -->
                 <div class="cup-icon">
                   <i class="pi pi-shopping-bag"
@@ -106,13 +217,13 @@
                      [class.text-4xl]="size === 500"
                      [class.text-5xl]="size === 1000"></i>
                 </div>
-                
+
                 <!-- Label do tamanho -->
                 <div class="cup-size-label">
                   <span class="cup-size-value">{{ size }}</span>
                   <span class="cup-size-unit">ml</span>
                 </div>
-                
+
                 <!-- Badge de seleção -->
                 @if (cupSize.value === size) {
                   <div class="cup-size-badge">
@@ -130,26 +241,26 @@
             <i class="pi pi-hashtag text-amber-600"></i>
             Quantidade de Copos
           </h3>
-          
+
           <div class="quantity-container">
             <!-- Botão Diminuir -->
-            <button 
+            <button
               type="button"
               class="quantity-button quantity-button-minus"
-              (click)="changeQuantity(-1)" 
+              (click)="changeQuantity(-1)"
               [disabled]="quantity.value <= 1"
               aria-label="Diminuir quantidade">
               <i class="pi pi-minus"></i>
             </button>
-            
+
             <!-- Display da Quantidade -->
             <div class="quantity-display">
               <span class="quantity-value">{{ quantity.value }}</span>
               <span class="quantity-label">{{ quantity.value === 1 ? 'copo' : 'copos' }}</span>
             </div>
-            
+
             <!-- Botão Aumentar -->
-            <button 
+            <button
               type="button"
               class="quantity-button quantity-button-plus"
               (click)="changeQuantity(1)"
@@ -159,31 +270,83 @@
           </div>
         </section>
 
-        <!-- ==================== RESUMO (DESKTOP) ==================== -->
-        @if (saleSummary(); as summary) {
+        <!-- ==================== CARRINHO (DESKTOP) ==================== -->
+        @if (hasCartItems()) {
           <div class="hidden md:block">
             <section class="form-section">
-              <div class="desktop-summary">
-                <h4 class="desktop-summary-title">
-                  <i class="pi pi-info-circle"></i>
-                  Resumo da Venda
-                </h4>
-                <div class="desktop-summary-grid">
-                  <div class="desktop-summary-item">
-                    <span class="label">Cerveja:</span>
-                    <span class="value">{{ summary.beerName }}</span>
+              <div class="desktop-cart">
+                <div class="desktop-cart-header">
+                  <h4 class="desktop-cart-title">
+                    <i class="pi pi-shopping-cart"></i>
+                    Carrinho de Compras
+                    <span class="cart-count">{{ cartItems().length }}</span>
+                  </h4>
+                  <button
+                    type="button"
+                    class="clear-cart-btn"
+                    (click)="clearCart()"
+                    aria-label="Limpar carrinho">
+                    <i class="pi pi-trash"></i>
+                    Limpar
+                  </button>
+                </div>
+
+                <div class="cart-items-desktop">
+                  @for (item of cartItems(); track item.id) {
+                    <div class="cart-item-desktop">
+                      <div class="item-info">
+                        <div class="beer-color-indicator" [style.background-color]="item.beerColor"></div>
+                        <div class="item-details">
+                          <span class="item-beer-name">{{ item.beerName }}</span>
+                          <span class="item-cup-size">{{ item.cupSize }}ml</span>
+                        </div>
+                      </div>
+
+                      <div class="item-controls">
+                        <div class="quantity-controls">
+                          <button
+                            type="button"
+                            class="qty-btn"
+                            (click)="decrementCartItem(item.id)"
+                            aria-label="Diminuir quantidade">
+                            <i class="pi pi-minus"></i>
+                          </button>
+                          <span class="qty-value">{{ item.quantity }}</span>
+                          <button
+                            type="button"
+                            class="qty-btn"
+                            (click)="incrementCartItem(item.id)"
+                            aria-label="Aumentar quantidade">
+                            <i class="pi pi-plus"></i>
+                          </button>
+                        </div>
+
+                        <div class="item-price">
+                          <span class="price-label">R$</span>
+                          <span class="price-value">{{ item.totalPrice.toFixed(2) }}</span>
+                        </div>
+
+                        <button
+                          type="button"
+                          class="remove-item-btn"
+                          (click)="removeFromCart(item.id)"
+                          aria-label="Remover item">
+                          <i class="pi pi-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+
+                <!-- Total do Carrinho -->
+                <div class="cart-total-desktop">
+                  <div class="cart-total-row">
+                    <span class="total-label">Volume Total:</span>
+                    <span class="total-value">{{ (cartTotalVolume() / 1000).toFixed(1) }}L</span>
                   </div>
-                  <div class="desktop-summary-item">
-                    <span class="label">Tamanho:</span>
-                    <span class="value">{{ summary.cupSize }}ml</span>
-                  </div>
-                  <div class="desktop-summary-item">
-                    <span class="label">Quantidade:</span>
-                    <span class="value">{{ summary.quantity }} copo(s)</span>
-                  </div>
-                  <div class="desktop-summary-item highlight">
-                    <span class="label">Volume Total:</span>
-                    <span class="value font-bold text-lg">{{ summary.totalVolume }}L</span>
+                  <div class="cart-total-row highlight">
+                    <span class="total-label">Total a Pagar:</span>
+                    <span class="total-value">R$ {{ cartTotalPrice().toFixed(2) }}</span>
                   </div>
                 </div>
               </div>
@@ -191,19 +354,108 @@
           </div>
         }
 
-        <!-- ==================== BOTÃO DE SUBMIT (FIXO NO BOTTOM - MOBILE) ==================== -->
+        <!-- ==================== BOTÕES DE AÇÃO (FIXO NO BOTTOM - MOBILE) ==================== -->
         <div class="submit-container md:relative">
-          <p-button
-            type="submit"
-            label="Registrar Venda"
-            icon="pi pi-check"
-            iconPos="left"
-            styleClass="submit-button"
-            [disabled]="saleForm.invalid"
-            [attr.aria-label]="saleForm.invalid ? 'Formulário incompleto, selecione todos os campos' : 'Registrar venda'" />
+          <div class="submit-buttons-wrapper">
+            <!-- Botão: Adicionar ao Carrinho -->
+            <div class="submit-button">
+              <p-button
+                type="button"
+                label="Adicionar ao Carrinho"
+                icon="pi pi-shopping-cart"
+                iconPos="left"
+                severity="info"
+                styleClass="submit-button"
+                (onClick)="addToCart()"
+                [disabled]="saleForm.invalid"
+                [attr.aria-label]="saleForm.invalid ? 'Formulário incompleto, selecione todos os campos' : 'Adicionar item ao carrinho'" />
+            </div>
+
+            <!-- Botão: Finalizar com Comanda (somente se houver itens no carrinho) -->
+            @if (hasCartItems()) {
+              <div class="submit-button">
+                <p-button
+                  type="button"
+                  label="Finalizar com Comanda"
+                  icon="pi pi-book"
+                  iconPos="left"
+                  severity="secondary"
+                  styleClass="submit-button"
+                  (onClick)="openComandaDialog()"
+                  [attr.aria-label]="'Finalizar venda com comanda'" />
+              </div>
+            }
+
+            <!-- Botão: Finalizar Venda (somente se houver itens no carrinho) -->
+            @if (hasCartItems()) {
+              <div class="submit-button">
+                <p-button
+                  type="button"
+                  label="Finalizar Venda"
+                  icon="pi pi-check"
+                  iconPos="left"
+                  severity="success"
+                  styleClass="submit-button"
+                  (onClick)="finalizeSale()"
+                  [attr.aria-label]="'Finalizar venda'" />
+              </div>
+            }
+          </div>
         </div>
       </form>
     </ng-template>
   </p-card>
+
+  <!-- ==================== MODAL: SELECIONAR COMANDA ==================== -->
+  <p-dialog
+    [(visible)]="isOpeningComanda"
+    [modal]="true"
+    [closable]="true"
+    [draggable]="false"
+    [resizable]="false"
+    [style]="{width: '90vw', maxWidth: '35rem'}"
+    header="Abrir Comanda"
+    (onHide)="closeComandaDialog()">
+
+    <div class="comandas-grid">
+      @for (comanda of availableComandas(); track comanda.id) {
+        <button
+          type="button"
+          class="comanda-button"
+          [class.comanda-button-active]="selectedComandaNumero() === comanda.numero"
+          [class.comanda-button-em-uso]="comanda.status === 'em_uso'"
+          (click)="selectComanda(comanda.numero)">
+          <span class="comanda-numero">{{ comanda.numero }}</span>
+          <span class="comanda-label">Comanda</span>
+          @if (comanda.status === 'em_uso') {
+            <p-tag
+              value="Em Uso"
+              severity="warning"
+              styleClass="comanda-status-badge">
+            </p-tag>
+          }
+        </button>
+      }
+      @empty {
+        <p class="no-comandas-message">Nenhuma comanda disponível</p>
+      }
+    </div>
+
+    <ng-template pTemplate="footer">
+      <div class="dialog-footer">
+        <p-button
+          label="Cancelar"
+          severity="secondary"
+          [outlined]="true"
+          (onClick)="closeComandaDialog()" />
+        <p-button
+          label="Finalizar com Comanda"
+          icon="pi pi-check"
+          severity="success"
+          [disabled]="!selectedComandaNumero()"
+          (onClick)="finalizeWithComanda()" />
+      </div>
+    </ng-template>
+  </p-dialog>
 
 </div>

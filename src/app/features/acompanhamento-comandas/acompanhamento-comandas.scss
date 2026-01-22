@@ -1,0 +1,233 @@
+// ========================================
+// src/app/features/acompanhamento-comandas/acompanhamento-comandas.scss
+// Estilos do Acompanhamento de Comandas
+// ========================================
+
+.comandas-container {
+  padding: 1rem;
+
+  @media (min-width: 768px) {
+    padding: 2rem;
+  }
+}
+
+::ng-deep .comandas-card {
+  .p-card-body {
+    padding: 0;
+  }
+
+  .p-card-content {
+    padding: 1.5rem;
+
+    @media (min-width: 768px) {
+      padding: 2rem;
+    }
+  }
+}
+
+// Header do card
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 2rem;
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  border-bottom: 4px solid #fb923c;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  i {
+    font-size: 2rem;
+    color: #fb923c;
+  }
+}
+
+.header-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.header-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.header-subtitle {
+  font-size: 0.875rem;
+  color: #fb923c;
+}
+
+// Seções de status
+.status-section {
+  margin-bottom: 2rem;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.section-header {
+  margin-bottom: 1rem;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.status-icon-disponivel {
+  color: #16a34a;
+  font-size: 1.5rem;
+}
+
+.status-icon-em-uso {
+  color: #ea580c;
+  font-size: 1.5rem;
+}
+
+.status-icon-aguardando {
+  color: #dc2626;
+  font-size: 1.5rem;
+}
+
+// Grid de comandas simples (disponíveis)
+.comandas-grid-simple {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 0.75rem;
+}
+
+.comanda-card-simple {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  border: 2px solid;
+  font-weight: 700;
+  font-size: 1.5rem;
+
+  &.disponivel {
+    border-color: #16a34a;
+    background: #f0fdf4;
+    color: #15803d;
+  }
+}
+
+// Grid de comandas detalhadas (em uso e aguardando)
+.comandas-grid-detailed {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.comanda-card-detailed {
+  border: 2px solid;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  background: white;
+
+  &.em-uso {
+    border-color: #ea580c;
+  }
+
+  &.aguardando {
+    border-color: #dc2626;
+  }
+}
+
+.comanda-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.comanda-numero-large {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+// Itens da comanda
+.comanda-items {
+  margin-bottom: 1rem;
+}
+
+.item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px dashed #e5e7eb;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.item-name {
+  font-size: 0.875rem;
+  color: #4b5563;
+}
+
+.item-price {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+// Footer com total
+.comanda-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  margin-bottom: 1rem;
+  border-top: 2px solid #e5e7eb;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.total-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.total-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.total-value-highlight {
+  color: #dc2626;
+}
+
+// Mensagem vazia
+.empty-message {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 2rem;
+  color: #9ca3af;
+  font-style: italic;
+}

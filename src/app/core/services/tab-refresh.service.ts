@@ -7,6 +7,7 @@ import { Subject, Observable, Observer } from 'rxjs';
  */
 export enum MainTab {
   SALES = 'sales',
+  COMMANDS = 'commands',
   REPORTS = 'reports',
   BEERS = 'beers',
   SETTINGS = 'settings'
@@ -19,6 +20,7 @@ export enum SettingsSubTab {
   USER = 'user',
   SALES = 'sales',
   ADMIN = 'admin',
+  EVENTS = 'events',
   HELP = 'help'
 }
 

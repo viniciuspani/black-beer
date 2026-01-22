@@ -1,5 +1,5 @@
 // src/app/features/settings-sales/settings-sales.ts
-import { Component, OnInit, OnDestroy, inject, signal, effect } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -11,18 +11,23 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
+import { SelectButtonModule } from 'primeng/selectbutton';
 
 // App
 import { BeerType } from '../../core/models/beer.model';
 import { DatabaseService } from '../../core/services/database';
 import { TabRefreshService, SettingsSubTab } from '../../core/services/tab-refresh.service';
+import { EventService } from '../../core/services/event.service';
+import { Event } from '../../core/models/event.model';
 
 interface BeerStock {
   beerId: number;
   beerName: string;
   color: string;
   quantidadeLitros: number;
+  minLitersAlert: number; // Limite individual de alerta
   originalQuantity: number; // Para controlar mudanças
+  originalMinLitersAlert: number; // Para controlar mudanças no limite
 }
 
 interface BeerPrice {
@@ -52,7 +57,8 @@ interface BeerPrice {
     InputNumberModule,
     ToastModule,
     TagModule,
-    TooltipModule
+    TooltipModule,
+    SelectButtonModule
   ],
   providers: [MessageService],
   templateUrl: './settings-sales.html',
@@ -61,6 +67,7 @@ interface BeerPrice {
 export class SettingsSalesComponent implements OnInit, OnDestroy {
   // ==================== INJEÇÃO DE DEPENDÊNCIAS ====================
   private readonly dbService = inject(DatabaseService);
+  private readonly eventService = inject(EventService);
   private readonly messageService = inject(MessageService);
   private readonly tabRefreshService = inject(TabRefreshService);
 
@@ -72,6 +79,10 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
   readonly originalMinLiters = signal<number>(5.0);
   readonly stockAlerts = signal<any[]>([]);
   readonly isSaving = signal<boolean>(false);
+
+  // Event management signals
+  readonly selectedEventId = signal<number | null>(null);
+  readonly availableEvents = computed(() => this.eventService.activeEvents());
 
   // ==================== CONSTANTES ====================
   private readonly DEFAULT_MIN_LITERS = 5.0;
@@ -93,7 +104,10 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
   }
 
   // ==================== LIFECYCLE HOOKS ====================
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
+    // Carrega eventos disponíveis
+    await this.eventService.loadEvents();
+
     if (this.dbService.isDbReady()) {
       this.loadData();
     }
@@ -109,6 +123,17 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
    */
   public refreshData(): void {
     console.log('🔄 Atualizando dados de settings-sales...');
+    this.loadData();
+  }
+
+  // ==================== EVENT MANAGEMENT ====================
+  /**
+   * Callback quando o evento selecionado muda
+   * Recarrega os dados filtrados pelo evento
+   */
+  onEventChange(eventId: number | null): void {
+    this.selectedEventId.set(eventId);
+    console.log('📅 Evento alterado:', eventId || 'Sem evento (geral)');
     this.loadData();
   }
 
@@ -149,19 +174,46 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
 
   /**
    * Carrega estoques configurados para cada cerveja
+   * IMPORTANTE: originalQuantity > 0 OU existência de eventStock indica controle ativo
+   * Se eventStock existe no banco, há controle ativo, mesmo que quantidade seja 0
    */
   private loadBeerStocks(beers: BeerType[]): void {
     try {
+      const eventId = this.selectedEventId();
       const stocks: BeerStock[] = beers.map(beer => {
-        const eventStock = this.dbService.getEventStockByBeerId(beer.id);
-        const quantity = eventStock?.quantidadeLitros || 0;
+        const eventStock = this.dbService.getEventStockByBeerId(beer.id, eventId);
+
+        // Se não há registro no banco, não há controle ativo
+        if (!eventStock) {
+          return {
+            beerId: beer.id,
+            beerName: beer.name,
+            color: beer.color,
+            quantidadeLitros: 0,
+            minLitersAlert: 5.0,
+            originalQuantity: 0,
+            originalMinLitersAlert: 5.0
+          };
+        }
+
+        // Se há registro no banco, há controle ativo (mesmo que quantidade seja 0)
+        // Para indicar controle ativo quando quantidade é 0, usamos um valor sentinela
+        const quantity = eventStock.quantidadeLitros;
+        const minAlert = eventStock.minLitersAlert || 5.0;
+
+        // SOLUÇÃO: Se quantidade é 0 mas há registro no banco,
+        // originalQuantity deve ser > 0 para indicar controle ativo
+        // Usamos 0.001 como sentinela (imperceptível mas > 0)
+        const originalQty = quantity === 0 ? 0.001 : quantity;
 
         return {
           beerId: beer.id,
           beerName: beer.name,
           color: beer.color,
           quantidadeLitros: quantity,
-          originalQuantity: quantity
+          minLitersAlert: minAlert,
+          originalQuantity: originalQty,
+          originalMinLitersAlert: minAlert
         };
       });
 
@@ -178,8 +230,9 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
    */
   private loadBeerPrices(beers: BeerType[]): void {
     try {
+      const eventId = this.selectedEventId();
       const prices: BeerPrice[] = beers.map(beer => {
-        const salesConfig = this.dbService.getSalesConfigByBeerId(beer.id);
+        const salesConfig = this.dbService.getSalesConfigByBeerId(beer.id, eventId);
         const price300ml = salesConfig?.price300ml || 0;
         const price500ml = salesConfig?.price500ml || 0;
         const price1000ml = salesConfig?.price1000ml || 0;
@@ -239,25 +292,28 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
 
   // ==================== MÉTODOS PÚBLICOS ====================
   /**
-   * Salva a quantidade de litros de uma cerveja
+   * Salva a quantidade de litros e limite de alerta de uma cerveja
    */
   saveStockForBeer(stock: BeerStock): void {
     try {
+      const eventId = this.selectedEventId();
       this.dbService.setEventStock(
         stock.beerId,
         stock.beerName,
-        stock.quantidadeLitros
+        stock.quantidadeLitros,
+        stock.minLitersAlert,
+        eventId
       );
 
-      // Atualiza valor original
+      // Atualiza valores originais
       const updatedStocks = this.beerStocks().map(s =>
         s.beerId === stock.beerId
-          ? { ...s, originalQuantity: stock.quantidadeLitros }
+          ? { ...s, originalQuantity: stock.quantidadeLitros, originalMinLitersAlert: stock.minLitersAlert }
           : s
       );
       this.beerStocks.set(updatedStocks);
 
-      this.showSuccess(`Estoque de ${stock.beerName} salvo: ${stock.quantidadeLitros}L`);
+      this.showSuccess(`Estoque de ${stock.beerName} salvo: ${stock.quantidadeLitros}L (alerta: ${stock.minLitersAlert}L)`);
       this.checkStockAlerts();
     } catch (error) {
       console.error('❌ Erro ao salvar estoque:', error);
@@ -273,12 +329,19 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
     let savedCount = 0;
 
     try {
+      const eventId = this.selectedEventId();
       this.beerStocks().forEach(stock => {
-        if (stock.quantidadeLitros !== stock.originalQuantity) {
+        const hasChanges =
+          stock.quantidadeLitros !== stock.originalQuantity ||
+          stock.minLitersAlert !== stock.originalMinLitersAlert;
+
+        if (hasChanges) {
           this.dbService.setEventStock(
             stock.beerId,
             stock.beerName,
-            stock.quantidadeLitros
+            stock.quantidadeLitros,
+            stock.minLitersAlert,
+            eventId
           );
           savedCount++;
         }
@@ -287,7 +350,8 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
       // Atualiza valores originais
       const updatedStocks = this.beerStocks().map(s => ({
         ...s,
-        originalQuantity: s.quantidadeLitros
+        originalQuantity: s.quantidadeLitros,
+        originalMinLitersAlert: s.minLitersAlert
       }));
       this.beerStocks.set(updatedStocks);
 
@@ -332,12 +396,14 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
    */
   savePriceForBeer(price: BeerPrice): void {
     try {
+      const eventId = this.selectedEventId();
       this.dbService.setSalesConfig(
         price.beerId,
         price.beerName,
         price.price300ml,
         price.price500ml,
-        price.price1000ml
+        price.price1000ml,
+        eventId
       );
 
       // Atualiza valor original
@@ -368,6 +434,7 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
     let savedCount = 0;
 
     try {
+      const eventId = this.selectedEventId();
       this.beerPrices().forEach(price => {
         const hasChanges =
           price.price300ml !== price.originalPrice300ml ||
@@ -380,7 +447,8 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
             price.beerName,
             price.price300ml,
             price.price500ml,
-            price.price1000ml
+            price.price1000ml,
+            eventId
           );
           savedCount++;
         }
@@ -421,20 +489,23 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
 
   /**
    * Reseta o estoque de uma cerveja (remove do banco, volta ao modo normal)
+   * Este método só deve ser chamado quando o usuário clicar no botão "Remover Controle"
    */
   resetStockForBeer(stock: BeerStock): void {
     try {
-      if (stock.originalQuantity === 0) {
+      // Verifica se há controle ativo (originalQuantity > 0 OU quantidadeLitros > 0)
+      if (stock.originalQuantity === 0 && stock.quantidadeLitros === 0) {
         this.showInfo(`${stock.beerName} já está sem controle de estoque.`);
         return;
       }
 
+      // Remove do banco de dados
       this.dbService.removeEventStock(stock.beerId);
 
-      // Atualiza para 0
+      // Atualiza para valores padrão (sem controle)
       const updatedStocks = this.beerStocks().map(s =>
         s.beerId === stock.beerId
-          ? { ...s, quantidadeLitros: 0, originalQuantity: 0 }
+          ? { ...s, quantidadeLitros: 0, minLitersAlert: 5.0, originalQuantity: 0, originalMinLitersAlert: 5.0 }
           : s
       );
       this.beerStocks.set(updatedStocks);
@@ -452,7 +523,8 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
    * Verifica se um estoque foi modificado
    */
   isStockModified(stock: BeerStock): boolean {
-    return stock.quantidadeLitros !== stock.originalQuantity;
+    return stock.quantidadeLitros !== stock.originalQuantity ||
+           stock.minLitersAlert !== stock.originalMinLitersAlert;
   }
 
   /**
@@ -470,34 +542,76 @@ export class SettingsSalesComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Retorna o status da cerveja (Normal, Controle Ativo, Alerta)
+   * Retorna o status da cerveja (Normal, Controle Ativo, Alerta, Esgotado)
+   * IMPORTANTE: O controle só é removido quando o usuário clicar em "Remover Controle"
+   * Mesmo com quantidade 0, se originalQuantity > 0, o controle continua ativo
    */
-  getBeerStatus(stock: BeerStock): 'normal' | 'active' | 'alert' {
-    if (stock.quantidadeLitros === 0) return 'normal';
-    if (stock.quantidadeLitros < this.minLitersAlert()) return 'alert';
+  getBeerStatus(stock: BeerStock): 'normal' | 'active' | 'alert' | 'depleted' {
+    // Se originalQuantity === 0 E quantidadeLitros === 0, significa que não tem controle ativo
+    if (stock.originalQuantity === 0 && stock.quantidadeLitros === 0) return 'normal';
+
+    // Se tem controle ativo (originalQuantity > 0 OU quantidadeLitros > 0)
+    // mas a quantidade atual está zerada, retorna 'depleted'
+    if (stock.quantidadeLitros === 0) return 'depleted';
+
+    // Se está abaixo do limite individual
+    if (stock.quantidadeLitros < stock.minLitersAlert) return 'alert';
+
+    // Se tem controle ativo e acima do limite
     return 'active';
   }
 
   /**
    * Retorna a severidade do badge de status
    */
-  getStatusSeverity(status: 'normal' | 'active' | 'alert'): 'secondary' | 'success' | 'danger' {
+  getStatusSeverity(status: 'normal' | 'active' | 'alert' | 'depleted'): 'secondary' | 'success' | 'danger' | 'warning' {
     switch (status) {
       case 'normal': return 'secondary';
       case 'active': return 'success';
-      case 'alert': return 'danger';
+      case 'alert': return 'warning';
+      case 'depleted': return 'danger';
     }
   }
 
   /**
    * Retorna o texto do status
    */
-  getStatusText(status: 'normal' | 'active' | 'alert'): string {
+  getStatusText(status: 'normal' | 'active' | 'alert' | 'depleted'): string {
     switch (status) {
       case 'normal': return 'Sem Controle';
       case 'active': return 'Controle Ativo';
       case 'alert': return 'Estoque Baixo!';
+      case 'depleted': return 'Estoque Esgotado!';
     }
+  }
+
+  /**
+   * Retorna a classe CSS do display de estoque baseado na quantidade
+   * - Vermelho: quantidadeLitros === 0 (estoque esgotado)
+   * - Amarelo: 0 < quantidadeLitros < minLitersAlert (estoque baixo)
+   * - Verde: quantidadeLitros >= minLitersAlert (estoque OK)
+   */
+  getStockDisplayClass(stock: BeerStock): string {
+    // Se não tem controle ativo, não exibe o display
+    if (stock.originalQuantity === 0 && stock.quantidadeLitros === 0) {
+      return '';
+    }
+
+    // Usa originalQuantity pois é o valor atual salvo no banco
+    const currentStock = stock.originalQuantity;
+
+    // Estoque esgotado = vermelho
+    if (currentStock === 0 || currentStock === 0.001) { // 0.001 é o sentinela para estoque zerado
+      return 'stock-depleted';
+    }
+
+    // Estoque baixo (abaixo do limite) = amarelo
+    if (currentStock < stock.minLitersAlert) {
+      return 'stock-low';
+    }
+
+    // Estoque OK (acima do limite) = verde
+    return 'stock-ok';
   }
 
   // ==================== MÉTODOS DE MENSAGENS ====================

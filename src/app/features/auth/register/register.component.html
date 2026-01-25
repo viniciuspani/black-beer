@@ -167,6 +167,29 @@
           }
         </div>
 
+        <!-- Campo: Perfil (apenas modo embedded) -->
+        @if (embedded) {
+          <div class="form-field">
+            <label for="role" class="form-label">
+              <i class="pi pi-id-card"></i>
+              Perfil
+            </label>
+            <p-select
+              id="role"
+              formControlName="role"
+              [options]="roleOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Selecione o perfil"
+              styleClass="w-full">
+            </p-select>
+            <small class="help-text">
+              <i class="pi pi-info-circle"></i>
+              Define as permissões do usuário no sistema
+            </small>
+          </div>
+        }
+
         <!-- Botão de Cadastrar -->
         <div class="form-actions">
           <p-button
@@ -181,36 +204,39 @@
           </p-button>
         </div>
 
-        <!-- Divider -->
-        <div class="divider">
-          <span>ou</span>
-        </div>
+        <!-- Divider e Botão de Voltar ao Login (apenas modo standalone) -->
+        @if (!embedded) {
+          <div class="divider">
+            <span>ou</span>
+          </div>
 
-        <!-- Botão de Voltar ao Login -->
-        <div class="form-actions">
-          <p-button
-            type="button"
-            label="Já tenho uma conta"
-            icon="pi pi-sign-in"
-            (onClick)="goToLogin()"
-            styleClass="w-full"
-            severity="secondary"
-            [outlined]="true">
-          </p-button>
-        </div>
+          <div class="form-actions">
+            <p-button
+              type="button"
+              label="Já tenho uma conta"
+              icon="pi pi-sign-in"
+              (onClick)="goToLogin()"
+              styleClass="w-full"
+              severity="secondary"
+              [outlined]="true">
+            </p-button>
+          </div>
+        }
 
       </form>
     </ng-template>
 
-    <!-- Footer com info -->
-    <ng-template pTemplate="footer">
-      <div class="register-footer">
-        <p class="footer-text">
-          <i class="pi pi-shield"></i>
-          Suas informações estão seguras e armazenadas localmente
-        </p>
-      </div>
-    </ng-template>
+    <!-- Footer com info (apenas modo standalone) -->
+    @if (!embedded) {
+      <ng-template pTemplate="footer">
+        <div class="register-footer">
+          <p class="footer-text">
+            <i class="pi pi-shield"></i>
+            Suas informações estão seguras e armazenadas localmente
+          </p>
+        </div>
+      </ng-template>
+    }
 
   </p-card>
 </div>

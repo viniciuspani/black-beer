@@ -1,0 +1,471 @@
+<p-toast></p-toast>
+<p-confirmDialog></p-confirmDialog>
+
+<div class="flex flex-col gap-6">
+  <p-card>
+    <!-- Header do Card -->
+    <ng-template pTemplate="header">
+      <div class="card-header">
+        <div class="header-content">
+          <div class="header-icon">
+            <i class="pi pi-building"></i>
+          </div>
+          <div class="header-text">
+            <h2 class="header-title">Gestão de Empresas</h2>
+            <p class="header-subtitle">Gerencie as empresas cadastradas no sistema</p>
+          </div>
+        </div>
+        <p-button
+          label="Nova Empresa"
+          icon="pi pi-plus"
+          severity="success"
+          [raised]="true"
+          (onClick)="openCreateDialog()"
+          pTooltip="Cadastrar nova empresa"
+          tooltipPosition="left">
+        </p-button>
+      </div>
+    </ng-template>
+
+    <!-- Conteúdo -->
+    <ng-template pTemplate="content">
+      @if (!dbReady()) {
+        <div class="loading-container">
+          <i class="pi pi-spin pi-spinner text-4xl text-amber-600"></i>
+          <p class="text-gray-600 mt-4">Carregando...</p>
+        </div>
+      } @else if (empresas().length === 0) {
+        <div class="empty-state">
+          <i class="pi pi-building text-6xl text-gray-300"></i>
+          <h3 class="text-xl font-semibold text-gray-600 mt-4">Nenhuma empresa encontrada</h3>
+          <p class="text-gray-500 mt-2">Clique em "Nova Empresa" para adicionar a primeira empresa.</p>
+        </div>
+      } @else {
+        <!-- Seção de Filtros -->
+        <div class="filter-section mb-4">
+          <div class="filter-header flex items-center gap-2 mb-3">
+            <i class="pi pi-filter text-amber-600"></i>
+            <span class="font-medium text-gray-700">Filtros</span>
+            @if (temFiltrosAtivos()) {
+              <p-button
+                label="Limpar"
+                icon="pi pi-times"
+                severity="secondary"
+                [text]="true"
+                size="small"
+                (onClick)="limparFiltros()">
+              </p-button>
+            }
+          </div>
+          <div class="filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <!-- Filtro por Razão Social -->
+            <div class="filter-field">
+              <label for="filtroRazaoSocial" class="block text-sm text-gray-600 mb-1">Razão Social</label>
+              <input
+                pInputText
+                id="filtroRazaoSocial"
+                type="text"
+                [ngModel]="filtroRazaoSocial()"
+                (ngModelChange)="filtroRazaoSocial.set($event)"
+                placeholder="Buscar por razão social..."
+                class="w-full" />
+            </div>
+
+            <!-- Filtro por CNPJ -->
+            <div class="filter-field">
+              <label for="filtroCnpj" class="block text-sm text-gray-600 mb-1">CNPJ</label>
+              <p-inputMask
+                id="filtroCnpj"
+                [ngModel]="filtroCnpj()"
+                (ngModelChange)="filtroCnpj.set($event)"
+                mask="99.999.999/9999-99"
+                placeholder="00.000.000/0000-00"
+                [slotChar]="' '"
+                styleClass="w-full">
+              </p-inputMask>
+            </div>
+
+            <!-- Filtro por Cidade -->
+            <div class="filter-field">
+              <label for="filtroCidade" class="block text-sm text-gray-600 mb-1">Cidade</label>
+              <input
+                pInputText
+                id="filtroCidade"
+                type="text"
+                [ngModel]="filtroCidade()"
+                (ngModelChange)="filtroCidade.set($event)"
+                placeholder="Buscar por cidade..."
+                class="w-full" />
+            </div>
+
+            <!-- Filtro por Status -->
+            <div class="filter-field">
+              <label for="filtroStatus" class="block text-sm text-gray-600 mb-1">Status</label>
+              <p-select
+                id="filtroStatus"
+                [options]="statusOptions"
+                [ngModel]="filtroStatus()"
+                (ngModelChange)="filtroStatus.set($event)"
+                placeholder="Todos os status"
+                [showClear]="true"
+                styleClass="w-full">
+              </p-select>
+            </div>
+          </div>
+          @if (temFiltrosAtivos()) {
+            <div class="filter-results mt-3 text-sm text-gray-500">
+              <i class="pi pi-info-circle mr-1"></i>
+              Exibindo {{ empresasFiltradas().length }} de {{ empresas().length }} empresa(s)
+            </div>
+          }
+        </div>
+
+        <!-- Tabela Desktop -->
+        <div class="table-container hidden md:block">
+          <p-table
+            [value]="empresasFiltradas()"
+            [paginator]="empresasFiltradas().length > 10"
+            [rows]="10"
+            [showCurrentPageReport]="true"
+            currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} empresas"
+            [rowsPerPageOptions]="[5, 10, 25]"
+            styleClass="p-datatable-striped"
+            [loading]="isLoading()">
+
+            <ng-template pTemplate="header">
+              <tr>
+                <th>Razão Social</th>
+                <th>CNPJ</th>
+                <th>Cidade/UF</th>
+                <th>Responsável</th>
+                <th>Gestor</th>
+                <th>Status</th>
+                <th class="text-center">Ações</th>
+              </tr>
+            </ng-template>
+
+            <ng-template pTemplate="body" let-empresa>
+              <tr [class.inactive-row]="empresa.int_active === 0">
+                <td>
+                  <div class="flex items-center gap-2">
+                    <div class="empresa-avatar">
+                      <i class="pi pi-building"></i>
+                    </div>
+                    <span class="font-medium">{{ empresa.desc_razao_social }}</span>
+                  </div>
+                </td>
+                <td>
+                  <span class="text-gray-600 font-mono text-sm">{{ formatCnpjDisplay(empresa.desc_cnpj) }}</span>
+                </td>
+                <td>
+                  <span class="text-gray-600">{{ empresa.desc_cidade }}/{{ empresa.desc_estado }}</span>
+                </td>
+                <td>
+                  <span class="text-gray-600">{{ empresa.desc_responsavel_empresa }}</span>
+                </td>
+                <td>
+                  @if (empresa.gestor_username) {
+                    <span class="text-gray-600">{{ empresa.gestor_username }}</span>
+                  } @else {
+                    <span class="text-gray-400 italic">Não atribuído</span>
+                  }
+                </td>
+                <td>
+                  <p-tag
+                    [value]="getStatusLabel(empresa.int_active)"
+                    [severity]="getStatusSeverity(empresa.int_active)"
+                    [rounded]="true">
+                  </p-tag>
+                </td>
+                <td class="text-center">
+                  <div class="flex items-center justify-center gap-1">
+                    <p-button
+                      icon="pi pi-pencil"
+                      severity="info"
+                      [outlined]="true"
+                      size="small"
+                      pTooltip="Editar empresa"
+                      tooltipPosition="top"
+                      (onClick)="openEditDialog(empresa)">
+                    </p-button>
+                    @if (empresa.int_active === 1) {
+                      <p-button
+                        icon="pi pi-ban"
+                        severity="warn"
+                        [outlined]="true"
+                        size="small"
+                        pTooltip="Desativar empresa"
+                        tooltipPosition="top"
+                        (onClick)="confirmToggleEmpresa(empresa)">
+                      </p-button>
+                    } @else {
+                      <p-button
+                        icon="pi pi-check-circle"
+                        severity="success"
+                        [outlined]="true"
+                        size="small"
+                        pTooltip="Ativar empresa"
+                        tooltipPosition="top"
+                        (onClick)="confirmToggleEmpresa(empresa)">
+                      </p-button>
+                    }
+                    <p-button
+                      icon="pi pi-trash"
+                      severity="danger"
+                      [outlined]="true"
+                      size="small"
+                      pTooltip="Excluir empresa"
+                      tooltipPosition="top"
+                      (onClick)="confirmDeleteEmpresa(empresa)">
+                    </p-button>
+                  </div>
+                </td>
+              </tr>
+            </ng-template>
+
+            <ng-template pTemplate="emptymessage">
+              <tr>
+                <td colspan="7" class="text-center py-8">
+                  <i class="pi pi-inbox text-4xl text-gray-300"></i>
+                  <p class="text-gray-500 mt-2">Nenhuma empresa encontrada</p>
+                </td>
+              </tr>
+            </ng-template>
+          </p-table>
+        </div>
+
+        <!-- Cards Mobile -->
+        <div class="mobile-cards flex md:hidden">
+          @for (empresa of empresasFiltradas(); track empresa.num_id) {
+            <div class="empresa-card" [class.inactive-card]="empresa.int_active === 0">
+              <div class="empresa-card-header">
+                <div class="empresa-card-avatar">
+                  <i class="pi pi-building"></i>
+                </div>
+                <div class="empresa-card-info">
+                  <h4 class="empresa-card-name">{{ empresa.desc_razao_social }}</h4>
+                  <p class="empresa-card-cnpj">{{ formatCnpjDisplay(empresa.desc_cnpj) }}</p>
+                </div>
+              </div>
+
+              <div class="empresa-card-details">
+                <div class="detail-row">
+                  <i class="pi pi-map-marker"></i>
+                  <span>{{ empresa.desc_cidade }}/{{ empresa.desc_estado }}</span>
+                </div>
+                <div class="detail-row">
+                  <i class="pi pi-user"></i>
+                  <span>{{ empresa.desc_responsavel_empresa }}</span>
+                </div>
+                @if (empresa.gestor_username) {
+                  <div class="detail-row">
+                    <i class="pi pi-id-card"></i>
+                    <span>Gestor: {{ empresa.gestor_username }}</span>
+                  </div>
+                }
+              </div>
+
+              <div class="empresa-card-footer">
+                <p-tag
+                  [value]="getStatusLabel(empresa.int_active)"
+                  [severity]="getStatusSeverity(empresa.int_active)"
+                  [rounded]="true">
+                </p-tag>
+                <div class="empresa-card-actions">
+                  <p-button
+                    icon="pi pi-pencil"
+                    severity="info"
+                    [outlined]="true"
+                    [rounded]="true"
+                    size="small"
+                    (onClick)="openEditDialog(empresa)">
+                  </p-button>
+                  @if (empresa.int_active === 1) {
+                    <p-button
+                      icon="pi pi-ban"
+                      severity="warn"
+                      [outlined]="true"
+                      [rounded]="true"
+                      size="small"
+                      (onClick)="confirmToggleEmpresa(empresa)">
+                    </p-button>
+                  } @else {
+                    <p-button
+                      icon="pi pi-check-circle"
+                      severity="success"
+                      [outlined]="true"
+                      [rounded]="true"
+                      size="small"
+                      (onClick)="confirmToggleEmpresa(empresa)">
+                    </p-button>
+                  }
+                  <p-button
+                    icon="pi pi-trash"
+                    severity="danger"
+                    [outlined]="true"
+                    [rounded]="true"
+                    size="small"
+                    (onClick)="confirmDeleteEmpresa(empresa)">
+                  </p-button>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </ng-template>
+
+    <!-- Footer -->
+    <ng-template pTemplate="footer">
+      <div class="card-footer">
+        <div class="footer-info">
+          <i class="pi pi-info-circle text-amber-600"></i>
+          <span class="text-gray-600 text-sm">
+            Total de {{ empresas().length }} empresa(s) cadastrada(s)
+          </span>
+        </div>
+      </div>
+    </ng-template>
+  </p-card>
+</div>
+
+<!-- Dialog para Criar/Editar Empresa -->
+<p-dialog
+  [header]="dialogTitle()"
+  [(visible)]="showDialog"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: '95vw', maxWidth: '600px' }"
+  [contentStyle]="{ overflow: 'auto' }"
+  (onHide)="closeDialog()">
+
+  <div class="form-container">
+    <!-- Razão Social -->
+    <div class="form-field">
+      <label for="razaoSocial" class="form-label">Razão Social *</label>
+      <input
+        pInputText
+        id="razaoSocial"
+        type="text"
+        [ngModel]="form().razaoSocial"
+        (ngModelChange)="updateFormField('razaoSocial', $event)"
+        placeholder="Nome da empresa"
+        class="w-full" />
+    </div>
+
+    <!-- CNPJ -->
+    <div class="form-field">
+      <label for="cnpj" class="form-label">CNPJ *</label>
+      <p-inputMask
+        id="cnpj"
+        [ngModel]="form().cnpj"
+        (ngModelChange)="updateFormField('cnpj', $event)"
+        mask="99.999.999/9999-99"
+        placeholder="00.000.000/0000-00"
+        styleClass="w-full">
+      </p-inputMask>
+    </div>
+
+    <!-- Endereço -->
+    <div class="form-field">
+      <label for="endereco" class="form-label">Endereço *</label>
+      <input
+        pInputText
+        id="endereco"
+        type="text"
+        [ngModel]="form().endereco"
+        (ngModelChange)="updateFormField('endereco', $event)"
+        placeholder="Rua, número, bairro"
+        class="w-full" />
+    </div>
+
+    <!-- CEP e Cidade -->
+    <div class="form-row">
+      <div class="form-field flex-1">
+        <label for="cep" class="form-label">CEP *</label>
+        <p-inputMask
+          id="cep"
+          [ngModel]="form().cep"
+          (ngModelChange)="updateFormField('cep', $event)"
+          mask="99999-999"
+          placeholder="00000-000"
+          styleClass="w-full">
+        </p-inputMask>
+      </div>
+      <div class="form-field flex-2">
+        <label for="cidade" class="form-label">Cidade *</label>
+        <input
+          pInputText
+          id="cidade"
+          type="text"
+          [ngModel]="form().cidade"
+          (ngModelChange)="updateFormField('cidade', $event)"
+          placeholder="Nome da cidade"
+          class="w-full" />
+      </div>
+    </div>
+
+    <!-- Estado -->
+    <div class="form-field">
+      <label for="estado" class="form-label">Estado *</label>
+      <p-select
+        id="estado"
+        [options]="estados"
+        [ngModel]="form().estado"
+        (ngModelChange)="updateFormField('estado', $event)"
+        placeholder="Selecione o estado"
+        [filter]="true"
+        filterBy="label"
+        styleClass="w-full">
+      </p-select>
+    </div>
+
+    <!-- Responsável -->
+    <div class="form-field">
+      <label for="responsavel" class="form-label">Responsável pela Empresa *</label>
+      <input
+        pInputText
+        id="responsavel"
+        type="text"
+        [ngModel]="form().responsavelEmpresa"
+        (ngModelChange)="updateFormField('responsavelEmpresa', $event)"
+        placeholder="Nome do responsável"
+        class="w-full" />
+    </div>
+
+    <!-- Gestor -->
+    <div class="form-field">
+      <label for="gestor" class="form-label">Gestor (Usuário do Sistema)</label>
+      <p-select
+        id="gestor"
+        [options]="gestores()"
+        [ngModel]="form().gestorEmpresa"
+        (ngModelChange)="updateFormField('gestorEmpresa', $event)"
+        placeholder="Selecione um gestor (opcional)"
+        [showClear]="true"
+        styleClass="w-full">
+      </p-select>
+      <small class="form-hint">Opcional: Vincule um usuário gestor a esta empresa</small>
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="dialog-footer">
+      <p-button
+        label="Cancelar"
+        icon="pi pi-times"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="closeDialog()">
+      </p-button>
+      <p-button
+        [label]="isEditing() ? 'Salvar' : 'Cadastrar'"
+        [icon]="isEditing() ? 'pi pi-check' : 'pi pi-plus'"
+        severity="success"
+        [loading]="isLoading()"
+        (onClick)="saveEmpresa()">
+      </p-button>
+    </div>
+  </ng-template>
+</p-dialog>

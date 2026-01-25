@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 // src/app/features/beer-management/beer-management.ts
-import { Component, OnInit, inject, signal, WritableSignal, effect } from '@angular/core';
+import { Component, OnInit, inject, signal, WritableSignal, effect, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 
@@ -20,6 +20,7 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 // App Services and Models
 import { BeerType } from '../../core/models/beer.model';
 import { DatabaseService } from '../../core/services/database';
+import { AuthService } from '../../core/services/auth.service';
 import { TabRefreshService, MainTab } from '../../core/services/tab-refresh.service';
 
 /**
@@ -54,10 +55,20 @@ import { TabRefreshService, MainTab } from '../../core/services/tab-refresh.serv
 export class BeerManagementComponent implements OnInit {
   // ==================== INJEÇÃO DE DEPENDÊNCIAS ====================
   private dbService = inject(DatabaseService);
+  private authService = inject(AuthService);
   private fb = inject(FormBuilder);
   private confirmationService = inject(ConfirmationService);
   private messageService = inject(MessageService);
   private tabRefreshService = inject(TabRefreshService);
+
+  // ==================== PERMISSÕES ====================
+  /**
+   * Verifica se o usuário pode gerenciar cervejas (criar, editar, remover)
+   * Apenas admin e gestor têm essa permissão
+   */
+  readonly canManageBeers = computed(() =>
+    this.authService.isAdmin() || this.authService.isGestor()
+  );
   
 
   // ==================== SIGNALS PARA ESTADO REATIVO ====================

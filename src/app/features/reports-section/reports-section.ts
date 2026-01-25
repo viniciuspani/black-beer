@@ -878,7 +878,7 @@ export class ReportsSectionComponent implements OnInit {
   // ==================== MÉTODOS PARA EMAILS SALVOS ====================
 
   /**
-   * Carrega emails salvos do banco de dados (configurados no settings-user)
+   * Carrega emails salvos do banco de dados (configurados no settings-business)
    * Chamado quando o dropdown é aberto
    */
   protected loadSavedEmails(): void {

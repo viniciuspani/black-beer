@@ -1,133 +1,142 @@
 import { Component, OnInit, OnDestroy, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Subject } from 'rxjs';
 
 // PrimeNG
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
-import { InputTextModule } from 'primeng/inputtext';
 import { ToastModule } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
+import { MessageService, ConfirmationService } from 'primeng/api';
 import { TagModule } from 'primeng/tag';
-import { TextareaModule } from 'primeng/textarea';
 import { TooltipModule } from 'primeng/tooltip';
+import { TableModule } from 'primeng/table';
+import { DialogModule } from 'primeng/dialog';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { InputTextModule } from 'primeng/inputtext';
+import { SelectModule } from 'primeng/select';
+import { FormsModule } from '@angular/forms';
 
 // App
-import {
-  AppSettings,
-  toBooleanFromDb,
-  toDbFromBoolean,
-  emailsFromDb,
-  emailsToDb,
-  parseEmailInput,
-  validateEmails
-} from '../../core/models/beer.model';
-import { DatabaseService, EMAIL_CONFIG } from '../../core/services/database';
-import { ClientConfigService } from '../../core/services/client-config.service';
+import { DatabaseService } from '../../core/services/database';
+import { AuthService } from '../../core/services/auth.service';
+import { User } from '../../core/models/user.model';
+import { RegisterComponent } from '../auth/register/register.component';
+
+// Tipo para usuário sem senha (exibição na tabela)
+type UserDisplay = Omit<User, 'desc_password_hash'>;
 
 @Component({
   selector: 'app-settings-user',
   standalone: true,
   imports: [
     CommonModule,
-    ReactiveFormsModule,
     FormsModule,
     CardModule,
     ButtonModule,
-    InputTextModule,
-    TextareaModule,
     ToastModule,
     TagModule,
-    TooltipModule
+    TooltipModule,
+    TableModule,
+    DialogModule,
+    ConfirmDialogModule,
+    InputTextModule,
+    SelectModule,
+    RegisterComponent
   ],
-  providers: [MessageService],
+  providers: [MessageService, ConfirmationService],
   templateUrl: './settings-user.html',
   styleUrls: ['./settings-user.scss']
 })
 export class SettingsUserComponent implements OnInit, OnDestroy {
   // ==================== INJEÇÃO DE DEPENDÊNCIAS ====================
   private readonly dbService = inject(DatabaseService);
-  private readonly fb = inject(FormBuilder);
+  private readonly authService = inject(AuthService);
   private readonly messageService = inject(MessageService);
-  private readonly clientConfigService = inject(ClientConfigService);
+  private readonly confirmationService = inject(ConfirmationService);
 
   private readonly destroy$ = new Subject<void>();
 
-  // ==================== CONSTANTES ====================
-  readonly MIN_EMAILS = EMAIL_CONFIG.MIN_EMAILS;
-  readonly MAX_EMAILS = EMAIL_CONFIG.MAX_EMAILS;
-
-  // ==================== LOGO UPLOAD SIGNALS ====================
-  readonly selectedFile = signal<File | null>(null);
-  readonly selectedFileName = signal<string>('');
-  readonly isUploading = signal<boolean>(false);
-  readonly isDragging = signal<boolean>(false);
-  companyNameInput = '';
-
-  // ==================== FORMULÁRIO REATIVO ====================
-  readonly settingsForm: FormGroup;
-
   // ==================== SIGNALS ====================
+  readonly usuarios = signal<UserDisplay[]>([]);
+  readonly showRegisterDialog = signal<boolean>(false);
+  readonly isLoading = signal<boolean>(false);
 
-  /**
-   * Armazena array de emails configurados
-   */
-  readonly configuredEmails = signal<string[]>([]);
+  // Filtros
+  readonly filtroNome = signal<string>('');
+  readonly filtroEmail = signal<string>('');
+  readonly filtroPerfil = signal<string | null>(null);
+  readonly filtroStatus = signal<number | null>(null);
 
-  /**
-   * Armazena o ID da configuração
-   */
-  readonly currentSettingsId = signal<number | null>(null);
+  // Opções de filtro
+  readonly perfilOptions = [
+    { label: 'Administrador', value: 'admin' },
+    { label: 'Gestor', value: 'gestor' },
+    { label: 'Usuário', value: 'user' }
+  ];
 
-  // ==================== COMPUTED SIGNALS ====================
+  readonly statusOptions = [
+    { label: 'Ativo', value: 1 },
+    { label: 'Inativo', value: 0 }
+  ];
 
-  /**
-   * Calcula se há emails configurados
-   */
-  readonly hasConfiguredEmails = computed(() => {
-    return this.configuredEmails().length > 0;
-  });
-
-  /**
-   * Conta quantos emails estão configurados
-   */
-  readonly configuredEmailsCount = computed(() => {
-    return this.configuredEmails().length;
-  });
-
-  /**
-   * Verifica se a configuração está válida
-   */
-  readonly isEmailConfigured = computed(() => {
-    return this.configuredEmails().length > 0;
-  });
-
-  /**
-   * Retorna status do banco
-   */
+  // ==================== COMPUTED ====================
+  readonly currentUserId = computed(() => this.authService.currentUser()?.num_user_id);
+  readonly isAdmin = computed(() => this.authService.isAdmin());
+  readonly canManageUsers = computed(() => this.authService.canManageUsers());
   readonly dbReady = computed(() => this.dbService.isDbReady());
+
+  // Lista filtrada de usuários
+  readonly usuariosFiltrados = computed(() => {
+    let resultado = this.usuarios();
+
+    const nome = this.filtroNome().toLowerCase().trim();
+    if (nome) {
+      resultado = resultado.filter(u =>
+        u.desc_username.toLowerCase().includes(nome)
+      );
+    }
+
+    const email = this.filtroEmail().toLowerCase().trim();
+    if (email) {
+      resultado = resultado.filter(u =>
+        u.desc_email.toLowerCase().includes(email)
+      );
+    }
+
+    const perfil = this.filtroPerfil();
+    if (perfil !== null) {
+      resultado = resultado.filter(u => u.desc_role === perfil);
+    }
+
+    const status = this.filtroStatus();
+    if (status !== null) {
+      resultado = resultado.filter(u => u.int_user_active === status);
+    }
+
+    return resultado;
+  });
+
+  readonly temFiltrosAtivos = computed(() =>
+    this.filtroNome().trim() !== '' ||
+    this.filtroEmail().trim() !== '' ||
+    this.filtroPerfil() !== null ||
+    this.filtroStatus() !== null
+  );
 
   // ==================== CONSTRUCTOR ====================
   constructor() {
-    // Inicializa o formulário com validação customizada
-    this.settingsForm = this.fb.group({
-      emailsInput: ['', [Validators.required, this.multiEmailValidator.bind(this)]]
-    });
-
-    // Effect para carregar configurações quando o banco estiver pronto
+    // Effect para carregar usuários quando o banco estiver pronto
     effect(() => {
       if (this.dbService.isDbReady()) {
-        this.loadSettings();
+        this.loadUsuarios();
       }
     }, { allowSignalWrites: true });
   }
 
   // ==================== LIFECYCLE HOOKS ====================
-
   ngOnInit(): void {
     if (this.dbService.isDbReady()) {
-      this.loadSettings();
+      this.loadUsuarios();
     }
   }
 
@@ -136,228 +145,136 @@ export class SettingsUserComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  // ==================== VALIDADOR CUSTOMIZADO ====================
-
-  /**
-   * Validador customizado para múltiplos emails
-   */
-  private multiEmailValidator(control: AbstractControl): ValidationErrors | null {
-    const input = control.value;
-
-    if (!input || input.trim() === '') {
-      return { required: true };
-    }
-
-    // Parse do input
-    const emails = parseEmailInput(input);
-
-    // Valida
-    const validation = validateEmails(emails);
-
-    if (!validation.isValid) {
-      return {
-        multiEmail: {
-          errors: validation.errors,
-          invalidEmails: validation.invalidEmails
-        }
-      };
-    }
-
-    return null;
-  }
-
-  // ==================== CARREGAR CONFIGURAÇÕES ====================
-
-  /**
-   * Carrega as configurações do banco de dados
-   */
-  loadSettings(): void {
+  // ==================== CARREGAR USUÁRIOS ====================
+  loadUsuarios(): void {
     try {
-      const result = this.dbService.executeQuery(
-        'SELECT num_id, desc_email, num_is_configured FROM config_settings LIMIT 1'
-      );
-
-      if (result && result.length > 0) {
-        const row = result[0];
-
-        // Converte string do banco para array
-        const emails = emailsFromDb(row.desc_email);
-
-        const settings: AppSettings = {
-          num_id: Number(row.num_id),
-          desc_emails: emails,
-          num_is_configured: toBooleanFromDb(row.num_is_configured)
-        };
-
-        console.log('✅ Settings carregadas:', settings);
-
-        // Atualiza signals
-        this.currentSettingsId.set(settings.num_id || null);
-        this.configuredEmails.set(settings.desc_emails);
-
-        // Campo fica VAZIO ao carregar
-        this.settingsForm.patchValue({
-          emailsInput: ''
-        }, { emitEvent: false });
-
-      } else {
-        console.log('ℹ️ Nenhuma configuração salva');
-        this.resetSettingsState();
-      }
+      const users = this.authService.getUsuariosList();
+      this.usuarios.set(users);
+      console.log('✅ Usuários carregados:', users.length);
     } catch (error) {
-      console.error('❌ Erro ao carregar configurações:', error);
-      this.showErrorMessage('Não foi possível carregar as configurações.');
-      this.resetSettingsState();
+      console.error('❌ Erro ao carregar usuários:', error);
+      this.showErrorMessage('Não foi possível carregar a lista de usuários.');
     }
   }
 
-  /**
-   * Reseta o estado das configurações
-   */
-  private resetSettingsState(): void {
-    this.settingsForm.patchValue({ emailsInput: '' }, { emitEvent: false });
-    this.configuredEmails.set([]);
-    this.currentSettingsId.set(null);
+  // ==================== ATIVAR/DESATIVAR USUÁRIO ====================
+  confirmToggleUser(user: UserDisplay): void {
+    const isActive = user.int_user_active === 1;
+    const action = isActive ? 'desativar' : 'ativar';
+    const actionCapitalized = isActive ? 'Desativar' : 'Ativar';
+
+    // Não permitir desativar o próprio usuário
+    if (user.num_id === this.currentUserId()) {
+      this.showWarningMessage('Você não pode desativar sua própria conta.');
+      return;
+    }
+
+    // Não permitir desativar o admin padrão
+    if (user.desc_email === 'admin@blackbeer.com' && isActive) {
+      this.showWarningMessage('O administrador padrão não pode ser desativado.');
+      return;
+    }
+
+    this.confirmationService.confirm({
+      message: `Tem certeza que deseja ${action} o usuário "${user.desc_username}"?`,
+      header: `${actionCapitalized} Usuário`,
+      icon: isActive ? 'pi pi-exclamation-triangle' : 'pi pi-check-circle',
+      acceptLabel: actionCapitalized,
+      rejectLabel: 'Cancelar',
+      acceptButtonStyleClass: isActive ? 'p-button-danger' : 'p-button-success',
+      rejectButtonStyleClass: 'p-button-secondary p-button-outlined',
+      accept: () => {
+        this.toggleUserActive(user, !isActive);
+      }
+    });
   }
 
-  // ==================== SALVAR CONFIGURAÇÕES ====================
-
-  /**
-   * Salva as configurações no banco de dados
-   */
-  saveSettings(): void {
-    this.settingsForm.markAllAsTouched();
-
-    if (this.settingsForm.invalid) {
-      this.showValidationErrors();
-      return;
-    }
-
-    const input = this.settingsForm.value.emailsInput?.trim();
-
-    if (!input) {
-      this.showErrorMessage('Digite pelo menos um email.');
-      return;
-    }
-
-    // Parse e validação
-    const emails = parseEmailInput(input);
-    const validation = validateEmails(emails);
-
-    if (!validation.isValid) {
-      this.showErrorMessage(validation.errors.join('. '));
-      return;
-    }
+  private toggleUserActive(user: UserDisplay, active: boolean): void {
+    this.isLoading.set(true);
 
     try {
-      const settingsId = this.currentSettingsId();
+      const success = this.authService.toggleUserActive(user.num_id, active);
 
-      // Converte array para string com ;
-      const emailString = emailsToDb(validation.validEmails);
-
-      if (settingsId !== null) {
-        // UPDATE
-        this.updateExistingSettings(settingsId, emailString);
+      if (success) {
+        const action = active ? 'ativado' : 'desativado';
+        this.showSuccessMessage(`Usuário "${user.desc_username}" ${action} com sucesso!`);
+        this.loadUsuarios();
       } else {
-        // INSERT
-        this.insertNewSettings(emailString);
+        this.showErrorMessage('Não foi possível alterar o status do usuário.');
       }
-
-      // Atualiza estado
-      this.configuredEmails.set(validation.validEmails);
-
-      // Limpa o campo após salvar
-      this.settingsForm.patchValue({ emailsInput: '' });
-
-      const count = validation.validEmails.length;
-      const message = count === 1
-        ? '1 email configurado com sucesso!'
-        : `${count} emails configurados com sucesso!`;
-
-      this.showSuccessMessage(message);
-
     } catch (error) {
-      console.error('❌ Erro ao salvar configurações:', error);
-      this.showErrorMessage('Não foi possível salvar as configurações.');
+      console.error('❌ Erro ao alterar status do usuário:', error);
+      this.showErrorMessage('Erro ao alterar status do usuário.');
+    } finally {
+      this.isLoading.set(false);
     }
   }
 
-  /**
-   * Mostra erros de validação do formulário
-   */
-  private showValidationErrors(): void {
-    const control = this.settingsForm.get('emailsInput');
-
-    if (!control) return;
-
-    if (control.hasError('required')) {
-      this.showErrorMessage('Digite pelo menos um email.');
-      return;
-    }
-
-    if (control.hasError('multiEmail')) {
-      const errors = control.errors?.['multiEmail']?.errors || [];
-      this.showErrorMessage(errors.join('. '));
-      return;
-    }
-
-    this.showErrorMessage('Por favor, corrija os erros antes de salvar.');
+  // ==================== FILTROS ====================
+  limparFiltros(): void {
+    this.filtroNome.set('');
+    this.filtroEmail.set('');
+    this.filtroPerfil.set(null);
+    this.filtroStatus.set(null);
   }
 
-  /**
-   * Atualiza configuração existente
-   */
-  private updateExistingSettings(id: number, emailString: string): void {
-    this.dbService.executeRun(
-      'UPDATE config_settings SET desc_email = ?, num_is_configured = ? WHERE num_id = ?',
-      [emailString, toDbFromBoolean(true), id]
-    );
-    console.log('✅ Settings atualizadas (ID:', id, ')');
+  // ==================== DIALOG DE REGISTRO ====================
+  openRegisterDialog(): void {
+    this.showRegisterDialog.set(true);
   }
 
-  /**
-   * Insere nova configuração
-   */
-  private insertNewSettings(emailString: string): void {
-    this.dbService.executeRun(
-      'INSERT INTO config_settings (desc_email, num_is_configured) VALUES (?, ?)',
-      [emailString, toDbFromBoolean(true)]
-    );
-
-    const insertedId = this.dbService.getLastInsertId();
-    this.currentSettingsId.set(insertedId);
-
-    console.log('✅ Settings criadas (ID:', insertedId, ')');
+  closeRegisterDialog(): void {
+    this.showRegisterDialog.set(false);
   }
 
-  // ==================== VALIDAÇÃO ====================
-
-  hasFieldError(fieldName: string): boolean {
-    const field = this.settingsForm.get(fieldName);
-    return !!(field && field.invalid && (field.dirty || field.touched));
+  onUserCreated(): void {
+    this.closeRegisterDialog();
+    this.loadUsuarios();
+    this.showSuccessMessage('Novo usuário criado com sucesso!');
   }
 
-  getFieldError(fieldName: string): string {
-    const field = this.settingsForm.get(fieldName);
-
-    if (!field) {
-      return '';
+  // ==================== FORMATTERS ====================
+  getRoleLabel(role: string): string {
+    switch (role) {
+      case 'admin': return 'Administrador';
+      case 'gestor': return 'Gestor';
+      default: return 'Usuário';
     }
+  }
 
-    if (field.hasError('required')) {
-      return 'Digite pelo menos um email';
+  getRoleSeverity(role: string): 'info' | 'warn' | 'success' {
+    switch (role) {
+      case 'admin': return 'warn';
+      case 'gestor': return 'success';
+      default: return 'info';
     }
+  }
 
-    if (field.hasError('multiEmail')) {
-      const errors = field.errors?.['multiEmail']?.errors || [];
-      return errors[0] || 'Erro de validação';
+  getStatusLabel(active: number): string {
+    return active === 1 ? 'Ativo' : 'Inativo';
+  }
+
+  getStatusSeverity(active: number): 'success' | 'danger' {
+    return active === 1 ? 'success' : 'danger';
+  }
+
+  formatDate(dateString: string | undefined): string {
+    if (!dateString) return '-';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return '-';
     }
-
-    return 'Erro de validação';
   }
 
   // ==================== MENSAGENS ====================
-
   private showSuccessMessage(detail: string, summary: string = 'Sucesso'): void {
     this.messageService.add({
       severity: 'success',
@@ -376,204 +293,12 @@ export class SettingsUserComponent implements OnInit, OnDestroy {
     });
   }
 
-  private showInfoMessage(detail: string, summary: string = 'Informação'): void {
+  private showWarningMessage(detail: string, summary: string = 'Atenção'): void {
     this.messageService.add({
-      severity: 'info',
+      severity: 'warn',
       summary,
       detail,
-      life: 3000
+      life: 4000
     });
-  }
-
-  // ==================== UTILIDADES ====================
-
-  /**
-   * Retorna string formatada dos emails configurados
-   */
-  getConfiguredEmailsDisplay(): string {
-    const emails = this.configuredEmails();
-    if (emails.length === 0) {
-      return 'Nenhum email configurado';
-    }
-    if (emails.length === 1) {
-      return emails[0];
-    }
-    return `${emails.length} emails configurados`;
-  }
-
-  /**
-   * Copia email para o campo de input (para editar)
-   */
-  editEmails(): void {
-    const emails = this.configuredEmails();
-    if (emails.length > 0) {
-      this.settingsForm.patchValue({
-        emailsInput: emails.join(', ')
-      });
-      this.showInfoMessage('Emails carregados para edição');
-    }
-  }
-
-  /**
-   * Conta quantos emails foram detectados no input
-   */
-  getDetectedEmailsCount(): number {
-    const input = this.settingsForm.get('emailsInput')?.value;
-    if (!input || typeof input !== 'string') {
-      return 0;
-    }
-    return input.split(/[,;]/).filter((e: string) => e.trim()).length;
-  }
-
-  // ==================== LOGO UPLOAD METHODS ====================
-
-  /**
-   * Verifica se tem logo configurada
-   */
-  hasLogo(): boolean {
-    return this.clientConfigService.hasLogo();
-  }
-
-  /**
-   * Obtém a URL da logo
-   */
-  getLogoUrl(): string | null {
-    return this.clientConfigService.getLogoUrl();
-  }
-
-  /**
-   * Obtém o nome da empresa
-   */
-  getCompanyName(): string | null {
-    return this.clientConfigService.getCompanyName();
-  }
-
-  /**
-   * Evento de seleção de arquivo
-   */
-  onFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
-      const file = input.files[0];
-      this.handleFileSelection(file);
-    }
-  }
-
-  /**
-   * Handler para drag over
-   */
-  onDragOver(event: DragEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.isDragging.set(true);
-  }
-
-  /**
-   * Handler para drag leave
-   */
-  onDragLeave(event: DragEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.isDragging.set(false);
-  }
-
-  /**
-   * Handler para drop
-   */
-  onDrop(event: DragEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.isDragging.set(false);
-
-    const files = event.dataTransfer?.files;
-    if (files && files.length > 0) {
-      this.handleFileSelection(files[0]);
-    }
-  }
-
-  /**
-   * Processa o arquivo selecionado
-   */
-  private handleFileSelection(file: File): void {
-    // Validação de tipo
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/svg+xml'];
-    if (!validTypes.includes(file.type)) {
-      this.showErrorMessage('Formato inválido. Use JPEG, PNG ou SVG.');
-      return;
-    }
-
-    // Validação de tamanho (2MB)
-    const maxSize = 2 * 1024 * 1024;
-    if (file.size > maxSize) {
-      this.showErrorMessage('Arquivo muito grande. Máximo: 2MB.');
-      return;
-    }
-
-    this.selectedFile.set(file);
-    this.selectedFileName.set(file.name);
-    this.showInfoMessage(`Arquivo "${file.name}" selecionado.`);
-  }
-
-  /**
-   * Limpa o arquivo selecionado
-   */
-  clearSelectedFile(): void {
-    this.selectedFile.set(null);
-    this.selectedFileName.set('');
-  }
-
-  /**
-   * Faz upload da logo
-   */
-  async uploadLogo(): Promise<void> {
-    const file = this.selectedFile();
-    if (!file) {
-      this.showErrorMessage('Selecione uma imagem primeiro.');
-      return;
-    }
-
-    this.isUploading.set(true);
-
-    try {
-      await this.clientConfigService.uploadLogo(
-        file,
-        this.companyNameInput || undefined
-      );
-
-      this.showSuccessMessage('Logo salva com sucesso!');
-      this.clearSelectedFile();
-      this.companyNameInput = '';
-    } catch (error: any) {
-      console.error('Erro ao fazer upload:', error);
-      this.showErrorMessage(error.message || 'Erro ao salvar logo.');
-    } finally {
-      this.isUploading.set(false);
-    }
-  }
-
-  /**
-   * Remove a logo
-   */
-  removeLogo(): void {
-    try {
-      this.clientConfigService.removeLogo();
-      this.showSuccessMessage('Logo removida com sucesso!');
-    } catch (error) {
-      console.error('Erro ao remover logo:', error);
-      this.showErrorMessage('Erro ao remover logo.');
-    }
-  }
-
-  /**
-   * Formata o tamanho do arquivo em formato legível
-   */
-  protected formatFileSize(bytes: number): string {
-    if (bytes === 0) return '0 Bytes';
-
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   }
 }

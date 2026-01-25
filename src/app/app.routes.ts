@@ -1,24 +1,37 @@
 import { Routes } from '@angular/router';
-import { LoginComponent } from './features/auth/login/login';
-import { Menu } from './features/menu/menu';
+import { authGuard } from './core/guards/auth.guard';
+import { adminGuard } from './core/guards/admin.guard';
 
 export const routes: Routes = [
-   {
+  // ========================================
+  // ROTAS PUBLICAS (sem autenticacao)
+  // ========================================
+  {
     path: '',
-   component: LoginComponent
-   },
-   {
+    redirectTo: '/login',
+    pathMatch: 'full'
+  },
+  {
     path: 'login',
     loadComponent: () => import('./features/auth/login/login').then(m => m.LoginComponent),
     title: 'Login - Black Beer'
   },
-   {
-    path: 'register',
-    loadComponent: () => import('./features/auth/register/register.component'),
-    title: 'Criar Conta - Black Beer'
-  },
-   {
+
+  // ========================================
+  // ROTAS PROTEGIDAS (precisa estar logado)
+  // ========================================
+  {
     path: 'menu',
-    component: Menu
-   }
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/menu/menu').then(m => m.Menu),
+    title: 'Menu - Black Beer'
+  },
+
+  // ========================================
+  // ROTA 404 (qualquer caminho invalido)
+  // ========================================
+  {
+    path: '**',
+    redirectTo: '/login'
+  }
 ];

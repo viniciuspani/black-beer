@@ -6,7 +6,7 @@
 import { Component, OnInit, AfterViewInit, inject, signal, effect, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 
 // PrimeNG
 import { CardModule } from 'primeng/card';
@@ -43,6 +43,7 @@ export class LoginComponent implements OnInit, AfterViewInit {
   private readonly dbService = inject(DatabaseService);
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly messageService = inject(MessageService);
 
   readonly isLoading = signal(false);
@@ -97,7 +98,9 @@ export class LoginComponent implements OnInit, AfterViewInit {
 
       if (response.success) {
         this.showSuccess(response.message || 'Login realizado com sucesso!');
-        setTimeout(() => this.router.navigate(['menu']), 800);
+        // Pega a URL de retorno dos query params (ex: /menu)
+        const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/menu';
+        setTimeout(() => this.router.navigateByUrl(returnUrl), 800);
       } else {
         this.showError(response.message || 'Erro ao fazer login');
       }
@@ -107,10 +110,6 @@ export class LoginComponent implements OnInit, AfterViewInit {
     } finally {
       this.isLoading.set(false);
     }
-  }
-
-  goToRegister(): void {
-    this.router.navigate(['/register']);
   }
 
   hasError(field: string): boolean {

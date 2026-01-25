@@ -6,9 +6,10 @@
 /**
  * Tipo de papel do usuário no sistema
  * - 'user': Usuário comum (pode ver relatórios, registrar vendas)
+ * - 'gestor': Gestor (pode gerenciar usuários, configurações básicas)
  * - 'admin': Administrador (acesso total ao sistema)
  */
-export type UserRole = 'user' | 'admin';
+export type UserRole = 'user' | 'gestor' | 'admin';
 
 /**
  * Interface do usuário
@@ -23,6 +24,7 @@ export interface User {
   desc_email: string;                // Email (único)
   desc_password_hash: string;        // Senha com hash (nunca armazenar senha pura!)
   desc_role: UserRole;               // Papel do usuário (user ou admin)
+  int_user_active: number;           // Status do usuário (0=inativo, 1=ativo)
   dt_created_at: string;             // Data de criação (ISO string)
   dt_last_login_at?: string;         // Última vez que fez login (opcional)
 }
@@ -81,6 +83,20 @@ export function isAdmin(user: User | UserSession | null | undefined): boolean {
 }
 
 /**
+ * Verifica se um usuário é gestor
+ */
+export function isGestor(user: User | UserSession | null | undefined): boolean {
+  return user?.desc_role === 'gestor';
+}
+
+/**
+ * Verifica se um usuário é gestor ou admin (pode gerenciar usuários)
+ */
+export function canManageUsers(user: User | UserSession | null | undefined): boolean {
+  return user?.desc_role === 'admin' || user?.desc_role === 'gestor';
+}
+
+/**
  * Verifica se um usuário é comum
  */
 export function isUser(user: User | UserSession | null | undefined): boolean {
@@ -98,9 +114,17 @@ export function isValidUser(obj: any): obj is User {
     typeof obj.desc_username === 'string' &&
     typeof obj.desc_email === 'string' &&
     typeof obj.desc_password_hash === 'string' &&
-    (obj.desc_role === 'user' || obj.desc_role === 'admin') &&
+    (obj.desc_role === 'user' || obj.desc_role === 'gestor' || obj.desc_role === 'admin') &&
+    typeof obj.int_user_active === 'number' &&
     typeof obj.dt_created_at === 'string'
   );
+}
+
+/**
+ * Verifica se um usuário está ativo
+ */
+export function isUserActive(user: User | null | undefined): boolean {
+  return user?.int_user_active === 1;
 }
 
 /**
@@ -113,7 +137,7 @@ export function isValidSession(obj: any): obj is UserSession {
     typeof obj.num_user_id === 'number' &&
     typeof obj.desc_username === 'string' &&
     typeof obj.desc_email === 'string' &&
-    (obj.desc_role === 'user' || obj.desc_role === 'admin') &&
+    (obj.desc_role === 'user' || obj.desc_role === 'gestor' || obj.desc_role === 'admin') &&
     typeof obj.dt_login_at === 'string'
   );
 }

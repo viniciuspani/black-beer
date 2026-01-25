@@ -9,15 +9,18 @@ import { SalesFormComponent } from '../sales-form/sales-form';
 import { AcompanhamentoComandosComponent } from '../acompanhamento-comandas/acompanhamento-comandas';
 import { ReportsSectionComponent } from '../reports-section/reports-section';
 import { BeerManagementComponent } from '../beer-management/beer-management';
-import { SettingsUserComponent } from '../settings-user/settings-user';
+import { SettingsBusinessComponent } from '../settings-business/settings-business';
 import { SettingsSalesComponent } from '../settings-sales/settings-sales';
 import { SettingsAdminComponent } from '../settings-admin/settings-admin';
+import { SettingsBusinessAdminComponent } from '../settings-business-admin/settings-business-admin';
 import { HelpComponent } from '../help/help';
 import { EventManagementComponent } from '../event-management/event-management';
 import { ClientConfigService } from '../../core/services/client-config.service';
 import { AuthService } from '../../core/services/auth.service';
 import { TabRefreshService, MainTab, SettingsSubTab } from '../../core/services/tab-refresh.service';
 import { MenuItem } from 'primeng/api';
+import RegisterComponent from "../auth/register/register.component";
+import { SettingsUserComponent } from "../settings-user/settings-user";
 
 
 @Component({
@@ -34,12 +37,14 @@ import { MenuItem } from 'primeng/api';
     AcompanhamentoComandosComponent,
     BeerManagementComponent,
     ReportsSectionComponent,
-    SettingsUserComponent,
+    SettingsBusinessComponent,
     SettingsSalesComponent,
     SettingsAdminComponent,
+    SettingsBusinessAdminComponent,
     EventManagementComponent,
     HelpComponent,
-  ],
+    SettingsUserComponent
+],
    templateUrl: './menu.html',
   styleUrl: './menu.scss'
 
@@ -99,6 +104,25 @@ export class Menu {
       // SEMPRE notifica, mesmo se for a mesma aba (garante refresh)
       this.notifySettingsSubTabChange(activeSettingsTab);
     });
+
+    // Effect para ajustar aba padrão de configurações baseado no perfil
+    // Usuário comum: inicia na aba "Ajuda" (índice 4)
+    // Admin/Gestor: inicia na aba "Empresa" ou primeira disponível
+    effect(() => {
+      const canManage = this.canManageUsers();
+      const isAdminUser = this.isAdmin();
+
+      if (!canManage) {
+        // Usuário comum: apenas aba Ajuda disponível
+        this.activeSettingsTab.set(4);
+        this.activeSettingsTabDesktop.set('4');
+      } else if (!isAdminUser) {
+        // Gestor: inicia na aba Vendas (primeira disponível para gestor)
+        this.activeSettingsTab.set(1);
+        this.activeSettingsTabDesktop.set('1');
+      }
+      // Admin: mantém padrão (aba 0 - Empresa)
+    }, { allowSignalWrites: true });
   }
 
   /**
@@ -167,6 +191,33 @@ export class Menu {
     return this.clientConfigService.getCompanyName();
   }
 
+  // ==================== PERMISSÕES DO USUÁRIO ====================
+
+  /**
+   * Verifica se o usuário é admin
+   */
+  protected readonly isAdmin = computed(() => this.authService.isAdmin());
+
+  /**
+   * Verifica se o usuário é gestor
+   */
+  protected readonly isGestor = computed(() => this.authService.isGestor());
+
+  /**
+   * Verifica se o usuário pode gerenciar usuários (admin ou gestor)
+   */
+  protected readonly canManageUsers = computed(() => this.authService.canManageUsers());
+
+  /**
+   * Verifica se o usuário pode acessar relatórios (admin ou gestor)
+   */
+  protected readonly canAccessReports = computed(() => this.isAdmin() || this.isGestor());
+
+  /**
+   * Verifica se o usuário pode gerenciar cervejas (admin ou gestor)
+   */
+  protected readonly canManageBeers = computed(() => this.isAdmin() || this.isGestor());
+
   // ==================== INFORMAÇÕES DO USUÁRIO ====================
 
   /**
@@ -206,7 +257,11 @@ export class Menu {
   protected getUserRoleLabel(): string {
     const user = this.currentUser();
     if (!user) return '';
-    return user.desc_role === 'admin' ? 'Administrador' : 'Usuário';
+    switch (user.desc_role) {
+      case 'admin': return 'Administrador';
+      case 'gestor': return 'Gestor';
+      default: return 'Usuário';
+    }
   }
 
   /**

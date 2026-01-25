@@ -5,8 +5,8 @@ import { BeerType, Sale } from '../models/beer.model';
 import { FullReport, SalesSummary, SalesByCupSize, SalesByBeerType } from '../models/report.model';
 import { isPlatformBrowser } from '@angular/common';
 
-const DB_STORAGE_KEY = 'black_beer_sqlite_db_v10'; // v10 padronização de colunas
-const DB_VERSION = 10; // Versionamento do schema
+const DB_STORAGE_KEY = 'black_beer_sqlite_db_v12'; // v12 tabela prd_empresa
+const DB_VERSION = 12; // Versionamento do schema
 
 /**
  * Constantes para validação de emails
@@ -43,7 +43,7 @@ declare global {
  * - White-label (logo e nome da empresa)
  * - Relatórios detalhados com filtros por data e evento
  *
- * @version 10.0.0
+ * @version 11.0.0
  */
 @Injectable({
   providedIn: 'root'
@@ -76,7 +76,7 @@ export class DatabaseService {
 
       if (!savedDb) {
         // Não há DB, criar novo
-        console.log('🔄 Criando novo banco de dados (versão 10)...');
+        console.log('🔄 Criando novo banco de dados (versão 11)...');
         this.createNewDatabase();
       } else {
         // Carrega banco existente
@@ -101,7 +101,7 @@ export class DatabaseService {
    */
   private createNewDatabase(): void {
     this.db = new this.SQL.Database();
-    this.createSchemaV10();
+    this.createSchemaV11();
     this.seedInitialData();
     this.setStoredVersion(DB_VERSION);
     this.persist();
@@ -137,7 +137,7 @@ export class DatabaseService {
    * - prd_sales.num_comanda_id → prd_comandas.num_id (SET NULL)
    * - prd_sales.num_event_id → prd_events.num_id (SET NULL)
    */
-  private createSchemaV10(): void {
+  private createSchemaV11(): void {
     if (!this.db) return;
 
     const schema = `
@@ -187,7 +187,8 @@ export class DatabaseService {
         desc_username TEXT NOT NULL UNIQUE,
         desc_email TEXT NOT NULL UNIQUE,
         desc_password_hash TEXT NOT NULL,
-        desc_role TEXT NOT NULL CHECK(desc_role IN ('user', 'admin')) DEFAULT 'user',
+        desc_role TEXT NOT NULL CHECK(desc_role IN ('user', 'gestor', 'admin')) DEFAULT 'user',
+        int_user_active INTEGER NOT NULL DEFAULT 1 CHECK(int_user_active IN (0, 1)),
         dt_created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         dt_last_login_at TEXT
       );
@@ -284,6 +285,27 @@ export class DatabaseService {
       CREATE INDEX IF NOT EXISTS idx_comandas_desc_status ON prd_comandas(desc_status);
       CREATE INDEX IF NOT EXISTS idx_comandas_num_numero ON prd_comandas(num_numero);
 
+      -- Tabela de empresas
+      CREATE TABLE IF NOT EXISTS prd_empresa (
+        num_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        desc_razao_social TEXT NOT NULL,
+        desc_cnpj TEXT NOT NULL UNIQUE,
+        desc_endereco TEXT NOT NULL,
+        desc_cep TEXT NOT NULL,
+        desc_cidade TEXT NOT NULL,
+        desc_estado TEXT NOT NULL,
+        desc_responsavel_empresa TEXT NOT NULL,
+        num_gestor_empresa INTEGER,
+        int_active INTEGER NOT NULL DEFAULT 1 CHECK(int_active IN (0, 1)),
+        dt_created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        dt_updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (num_gestor_empresa) REFERENCES prd_users(num_id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_empresa_desc_cnpj ON prd_empresa(desc_cnpj);
+      CREATE INDEX IF NOT EXISTS idx_empresa_int_active ON prd_empresa(int_active);
+      CREATE INDEX IF NOT EXISTS idx_empresa_num_gestor ON prd_empresa(num_gestor_empresa);
+
       -- Tabela de versão do schema
       CREATE TABLE IF NOT EXISTS db_version (
         num_version INTEGER PRIMARY KEY
@@ -293,7 +315,7 @@ export class DatabaseService {
     `;
 
     this.db.exec(schema);
-    console.log('✅ Schema V10 criado com sucesso');
+    console.log('✅ Schema V11 criado com sucesso');
     // Seed de comandas iniciais
     this.seedInitialComandas(10);
     // Cria admin padrão
@@ -875,8 +897,12 @@ export class DatabaseService {
     if (!this.db) return 0;
 
     try {
-      const result = this.executeQuery('SELECT last_insert_rowid() as id');
-      return result[0]?.id || 0;
+      // Usar db.exec para obter last_insert_rowid() de forma mais confiável
+      const result = this.db.exec('SELECT last_insert_rowid() as id');
+      if (result.length > 0 && result[0].values.length > 0) {
+        return Number(result[0].values[0][0]);
+      }
+      return 0;
     } catch (error) {
       console.error('❌ Erro ao obter último ID:', error);
       return 0;
@@ -950,16 +976,54 @@ export class DatabaseService {
       const salesHasEventId = this.columnExists('prd_sales', 'num_event_id');
       const salesHasUserId = this.columnExists('prd_sales', 'num_user_id');
       const salesHasComandaId = this.columnExists('prd_sales', 'num_comanda_id');
+      const usersHasActive = this.columnExists('prd_users', 'int_user_active');
 
       console.log(`📋 Coluna 'prd_sales.num_event_id': ${salesHasEventId}`);
       console.log(`📋 Coluna 'prd_sales.num_user_id': ${salesHasUserId}`);
       console.log(`📋 Coluna 'prd_sales.num_comanda_id': ${salesHasComandaId}`);
+      console.log(`📋 Coluna 'prd_users.int_user_active': ${usersHasActive}`);
 
       // Se schema estiver incompleto, avisar que precisa recriar
       if (!eventsTableExists || !salesHasEventId || !salesHasUserId) {
         console.warn('⚠️ Schema desatualizado! Recomenda-se resetar o banco de dados.');
         console.warn('   Execute: this.resetDatabase() no console do navegador');
         return false;
+      }
+
+      // Migration v10 -> v11: adicionar coluna int_user_active
+      if (!usersHasActive) {
+        console.log('🔄 Aplicando migration v10 -> v11: adicionando coluna int_user_active...');
+        this.executeRun('ALTER TABLE prd_users ADD COLUMN int_user_active INTEGER NOT NULL DEFAULT 1');
+        this.executeRun('UPDATE db_version SET num_version = 11');
+        console.log('✅ Migration v11 aplicada com sucesso');
+      }
+
+      // Migration v11 -> v12: adicionar tabela prd_empresa
+      const empresaTableExists = this.tableExists('prd_empresa');
+      if (!empresaTableExists) {
+        console.log('🔄 Aplicando migration v11 -> v12: criando tabela prd_empresa...');
+        this.executeRun(`
+          CREATE TABLE IF NOT EXISTS prd_empresa (
+            num_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            desc_razao_social TEXT NOT NULL,
+            desc_cnpj TEXT NOT NULL UNIQUE,
+            desc_endereco TEXT NOT NULL,
+            desc_cep TEXT NOT NULL,
+            desc_cidade TEXT NOT NULL,
+            desc_estado TEXT NOT NULL,
+            desc_responsavel_empresa TEXT NOT NULL,
+            num_gestor_empresa INTEGER,
+            int_active INTEGER NOT NULL DEFAULT 1 CHECK(int_active IN (0, 1)),
+            dt_created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            dt_updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (num_gestor_empresa) REFERENCES prd_users(num_id) ON DELETE SET NULL
+          )
+        `);
+        this.executeRun('CREATE INDEX IF NOT EXISTS idx_empresa_desc_cnpj ON prd_empresa(desc_cnpj)');
+        this.executeRun('CREATE INDEX IF NOT EXISTS idx_empresa_int_active ON prd_empresa(int_active)');
+        this.executeRun('CREATE INDEX IF NOT EXISTS idx_empresa_num_gestor ON prd_empresa(num_gestor_empresa)');
+        this.executeRun('UPDATE db_version SET num_version = 12');
+        console.log('✅ Migration v12 aplicada com sucesso');
       }
 
       console.log('✅ Schema está correto!');
@@ -1006,8 +1070,8 @@ export class DatabaseService {
       const combined = salt + password + salt;
       const adminPassword = btoa(combined);
       this.executeRun(
-        'INSERT INTO prd_users (desc_username, desc_email, desc_password_hash, desc_role) VALUES (?, ?, ?, ?)',
-        ['admin', 'admin@blackbeer.com', adminPassword, 'admin']
+        'INSERT INTO prd_users (desc_username, desc_email, desc_password_hash, desc_role, int_user_active) VALUES (?, ?, ?, ?, ?)',
+        ['admin', 'admin@blackbeer.com', adminPassword, 'admin', 1]
       );
       console.log('✅ Usuário admin padrão criado');
       console.log('   Email: admin@blackbeer.com');
@@ -1019,7 +1083,27 @@ export class DatabaseService {
   }
 
   public getUsuarios(): any[] {
-    return this.executeQuery('SELECT num_id, desc_username, desc_email, desc_role, dt_created_at, dt_last_login_at FROM prd_users');
+    return this.executeQuery('SELECT num_id, desc_username, desc_email, desc_role, int_user_active, dt_created_at, dt_last_login_at FROM prd_users');
+  }
+
+  /**
+   * Ativa ou desativa um usuário
+   * @param userId ID do usuário
+   * @param active true para ativar, false para desativar
+   * @returns true se a operação foi bem-sucedida
+   */
+  public toggleUserActive(userId: number, active: boolean): boolean {
+    try {
+      this.executeRun(
+        'UPDATE prd_users SET int_user_active = ? WHERE num_id = ?',
+        [active ? 1 : 0, userId]
+      );
+      console.log(`✅ Usuário ${userId} ${active ? 'ativado' : 'desativado'}`);
+      return true;
+    } catch (error) {
+      console.error('❌ Erro ao alterar status do usuário:', error);
+      return false;
+    }
   }
 
   /**
@@ -1929,5 +2013,259 @@ export class DatabaseService {
       ORDER BY s.dt_timestamp DESC
     `;
     return this.executeQuery(query, [eventId]);
+  }
+
+  // ==================== EMPRESA CRUD ====================
+
+  /**
+   * Busca todas as empresas com informações do gestor
+   * @returns Array de empresas
+   */
+  public getAllEmpresas(): any[] {
+    const query = `
+      SELECT
+        e.*,
+        u.desc_username as gestor_username
+      FROM prd_empresa e
+      LEFT JOIN prd_users u ON e.num_gestor_empresa = u.num_id
+      ORDER BY e.desc_razao_social ASC
+    `;
+    return this.executeQuery(query);
+  }
+
+  /**
+   * Busca empresa por ID
+   * @param id ID da empresa
+   * @returns Empresa ou null se não encontrada
+   */
+  public getEmpresaById(id: number): any | null {
+    const query = `
+      SELECT
+        e.*,
+        u.desc_username as gestor_username
+      FROM prd_empresa e
+      LEFT JOIN prd_users u ON e.num_gestor_empresa = u.num_id
+      WHERE e.num_id = ?
+      LIMIT 1
+    `;
+    const result = this.executeQuery(query, [id]);
+    return result.length > 0 ? result[0] : null;
+  }
+
+  /**
+   * Busca empresa por CNPJ
+   * @param cnpj CNPJ da empresa
+   * @returns Empresa ou null se não encontrada
+   */
+  public getEmpresaByCnpj(cnpj: string): any | null {
+    const cnpjClean = cnpj.replace(/\D/g, '');
+    const query = 'SELECT * FROM prd_empresa WHERE REPLACE(REPLACE(REPLACE(desc_cnpj, ".", ""), "/", ""), "-", "") = ? LIMIT 1';
+    const result = this.executeQuery(query, [cnpjClean]);
+    return result.length > 0 ? result[0] : null;
+  }
+
+  /**
+   * Cria uma nova empresa
+   * @param empresaData Dados da empresa
+   * @returns ID da empresa criada ou null se falhar
+   */
+  public createEmpresa(empresaData: {
+    razaoSocial: string;
+    cnpj: string;
+    endereco: string;
+    cep: string;
+    cidade: string;
+    estado: string;
+    responsavelEmpresa: string;
+    gestorEmpresa?: number | null;
+  }): number | null {
+    if (!this.db) {
+      console.error('❌ Banco de dados não inicializado');
+      return null;
+    }
+
+    try {
+      const now = new Date().toISOString();
+
+      const stmt = this.db.prepare(
+        `INSERT INTO prd_empresa (
+          desc_razao_social,
+          desc_cnpj,
+          desc_endereco,
+          desc_cep,
+          desc_cidade,
+          desc_estado,
+          desc_responsavel_empresa,
+          num_gestor_empresa,
+          int_active,
+          dt_created_at,
+          dt_updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      );
+
+      stmt.run([
+        empresaData.razaoSocial.trim(),
+        empresaData.cnpj.replace(/\D/g, ''),
+        empresaData.endereco.trim(),
+        empresaData.cep.replace(/\D/g, ''),
+        empresaData.cidade.trim(),
+        empresaData.estado.trim().toUpperCase(),
+        empresaData.responsavelEmpresa.trim(),
+        empresaData.gestorEmpresa || null,
+        1, // int_active = 1 (ativa por padrão)
+        now,
+        now
+      ]);
+
+      stmt.free();
+
+      const empresaId = this.getLastInsertId();
+
+      if (!empresaId || empresaId === 0) {
+        console.error('❌ Erro: ID da empresa é 0 ou null');
+        return null;
+      }
+
+      this.persist();
+      console.log('✅ Empresa criada com sucesso - ID:', empresaId);
+      return empresaId;
+    } catch (error) {
+      console.error('❌ Erro ao criar empresa:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Atualiza uma empresa existente
+   * @param id ID da empresa
+   * @param empresaData Dados a serem atualizados (parciais)
+   * @returns true se atualizado com sucesso, false caso contrário
+   */
+  public updateEmpresa(id: number, empresaData: {
+    razaoSocial?: string;
+    cnpj?: string;
+    endereco?: string;
+    cep?: string;
+    cidade?: string;
+    estado?: string;
+    responsavelEmpresa?: string;
+    gestorEmpresa?: number | null;
+    active?: boolean;
+  }): boolean {
+    try {
+      const now = new Date().toISOString();
+      const updates: string[] = [];
+      const values: any[] = [];
+
+      if (empresaData.razaoSocial !== undefined) {
+        updates.push('desc_razao_social = ?');
+        values.push(empresaData.razaoSocial.trim());
+      }
+      if (empresaData.cnpj !== undefined) {
+        updates.push('desc_cnpj = ?');
+        values.push(empresaData.cnpj.replace(/\D/g, ''));
+      }
+      if (empresaData.endereco !== undefined) {
+        updates.push('desc_endereco = ?');
+        values.push(empresaData.endereco.trim());
+      }
+      if (empresaData.cep !== undefined) {
+        updates.push('desc_cep = ?');
+        values.push(empresaData.cep.replace(/\D/g, ''));
+      }
+      if (empresaData.cidade !== undefined) {
+        updates.push('desc_cidade = ?');
+        values.push(empresaData.cidade.trim());
+      }
+      if (empresaData.estado !== undefined) {
+        updates.push('desc_estado = ?');
+        values.push(empresaData.estado.trim().toUpperCase());
+      }
+      if (empresaData.responsavelEmpresa !== undefined) {
+        updates.push('desc_responsavel_empresa = ?');
+        values.push(empresaData.responsavelEmpresa.trim());
+      }
+      if (empresaData.gestorEmpresa !== undefined) {
+        updates.push('num_gestor_empresa = ?');
+        values.push(empresaData.gestorEmpresa);
+      }
+      if (empresaData.active !== undefined) {
+        updates.push('int_active = ?');
+        values.push(empresaData.active ? 1 : 0);
+      }
+
+      // Sempre atualiza dt_updated_at
+      updates.push('dt_updated_at = ?');
+      values.push(now);
+
+      // Adiciona ID ao final
+      values.push(id);
+
+      if (updates.length === 1) {
+        // Apenas dt_updated_at, nada para atualizar
+        return false;
+      }
+
+      const query = `UPDATE prd_empresa SET ${updates.join(', ')} WHERE num_id = ?`;
+      this.executeRun(query, values);
+      this.persist();
+      console.log('✅ Empresa atualizada com sucesso:', id);
+      return true;
+    } catch (error) {
+      console.error('❌ Erro ao atualizar empresa:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Ativa ou desativa uma empresa
+   * @param empresaId ID da empresa
+   * @param active true para ativar, false para desativar
+   * @returns true se a operação foi bem-sucedida
+   */
+  public toggleEmpresaActive(empresaId: number, active: boolean): boolean {
+    try {
+      const now = new Date().toISOString();
+      this.executeRun(
+        'UPDATE prd_empresa SET int_active = ?, dt_updated_at = ? WHERE num_id = ?',
+        [active ? 1 : 0, now, empresaId]
+      );
+      console.log(`✅ Empresa ${empresaId} ${active ? 'ativada' : 'desativada'}`);
+      return true;
+    } catch (error) {
+      console.error('❌ Erro ao alterar status da empresa:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Deleta uma empresa
+   * @param id ID da empresa
+   * @returns true se deletado com sucesso, false caso contrário
+   */
+  public deleteEmpresa(id: number): boolean {
+    try {
+      this.executeRun('DELETE FROM prd_empresa WHERE num_id = ?', [id]);
+      this.persist();
+      console.log('✅ Empresa deletada com sucesso:', id);
+      return true;
+    } catch (error) {
+      console.error('❌ Erro ao deletar empresa:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Busca usuários do tipo gestor para seleção
+   * @returns Array de usuários gestores
+   */
+  public getGestores(): any[] {
+    const query = `
+      SELECT num_id, desc_username, desc_email
+      FROM prd_users
+      WHERE desc_role = 'gestor' AND int_user_active = 1
+      ORDER BY desc_username ASC
+    `;
+    return this.executeQuery(query);
   }
 }

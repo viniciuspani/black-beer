@@ -1,9 +1,9 @@
-// src/app/features/settings-user/settings-user.scss
+// src/app/features/settings-business-admin/settings-business-admin.scss
 
 @use '../../../assets/styles/color-palette' as *;
 
 /**
- * Estilos para Gestão de Usuários
+ * Estilos para Gestão de Empresas
  */
 
 // ========================================
@@ -122,15 +122,15 @@
   overflow-x: auto;
 }
 
-// Avatar do usuário na tabela
-.user-avatar {
+// Avatar da empresa na tabela
+.empresa-avatar {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 2rem;
   height: 2rem;
   background: $amber-100;
-  border-radius: 50%;
+  border-radius: 0.5rem;
   flex-shrink: 0;
 
   i {
@@ -139,7 +139,7 @@
   }
 }
 
-// Linha de usuário inativo
+// Linha de empresa inativa
 .inactive-row {
   opacity: 0.6;
   background-color: $gray-50 !important;
@@ -158,7 +158,7 @@
   gap: 1rem;
 }
 
-.user-card {
+.empresa-card {
   background: $white;
   border: 1px solid $gray-200;
   border-radius: 0.75rem;
@@ -177,20 +177,20 @@
   }
 }
 
-.user-card-header {
+.empresa-card-header {
   display: flex;
   align-items: center;
   gap: 0.75rem;
 }
 
-.user-card-avatar {
+.empresa-card-avatar {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 2.5rem;
   height: 2.5rem;
   background: $amber-100;
-  border-radius: 50%;
+  border-radius: 0.5rem;
   flex-shrink: 0;
 
   i {
@@ -199,45 +199,66 @@
   }
 }
 
-.user-card-info {
+.empresa-card-info {
   flex: 1;
   min-width: 0;
 
-  .user-card-name {
+  .empresa-card-name {
     font-weight: 600;
     color: $gray-800;
     margin: 0;
     font-size: 0.9375rem;
-  }
-
-  .user-card-email {
-    color: $gray-500;
-    font-size: 0.8125rem;
-    margin: 0.125rem 0 0 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  .empresa-card-cnpj {
+    color: $gray-500;
+    font-size: 0.8125rem;
+    font-family: monospace;
+    margin: 0.125rem 0 0 0;
+  }
 }
 
-.user-card-action {
-  flex-shrink: 0;
+.empresa-card-details {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid $gray-100;
+
+  .detail-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.375rem;
+    font-size: 0.8125rem;
+    color: $gray-600;
+
+    i {
+      color: $amber-600;
+      font-size: 0.75rem;
+      width: 1rem;
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
 }
 
-.user-card-footer {
+.empresa-card-footer {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
   margin-top: 0.75rem;
   padding-top: 0.75rem;
   border-top: 1px solid $gray-100;
-  flex-wrap: wrap;
+}
 
-  .user-card-date {
-    font-size: 0.75rem;
-    color: $gray-400;
-    margin-left: auto;
-  }
+.empresa-card-actions {
+  display: flex;
+  gap: 0.375rem;
 }
 
 // ========================================
@@ -258,7 +279,60 @@
 }
 
 // ========================================
-// DIALOG DE REGISTRO
+// FORM DIALOG
+// ========================================
+
+.form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.form-row {
+  display: flex;
+  gap: 1rem;
+
+  @media (max-width: 480px) {
+    flex-direction: column;
+  }
+
+  .flex-1 {
+    flex: 1;
+  }
+
+  .flex-2 {
+    flex: 2;
+  }
+}
+
+.form-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: $gray-50;
+}
+
+.form-hint {
+  font-size: 0.75rem;
+  color: $gray-300;
+  margin-top: 0.25rem;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
+}
+
+// ========================================
+// DIALOG STYLES
 // ========================================
 
 ::ng-deep {
@@ -274,27 +348,12 @@
     }
 
     .p-dialog-content {
-      padding: 0;
+      padding: 1.5rem;
+    }
 
-      // Ajustes para o componente de registro embedded
-      .register-container {
-        min-height: auto;
-        padding: 0;
-        background: transparent;
-
-        .register-card {
-          box-shadow: none;
-          border: none;
-
-          .p-card-header {
-            display: none;
-          }
-
-          .p-card-body {
-            padding: 1.5rem;
-          }
-        }
-      }
+    .p-dialog-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid $gray-200;
     }
   }
 
@@ -304,52 +363,33 @@
       background: $white;
     }
   }
-}
 
-// ========================================
-// ANIMAÇÕES
-// ========================================
+  // Input styles
+  .p-inputtext,
+  .p-dropdown,
+  .p-inputmask,
+  .p-select {
+    width: 100%;
+    color: $gray-50 !important;
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-// ========================================
-// RESPONSIVIDADE
-// ========================================
-
-@media (max-width: 768px) {
-  .card-header {
-    padding: 1rem;
-
-    .header-icon {
-      width: 2.5rem;
-      height: 2.5rem;
-
-      i {
-        font-size: 1.25rem;
-      }
+    &::placeholder {
+      color: $gray-400 !important;
     }
 
-    .header-text {
-      .header-title {
-        font-size: 1.125rem;
-      }
+    input {
+      color: $gray-50 !important;
+    }
+  }
 
-      .header-subtitle {
-        font-size: 0.8125rem;
-      }
+  // Select dropdown text
+  .p-select-label {
+    color: $gray-50 !important;
+  }
+
+  // InputMask text
+  .p-inputmask {
+    input {
+      color: $gray-50 !important;
     }
   }
 }
@@ -405,6 +445,54 @@
       background: transparent;
       border: none;
       padding: 1rem 0;
+    }
+  }
+}
+
+// ========================================
+// ANIMAÇÕES
+// ========================================
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+// ========================================
+// RESPONSIVIDADE
+// ========================================
+
+@media (max-width: 768px) {
+  .card-header {
+    padding: 1rem;
+
+    .header-icon {
+      width: 2.5rem;
+      height: 2.5rem;
+
+      i {
+        font-size: 1.25rem;
+      }
+    }
+
+    .header-text {
+      .header-title {
+        font-size: 1.125rem;
+      }
+
+      .header-subtitle {
+        font-size: 0.8125rem;
+      }
     }
   }
 }

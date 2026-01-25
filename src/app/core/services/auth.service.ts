@@ -31,7 +31,10 @@ import {
   isValidPassword,
   getPasswordError,
   USER_CONSTANTS,
-  isAdmin
+  isAdmin,
+  isGestor,
+  canManageUsers,
+  isUserActive
 } from '../models/user.model';
 
 @Injectable({
@@ -64,6 +67,8 @@ export class AuthService {
   });
 
   readonly isAdmin = computed(() => isAdmin(this.currentSessionSignal()));
+  readonly isGestor = computed(() => isGestor(this.currentSessionSignal()));
+  readonly canManageUsers = computed(() => canManageUsers(this.currentSessionSignal()));
   readonly currentUser = computed(() => this.currentSessionSignal());
 
   // ==================== CONSTRUCTOR ====================
@@ -94,7 +99,12 @@ export class AuthService {
     }
   }
 
-  async register(dto: CreateUserDto): Promise<LoginResponse> {
+  /**
+   * Registra um novo usuário no sistema
+   * @param dto Dados do usuário a ser criado
+   * @param autoLogin Se true, faz login automático após criar (padrão: true para auto-registro, false para criação via painel admin)
+   */
+  async register(dto: CreateUserDto, autoLogin: boolean = true): Promise<LoginResponse> {
     if (!this.dbService.isDbReady()) {
       return { success: false, message: 'Sistema não está pronto. Aguarde...' };
     }
@@ -112,29 +122,35 @@ export class AuthService {
       if (this.emailExists(dto.desc_email)) return { success: false, message: 'Email já está cadastrado' };
 
       console.log('✅ Dados de registro validados. Criando usuário...');
-      console.log('🔐 Verifica usuario...', this.usernameExists(dto.desc_username));
-      console.log('🔐 Verifica email...', this.emailExists(dto.desc_email));
-
 
       const passwordHash = this.hashPassword(dto.desc_password);
       const role: UserRole = dto.desc_role || 'user';
 
-      var resultado = this.dbService.executeRun('INSERT INTO prd_users (desc_username, desc_email, desc_password_hash, desc_role) VALUES (?, ?, ?, ?)', [
+      const emailNormalized = dto.desc_email.trim().toLowerCase();
+
+      this.dbService.executeRun('INSERT INTO prd_users (desc_username, desc_email, desc_password_hash, desc_role, int_user_active) VALUES (?, ?, ?, ?, ?)', [
         dto.desc_username.trim(),
-        dto.desc_email.trim().toLowerCase(),
+        emailNormalized,
         passwordHash,
         role,
+        1  // Novo usuário sempre ativo
       ]);
 
-      console.log('✅ Usuário criado. Resultado:', resultado);
-      console.log('✅ Usuário criado com sucesso. ID:', this.dbService.getLastInsertId());
+      // Buscar usuário pelo email (mais confiável que last_insert_rowid)
+      const user = this.findUserByEmailOrUsername(emailNormalized);
+      if (!user) {
+        console.error('❌ Usuário criado mas não encontrado pelo email:', emailNormalized);
+        return { success: false, message: 'Erro ao buscar usuário criado' };
+      }
 
-      const userId = this.dbService.getLastInsertId();
-      const user = this.getUserById(userId);
-      if (!user) return { success: false, message: 'Erro ao buscar usuário criado' };
+      console.log('✅ Usuário criado com sucesso. ID:', user.num_id);
 
-      const session = userToSession(user);
-      this.setSession(session);
+      // Apenas faz login automático se autoLogin for true
+      // Quando um admin/gestor cria usuário pelo painel, não deve trocar a sessão
+      if (autoLogin) {
+        const session = userToSession(user);
+        this.setSession(session);
+      }
 
       return { success: true, user: sanitizeUser(user), message: 'Cadastro realizado com sucesso!' };
     } catch (error) {
@@ -178,6 +194,11 @@ export class AuthService {
 
       const passwordMatch = this.verifyPassword(dto.desc_password, user.desc_password_hash);
       if (!passwordMatch) return { success: false, message: 'Usuário ou senha incorretos' };
+
+      // Verifica se o usuário está ativo
+      if (!isUserActive(user)) {
+        return { success: false, message: 'Usuário inativo. Entre em contato com o administrador.' };
+      }
 
       this.updateLastLogin(user.num_id);
       const session = userToSession(user);
@@ -301,6 +322,7 @@ export class AuthService {
       desc_email: row.desc_email,
       desc_password_hash: row.desc_password_hash,
       desc_role: row.desc_role as UserRole,
+      int_user_active: Number(row.int_user_active ?? 1),
       dt_created_at: row.dt_created_at,
       dt_last_login_at: row.dt_last_login_at,
     };
@@ -331,6 +353,14 @@ export class AuthService {
     return this.isAdmin();
   }
 
+  isUserGestor(): boolean {
+    return this.isGestor();
+  }
+
+  userCanManageUsers(): boolean {
+    return this.canManageUsers();
+  }
+
   refreshSession(): void {
     const session = this.currentSessionSignal();
     if (!session) return;
@@ -344,5 +374,177 @@ export class AuthService {
     const newSession = userToSession(user);
     this.setSession(newSession);
     console.log('✅ Sessão renovada');
+  }
+
+  // ==================== GESTÃO DE USUÁRIOS ====================
+
+  /**
+   * Ativa ou desativa um usuário
+   * @param userId ID do usuário
+   * @param active true para ativar, false para desativar
+   * @returns true se a operação foi bem-sucedida
+   */
+  toggleUserActive(userId: number, active: boolean): boolean {
+    if (!this.dbService.isDbReady()) {
+      console.error('❌ Banco de dados não está pronto');
+      return false;
+    }
+
+    return this.dbService.toggleUserActive(userId, active);
+  }
+
+  /**
+   * Retorna lista de usuários (sem senha)
+   * Para uso no painel de gestão
+   */
+  getUsuariosList(): Omit<User, 'desc_password_hash'>[] {
+    const usuarios = this.listarUsuarios();
+    return usuarios.map((u: any) => ({
+      num_id: Number(u.num_id),
+      desc_username: u.desc_username,
+      desc_email: u.desc_email,
+      desc_role: u.desc_role as UserRole,
+      int_user_active: Number(u.int_user_active ?? 1),
+      dt_created_at: u.dt_created_at,
+      dt_last_login_at: u.dt_last_login_at,
+    }));
+  }
+
+  // ==================== GESTÃO DE EMPRESAS ====================
+
+  /**
+   * Retorna lista de todas as empresas
+   */
+  getEmpresasList(): any[] {
+    if (!this.dbService.isDbReady()) {
+      console.warn('⚠️ Banco de dados ainda não está pronto.');
+      return [];
+    }
+
+    try {
+      const empresas = this.dbService.getAllEmpresas();
+      console.log('✅ Empresas listadas:', empresas.length);
+      return empresas;
+    } catch (error) {
+      console.error('❌ Erro ao listar empresas:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Busca empresa por ID
+   */
+  getEmpresaById(id: number): any | null {
+    if (!this.dbService.isDbReady()) {
+      return null;
+    }
+
+    return this.dbService.getEmpresaById(id);
+  }
+
+  /**
+   * Cria uma nova empresa
+   */
+  createEmpresa(empresaData: {
+    razaoSocial: string;
+    cnpj: string;
+    endereco: string;
+    cep: string;
+    cidade: string;
+    estado: string;
+    responsavelEmpresa: string;
+    gestorEmpresa?: number | null;
+  }): { success: boolean; empresaId?: number; message: string } {
+    if (!this.dbService.isDbReady()) {
+      return { success: false, message: 'Sistema não está pronto. Aguarde...' };
+    }
+
+    // Verifica se CNPJ já existe
+    const existingEmpresa = this.dbService.getEmpresaByCnpj(empresaData.cnpj);
+    if (existingEmpresa) {
+      return { success: false, message: 'CNPJ já cadastrado no sistema.' };
+    }
+
+    const empresaId = this.dbService.createEmpresa(empresaData);
+
+    if (empresaId) {
+      return { success: true, empresaId, message: 'Empresa criada com sucesso!' };
+    }
+
+    return { success: false, message: 'Erro ao criar empresa. Tente novamente.' };
+  }
+
+  /**
+   * Atualiza uma empresa existente
+   */
+  updateEmpresa(id: number, empresaData: {
+    razaoSocial?: string;
+    cnpj?: string;
+    endereco?: string;
+    cep?: string;
+    cidade?: string;
+    estado?: string;
+    responsavelEmpresa?: string;
+    gestorEmpresa?: number | null;
+    active?: boolean;
+  }): { success: boolean; message: string } {
+    if (!this.dbService.isDbReady()) {
+      return { success: false, message: 'Sistema não está pronto. Aguarde...' };
+    }
+
+    // Se estiver atualizando CNPJ, verifica se já existe em outra empresa
+    if (empresaData.cnpj) {
+      const existingEmpresa = this.dbService.getEmpresaByCnpj(empresaData.cnpj);
+      if (existingEmpresa && existingEmpresa.num_id !== id) {
+        return { success: false, message: 'CNPJ já cadastrado em outra empresa.' };
+      }
+    }
+
+    const success = this.dbService.updateEmpresa(id, empresaData);
+
+    if (success) {
+      return { success: true, message: 'Empresa atualizada com sucesso!' };
+    }
+
+    return { success: false, message: 'Erro ao atualizar empresa. Tente novamente.' };
+  }
+
+  /**
+   * Ativa ou desativa uma empresa
+   */
+  toggleEmpresaActive(empresaId: number, active: boolean): boolean {
+    if (!this.dbService.isDbReady()) {
+      return false;
+    }
+
+    return this.dbService.toggleEmpresaActive(empresaId, active);
+  }
+
+  /**
+   * Deleta uma empresa
+   */
+  deleteEmpresa(id: number): { success: boolean; message: string } {
+    if (!this.dbService.isDbReady()) {
+      return { success: false, message: 'Sistema não está pronto. Aguarde...' };
+    }
+
+    const success = this.dbService.deleteEmpresa(id);
+
+    if (success) {
+      return { success: true, message: 'Empresa excluída com sucesso!' };
+    }
+
+    return { success: false, message: 'Erro ao excluir empresa. Tente novamente.' };
+  }
+
+  /**
+   * Retorna lista de usuários gestores para seleção
+   */
+  getGestoresList(): any[] {
+    if (!this.dbService.isDbReady()) {
+      return [];
+    }
+
+    return this.dbService.getGestores();
   }
 }

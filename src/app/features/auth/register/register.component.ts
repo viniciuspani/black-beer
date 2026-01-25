@@ -3,7 +3,7 @@
 // Componente de Cadastro
 // ========================================
 
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -15,6 +15,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
+import { SelectModule } from 'primeng/select';
 
 // App
 import { AuthService } from '../../../core/services/auth.service';
@@ -22,7 +23,8 @@ import {
   isValidEmail,
   isValidUsername,
   isValidPassword,
-  getPasswordError
+  getPasswordError,
+  UserRole
 } from '../../../core/models/user.model';
 
 @Component({
@@ -35,7 +37,8 @@ import {
     ButtonModule,
     InputTextModule,
     PasswordModule,
-    ToastModule
+    ToastModule,
+    SelectModule
   ],
   providers: [MessageService],
   templateUrl: './register.component.html',
@@ -48,8 +51,27 @@ export class RegisterComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly messageService = inject(MessageService);
 
+  // ==================== INPUTS/OUTPUTS ====================
+  /**
+   * Modo embedded: quando true, o componente não redireciona após cadastro
+   * e não exibe link para login
+   */
+  @Input() embedded: boolean = false;
+
+  /**
+   * Evento emitido quando um usuário é criado com sucesso (modo embedded)
+   */
+  @Output() userCreated = new EventEmitter<void>();
+
   // ==================== SIGNALS ====================
   readonly isLoading = signal<boolean>(false);
+
+  // ==================== OPÇÕES DE PERFIL ====================
+  readonly roleOptions: { label: string; value: UserRole }[] = [
+    { label: 'Usuário', value: 'user' },
+    { label: 'Gestor', value: 'gestor' },
+    { label: 'Administrador', value: 'admin' }
+  ];
 
   // ==================== FORMULÁRIO ====================
   readonly registerForm: FormGroup;
@@ -72,15 +94,15 @@ export class RegisterComponent implements OnInit {
         Validators.minLength(6),
         this.passwordValidator
       ]],
-      confirmPassword: ['', [Validators.required]]
+      confirmPassword: ['', [Validators.required]],
+      role: ['user']  // Perfil padrão: user (usado apenas no modo embedded)
     }, {
       validators: this.passwordMatchValidator  // Validador do form inteiro
     });
 
-    // Se já estiver logado, redireciona
-    if (this.authService.isLoggedIn()) {
-      this.router.navigate(['/']);
-    }
+    // NOTA: Redirecionamento removido pois este componente também é usado
+    // dentro do Menu (aba Configurações > Usuário) quando já está logado.
+    // O guard de rota /register já protege o acesso direto se necessário.
   }
 
   ngOnInit(): void {}
@@ -175,22 +197,35 @@ export class RegisterComponent implements OnInit {
     this.isLoading.set(true);
 
     try {
-      const { username, email, password } = this.registerForm.value;
+      const { username, email, password, role } = this.registerForm.value;
+
+      // No modo embedded, usa o role selecionado; senão, sempre 'user'
+      const selectedRole: UserRole = this.embedded ? (role || 'user') : 'user';
+
+      // No modo embedded (painel admin), não faz login automático
+      // para manter o usuário atual logado
+      const autoLogin = !this.embedded;
 
       const response = await this.authService.register({
         desc_username: username.trim(),
         desc_email: email.trim().toLowerCase(),
         desc_password: password,
-        desc_role: 'user'  // Novo usuário sempre começa como 'user'
-      });
+        desc_role: selectedRole
+      }, autoLogin);
 
       if (response.success) {
         this.showSuccess(response.message || 'Cadastro realizado com sucesso!');
 
-        // Redireciona para home (já está logado automaticamente)
-        setTimeout(() => {
-          this.router.navigate(['/']);
-        }, 1000);
+        if (this.embedded) {
+          // Modo embedded: emite evento e limpa formulário
+          this.registerForm.reset();
+          this.userCreated.emit();
+        } else {
+          // Modo standalone: redireciona para home
+          setTimeout(() => {
+            this.router.navigate(['/']);
+          }, 1000);
+        }
       } else {
         this.showError(response.message || 'Erro ao criar conta');
       }

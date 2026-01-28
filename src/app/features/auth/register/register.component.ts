@@ -3,7 +3,7 @@
 // Componente de Cadastro
 // ========================================
 
-import { Component, OnInit, inject, signal, Input, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -67,11 +67,18 @@ export class RegisterComponent implements OnInit {
   readonly isLoading = signal<boolean>(false);
 
   // ==================== OPÇÕES DE PERFIL ====================
-  readonly roleOptions: { label: string; value: UserRole }[] = [
-    { label: 'Usuário', value: 'user' },
-    { label: 'Gestor', value: 'gestor' },
-    { label: 'Administrador', value: 'admin' }
-  ];
+  readonly roleOptions = computed(() => {
+    const currentUser = this.authService.currentUser();
+    const isGestor = currentUser?.desc_role === 'gestor';
+
+    const allOptions: { label: string; value: UserRole }[] = [
+      { label: 'Usuário', value: 'user' },
+      { label: 'Gestor', value: 'gestor' },
+      ...(!isGestor ? [{ label: 'Administrador' as const, value: 'admin' as UserRole }] : [])
+    ];
+
+    return allOptions;
+  });
 
   // ==================== FORMULÁRIO ====================
   readonly registerForm: FormGroup;
